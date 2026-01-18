@@ -1,0 +1,60 @@
+/* Tab Bar */
+"Tab.Recording" = "Record";
+"Tab.History" = "History";
+
+/* Recording View */
+"Recording.Title" = "Voice Transcription";
+"Recording.Start" = "Start Recording";
+"Recording.Stop" = "Stop";
+"Recording.Recording" = "Recording...";
+"Recording.TapToStart" = "Tap to start recording";
+"Recording.Speaking" = "Speaking...";
+"Recording.Live" = "LIVE";
+"Recording.RealTime" = "Real-time";
+"Recording.Recognizing" = "Recognizing...";
+"Recording.NoResult" = "No recognition result";
+"Recording.NoContent" = "(No content)";
+
+/* Language */
+"Language.Selection" = "Recognition Language";
+"Language.Chinese" = "Chinese";
+"Language.English" = "English";
+"Language.Japanese" = "Japanese";
+"Language.Korean" = "Korean";
+
+/* Actions */
+"Action.Copy" = "Copy";
+"Action.Share" = "Share";
+"Action.Edit" = "Edit";
+"Action.Save" = "Save";
+"Action.Cancel" = "Cancel";
+"Action.Delete" = "Delete";
+"Action.Close" = "Close";
+
+/* Toast */
+"Toast.Copied" = "Copied to clipboard";
+"Toast.Saved" = "Saved successfully";
+
+/* History List */
+"History.Title" = "History";
+"History.Empty" = "No transcription records";
+"History.Empty.Hint" = "Tap the record button below to start";
+"History.Today" = "Today";
+"History.Yesterday" = "Yesterday";
+"Date.Format" = "MMM d";
+"History.Delete.Confirm" = "Confirm Delete";
+"History.Delete.Message" = "This record cannot be recovered after deletion. Are you sure you want to delete it?";
+"History.ViewDetail" = "View Details";
+
+/* Detail View */
+"Detail.Title" = "Transcription Details";
+"Detail.Edit.Title" = "Edit Content";
+"Detail.NoContent" = "(No content)";
+
+/* Permissions */
+"Permission.Title" = "Permission Required";
+"Permission.Message" = "Please enable microphone and speech recognition permissions in Settings";
+"Permission.Settings" = "Go to Settings";
+
+/* Toast */
+"Toast.Restart" = "Please restart the app to apply changes";

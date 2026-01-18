@@ -15,8 +15,8 @@ enum RecognitionLanguage: String, CaseIterable, Identifiable, Codable {
 
     var icon: String {
         switch self {
-        case .chinese: return "character.textbox"
-        case .english: return "textformat.abc"
+        case .chinese: return "character.cursor.ibeam"
+        case .english: return "abc"
         }
     }
 

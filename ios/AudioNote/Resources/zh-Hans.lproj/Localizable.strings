@@ -1,0 +1,60 @@
+/* Tab Bar */
+"Tab.Recording" = "录音";
+"Tab.History" = "历史记录";
+
+/* Recording View */
+"Recording.Title" = "语音转文字";
+"Recording.Start" = "开始录音";
+"Recording.Stop" = "停止";
+"Recording.Recording" = "正在录音...";
+"Recording.TapToStart" = "点击开始录音";
+"Recording.Speaking" = "说话中...";
+"Recording.Live" = "实时";
+"Recording.RealTime" = "实时识别中";
+"Recording.Recognizing" = "正在识别...";
+"Recording.NoResult" = "暂无识别结果";
+"Recording.NoContent" = "(无内容)";
+
+/* Language */
+"Language.Selection" = "识别语言";
+"Language.Chinese" = "中文";
+"Language.English" = "English";
+"Language.Japanese" = "日本語";
+"Language.Korean" = "한국어";
+
+/* Actions */
+"Action.Copy" = "复制";
+"Action.Share" = "分享";
+"Action.Edit" = "编辑";
+"Action.Save" = "保存";
+"Action.Cancel" = "取消";
+"Action.Delete" = "删除";
+"Action.Close" = "关闭";
+
+/* Toast */
+"Toast.Copied" = "已复制到剪贴板";
+"Toast.Saved" = "保存成功";
+
+/* History List */
+"History.Title" = "历史记录";
+"History.Empty" = "暂无转写记录";
+"History.Empty.Hint" = "点击底部录音按钮开始录制";
+"History.Today" = "今天";
+"History.Yesterday" = "昨天";
+"Date.Format" = "M月d日";
+"History.Delete.Confirm" = "确认删除";
+"History.Delete.Message" = "删除后无法恢复，确定要删除这条记录吗？";
+"History.ViewDetail" = "查看详情";
+
+/* Detail View */
+"Detail.Title" = "转写详情";
+"Detail.Edit.Title" = "编辑内容";
+"Detail.NoContent" = "(无内容)";
+
+/* Permissions */
+"Permission.Title" = "需要权限";
+"Permission.Message" = "请在设置中开启麦克风和语音识别权限";
+"Permission.Settings" = "去设置";
+
+/* Toast */
+"Toast.Restart" = "请重启应用以应用更改";
