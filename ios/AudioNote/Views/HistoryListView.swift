@@ -3,7 +3,8 @@ import SwiftUI
 struct HistoryListView: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @State private var selectedRecord: TranscriptionRecord?
-    @State private var shouldEnterEditingMode = false
+    @State private var recordToDelete: TranscriptionRecord?
+    @StateObject private var actionsViewModel = RecordActionsViewModel()
 
     var body: some View {
         NavigationView {
@@ -19,14 +20,32 @@ struct HistoryListView: View {
                 await viewModel.loadHistory()
             }
             .sheet(item: $selectedRecord) { record in
-                TranscriptionDetailView(
-                    record: record,
-                    viewModel: viewModel,
-                    startInEditingMode: shouldEnterEditingMode
-                )
-                .onDisappear {
-                    shouldEnterEditingMode = false
+                NavigationView {
+                    TranscriptionDetailView(
+                        record: record,
+                        viewModel: viewModel
+                    )
                 }
+            }
+            .alert("确认删除", isPresented: .constant(recordToDelete != nil)) {
+                Button("取消", role: .cancel) {
+                    recordToDelete = nil
+                }
+                Button("删除", role: .destructive) {
+                    if let record = recordToDelete {
+                        deleteRecord(record)
+                    }
+                    recordToDelete = nil
+                }
+            } message: {
+                Text("删除后无法恢复，确定要删除这条记录吗？")
+            }
+            .overlay(alignment: .top) {
+                VStack {
+                    ToastView(message: actionsViewModel.toastMessage, isShowing: $actionsViewModel.showCopiedToast)
+                    Spacer()
+                }
+                .padding(.top, 60)
             }
         }
         .task {
@@ -53,46 +72,58 @@ struct HistoryListView: View {
     
     private var recordsListView: some View {
         List {
-            ForEach(groupedRecords.keys.sorted(by: >), id: \.self) { dateKey in
-                Section(header: Text(dateKey)) {
-                    ForEach(groupedRecords[dateKey] ?? []) { record in
+            ForEach(sortedRecordGroups, id: \.dateKey) { group in
+                Section(header: Text(group.dateKey)) {
+                    ForEach(group.records) { record in
                         RecordRowView(record: record)
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 selectedRecord = record
                             }
+                            .contextMenu {
+                                contextMenuItems(for: record)
+                            }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
-                                    deleteRecord(record)
+                                    recordToDelete = record
                                 } label: {
                                     Label("删除", systemImage: "trash")
                                 }
                             }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    shouldEnterEditingMode = true
-                                    selectedRecord = record
-                                } label: {
-                                    Label("编辑", systemImage: "pencil")
-                                }
-                                .tint(.blue)
-                            }
                     }
                     .onDelete { indexSet in
-                        deleteRecords(at: indexSet, in: groupedRecords[dateKey] ?? [])
+                        if let firstIndex = indexSet.first {
+                            recordToDelete = group.records[firstIndex]
+                        }
                     }
                 }
             }
         }
         .listStyle(.insetGrouped)
     }
-    
-    private var groupedRecords: [String: [TranscriptionRecord]] {
-        Dictionary(grouping: viewModel.historyRecords) { record in
+
+    private var sortedRecordGroups: [RecordGroup] {
+        let grouped = Dictionary(grouping: viewModel.historyRecords) { record in
             formatDate(record.createdAt)
         }
+
+        return grouped.map { dateKey, records in
+            RecordGroup(
+                dateKey: dateKey,
+                date: records.first?.createdAt ?? Date(),
+                records: records.sorted { $0.createdAt > $1.createdAt }
+            )
+        }
+        .sorted { $0.date > $1.date }
     }
-    
+
+    private struct RecordGroup: Identifiable {
+        let id = UUID()
+        let dateKey: String
+        let date: Date
+        let records: [TranscriptionRecord]
+    }
+
     private func formatDate(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
@@ -105,17 +136,33 @@ struct HistoryListView: View {
             return formatter.string(from: date)
         }
     }
-    
-    private func deleteRecords(at indexSet: IndexSet, in records: [TranscriptionRecord]) {
-        for index in indexSet {
-            let record = records[index]
-            deleteRecord(record)
-        }
-    }
 
     private func deleteRecord(_ record: TranscriptionRecord) {
         Task {
             await viewModel.deleteRecord(id: record.id)
+        }
+    }
+
+    @ViewBuilder
+    private func contextMenuItems(for record: TranscriptionRecord) -> some View {
+        Button {
+            selectedRecord = record
+        } label: {
+            Label("查看详情", systemImage: "eye")
+        }
+
+        Button {
+            actionsViewModel.copyText(record.content)
+        } label: {
+            Label("复制", systemImage: "doc.on.doc")
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            recordToDelete = record
+        } label: {
+            Label("删除", systemImage: "trash")
         }
     }
 }
