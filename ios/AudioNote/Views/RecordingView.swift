@@ -2,7 +2,9 @@ import SwiftUI
 
 struct RecordingView: View {
     @ObservedObject var viewModel: TranscriptionViewModel
+    @EnvironmentObject private var languageManager: LanguageManager
     @State private var showPermissionAlert = false
+    @State private var showLanguageSelector = false
     @State private var editedText = ""
     @State private var isEditing = false
     @State private var showCopiedToast = false
@@ -44,15 +46,19 @@ struct RecordingView: View {
             .sheet(isPresented: $showShareSheet) {
                 ShareSheet(items: [viewModel.transcribedText])
             }
-            .alert("需要权限", isPresented: $showPermissionAlert) {
-                Button("去设置") {
+            .sheet(isPresented: $showLanguageSelector) {
+                LanguageSelectorView()
+                    .environmentObject(languageManager)
+            }
+            .alert("Permission.Title".localized, isPresented: $showPermissionAlert) {
+                Button("Permission.Settings".localized) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
                 }
-                Button("取消", role: .cancel) {}
+                Button("Action.Cancel".localized, role: .cancel) {}
             } message: {
-                Text("请在设置中开启麦克风和语音识别权限")
+                Text("Permission.Message".localized)
             }
             .onAppear {
                 viewModel.updateAuthorizationStatus()
@@ -67,16 +73,24 @@ struct RecordingView: View {
                     showPermissionAlert = true
                 }
             }
+            .navigationTitle("Recording.Title".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(trailing:
+                Button {
+                    showLanguageSelector = true
+                } label: {
+                    Image(systemName: "globe")
+                        .foregroundColor(.accentColor)
+                }
+            )
         }
-        .navigationTitle("语音转文字")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     // MARK: - Header Section
 
     private var headerSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("识别语言")
+            Text("Language.Selection".localized)
                 .font(.caption)
                 .foregroundColor(.secondary)
 
@@ -130,7 +144,7 @@ struct RecordingView: View {
                         .foregroundColor(.primary)
                         .id(viewModel.formattedDuration)
 
-                    Text("正在录音...")
+                    Text("Recording.Recording".localized)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -180,7 +194,7 @@ struct RecordingView: View {
 
             // Status text when not recording
             if !viewModel.isRecording && viewModel.transcribedText.isEmpty {
-                Text("点击开始录音")
+                Text("Recording.TapToStart".localized)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
             }
@@ -194,7 +208,7 @@ struct RecordingView: View {
             // Text area header
             HStack {
                 if isEditing {
-                    Button("取消") {
+                    Button("Action.Cancel".localized) {
                         cancelEditing()
                     }
                     .font(.subheadline)
@@ -202,7 +216,7 @@ struct RecordingView: View {
 
                     Spacer()
 
-                    Button("保存") {
+                    Button("Action.Save".localized) {
                         saveEditedText()
                     }
                     .font(.subheadline.weight(.semibold))
@@ -212,13 +226,13 @@ struct RecordingView: View {
                         Circle()
                             .fill(Color.red)
                             .frame(width: 6, height: 6)
-                        Text("实时识别中")
+                        Text("Recording.RealTime".localized)
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
                     Spacer()
                 } else {
-                    Text("识别结果")
+                    Text("Recording.Result".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
                     Spacer()
@@ -284,7 +298,7 @@ struct RecordingView: View {
                 VStack {
                     ProgressView()
                         .padding()
-                    Text("说话中...")
+                    Text("Recording.Speaking".localized)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .padding(.bottom)
@@ -325,7 +339,7 @@ struct RecordingView: View {
                     Image(systemName: "text.badge.xmark")
                         .font(.title2)
                         .foregroundColor(.secondary)
-                    Text("暂无识别结果")
+                    Text("Recording.NoResult".localized)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -343,7 +357,7 @@ struct RecordingView: View {
             if showCopiedToast {
                 HStack(spacing: 8) {
                     Image(systemName: "checkmark.circle.fill")
-                    Text("已复制到剪贴板")
+                    Text("Toast.Copied".localized)
                 }
                 .font(.subheadline.weight(.medium))
                 .foregroundColor(.white)
@@ -369,10 +383,10 @@ struct RecordingView: View {
                         .font(.system(size: 60))
                         .foregroundColor(.secondary)
 
-                    Text("需要麦克风权限")
+                    Text("Permission.MicRequired".localized)
                         .font(.title2.weight(.semibold))
 
-                    Text("请在设置中开启麦克风权限以使用语音识别功能")
+                    Text("Permission.MicMessage".localized)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
@@ -382,7 +396,7 @@ struct RecordingView: View {
                             UIApplication.shared.open(url)
                         }
                     } label: {
-                        Text("去设置")
+                        Text("Permission.Settings".localized)
                             .font(.headline)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)

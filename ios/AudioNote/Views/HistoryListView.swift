@@ -15,7 +15,7 @@ struct HistoryListView: View {
                     recordsListView
                 }
             }
-            .navigationTitle("历史记录")
+            .navigationTitle("History.Title".localized)
             .refreshable {
                 await viewModel.loadHistory()
             }
@@ -27,18 +27,18 @@ struct HistoryListView: View {
                     )
                 }
             }
-            .alert("确认删除", isPresented: .constant(recordToDelete != nil)) {
-                Button("取消", role: .cancel) {
+            .alert("History.Delete.Confirm".localized, isPresented: .constant(recordToDelete != nil)) {
+                Button("Action.Cancel".localized, role: .cancel) {
                     recordToDelete = nil
                 }
-                Button("删除", role: .destructive) {
+                Button("Action.Delete".localized, role: .destructive) {
                     if let record = recordToDelete {
                         deleteRecord(record)
                     }
                     recordToDelete = nil
                 }
             } message: {
-                Text("删除后无法恢复，确定要删除这条记录吗？")
+                Text("History.Delete.Message".localized)
             }
             .overlay(alignment: .top) {
                 VStack {
@@ -59,11 +59,11 @@ struct HistoryListView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
             
-            Text("暂无转写记录")
+            Text("History.Empty".localized)
                 .font(.headline)
                 .foregroundColor(.secondary)
-            
-            Text("点击底部录音按钮开始录制")
+
+            Text("History.Empty.Hint".localized)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -87,7 +87,7 @@ struct HistoryListView: View {
                                 Button(role: .destructive) {
                                     recordToDelete = record
                                 } label: {
-                                    Label("删除", systemImage: "trash")
+                                    Label("Action.Delete".localized, systemImage: "trash")
                                 }
                             }
                     }
@@ -127,12 +127,12 @@ struct HistoryListView: View {
     private func formatDate(_ date: Date) -> String {
         let calendar = Calendar.current
         if calendar.isDateInToday(date) {
-            return "今天"
+            return "History.Today".localized
         } else if calendar.isDateInYesterday(date) {
-            return "昨天"
+            return "History.Yesterday".localized
         } else {
             let formatter = DateFormatter()
-            formatter.dateFormat = "M月d日"
+            formatter.dateFormat = "Date.Format".localized
             return formatter.string(from: date)
         }
     }
@@ -148,13 +148,13 @@ struct HistoryListView: View {
         Button {
             selectedRecord = record
         } label: {
-            Label("查看详情", systemImage: "eye")
+            Label("History.ViewDetail".localized, systemImage: "eye")
         }
 
         Button {
             actionsViewModel.copyText(record.content)
         } label: {
-            Label("复制", systemImage: "doc.on.doc")
+            Label("Action.Copy".localized, systemImage: "doc.on.doc")
         }
 
         Divider()
@@ -162,7 +162,7 @@ struct HistoryListView: View {
         Button(role: .destructive) {
             recordToDelete = record
         } label: {
-            Label("删除", systemImage: "trash")
+            Label("Action.Delete".localized, systemImage: "trash")
         }
     }
 }

@@ -58,3 +58,12 @@
 
 /* Toast */
 "Toast.Restart" = "Please restart the app to apply changes";
+
+/* Language Selector */
+"Language.Selector.Title" = "Select Language";
+"Language.System" = "Follow System";
+
+/* Recording */
+"Recording.Result" = "Recognition Result";
+"Permission.MicRequired" = "Microphone Permission Required";
+"Permission.MicMessage" = "Please enable microphone permission in Settings to use speech recognition";

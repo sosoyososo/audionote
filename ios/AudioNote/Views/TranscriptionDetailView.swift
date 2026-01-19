@@ -25,16 +25,16 @@ struct TranscriptionDetailView: View {
             }
             .padding()
         }
-        .navigationTitle(isEditing ? "编辑内容" : "转写详情")
+        .navigationTitle(isEditing ? "Detail.Edit.Title".localized : "Detail.Title".localized)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 if isEditing {
-                    Button("取消") {
+                    Button("Action.Cancel".localized) {
                         cancelEditing()
                     }
                 } else {
-                    Button("关闭") {
+                    Button("Action.Close".localized) {
                         dismiss()
                     }
                 }
@@ -42,7 +42,7 @@ struct TranscriptionDetailView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 if isEditing {
-                    Button("保存") {
+                    Button("Action.Save".localized) {
                         saveEditing()
                     }
                 } else {

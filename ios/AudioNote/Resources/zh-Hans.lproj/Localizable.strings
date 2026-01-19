@@ -58,3 +58,12 @@
 
 /* Toast */
 "Toast.Restart" = "请重启应用以应用更改";
+
+/* Language Selector */
+"Language.Selector.Title" = "选择语言";
+"Language.System" = "跟随系统";
+
+/* Recording */
+"Recording.Result" = "识别结果";
+"Permission.MicRequired" = "需要麦克风权限";
+"Permission.MicMessage" = "请在设置中开启麦克风权限以使用语音识别功能";

@@ -40,6 +40,48 @@ enum AppLanguage: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    var displayName: String {
+        switch self {
+        case .system: return "跟随系统"
+        case .chinese: return "中文简体"
+        case .english: return "English"
+        }
+    }
+
+    var displayNameEN: String {
+        switch self {
+        case .system: return "Follow System"
+        case .chinese: return "Chinese"
+        case .english: return "English"
+        }
+    }
+
+    /// 获取实际使用的语言（处理 system 情况）
+    /// 当系统语言非中文或英文时，默认返回英文
+    func effectiveLanguage() -> AppLanguage {
+        switch self {
+        case .system:
+            return AppLanguage.detectSystemLanguage()
+        case .chinese, .english:
+            return self
+        }
+    }
+
+    /// 检测系统首选语言，返回中文或英文
+    private static func detectSystemLanguage() -> AppLanguage {
+        guard let preferredLanguage = Locale.preferredLanguages.first?.lowercased() else {
+            return .english
+        }
+
+        if preferredLanguage.hasPrefix("zh") {
+            return .chinese
+        } else if preferredLanguage.hasPrefix("en") {
+            return .english
+        } else {
+            return .english // 非中英文默认英文
+        }
+    }
+
     static var savedLanguage: AppLanguage {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: "audioNote:language"),
@@ -59,28 +101,22 @@ final class LanguageManager: ObservableObject {
     @Published var current: AppLanguage = .savedLanguage {
         didSet {
             AppLanguage.savedLanguage = current
-        }
-    }
-
-    @Published var showLanguageChangedToast = false
-
-    static let shared = LanguageManager()
-
-    func apply(_ language: AppLanguage) {
-        guard language != current else { return }
-
-        current = language
-
-        // Trigger view refresh
-        showLanguageChangedToast = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.showLanguageChangedToast = false
+            // 发送通知触发视图刷新
             NotificationCenter.default.post(name: .languageChanged, object: nil)
         }
     }
 
-    func dismissToast() {
-        showLanguageChangedToast = false
+    static let shared = LanguageManager()
+
+    /// 切换到指定语言，立即生效，无提示
+    func change(to language: AppLanguage) {
+        guard language != current else { return }
+        current = language
+    }
+
+    /// 获取当前实际使用的语言（处理 system 情况）
+    func getEffectiveLanguage() -> AppLanguage {
+        return current.effectiveLanguage()
     }
 }
 

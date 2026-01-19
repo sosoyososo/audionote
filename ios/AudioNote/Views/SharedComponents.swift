@@ -57,14 +57,14 @@ public final class RecordActionsViewModel: ObservableObject {
 
     public func copyText(_ text: String) {
         UIPasteboard.general.string = text
-        toastMessage = "已复制到剪贴板"
+        toastMessage = "Toast.Copied".localized
         withAnimation {
             showCopiedToast = true
         }
     }
 
     public func showSaveConfirmation() {
-        toastMessage = "保存成功"
+        toastMessage = "Toast.Saved".localized
         withAnimation {
             showSaveSuccess = true
         }

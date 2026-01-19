@@ -2,7 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = TranscriptionViewModel()
-    @StateObject private var languageManager = LanguageManager.shared
+    @EnvironmentObject private var languageManager: LanguageManager
     @State private var refreshId = UUID()
 
     var body: some View {
@@ -19,19 +19,8 @@ struct ContentView: View {
                     }
             }
             .environmentObject(viewModel)
-            .environmentObject(languageManager)
-
-            // Language changed toast
-            if languageManager.showLanguageChangedToast {
-                ToastView(message: NSLocalizedString("Toast.Restart", comment: ""), isShowing: $languageManager.showLanguageChangedToast)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
         }
-        .animation(.easeInOut(duration: 0.3), value: languageManager.showLanguageChangedToast)
         .id(refreshId)
-        .onAppear {
-            languageManager.apply(languageManager.current)
-        }
         .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { _ in
             refreshId = UUID()
         }
@@ -40,4 +29,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(LanguageManager.shared)
 }
