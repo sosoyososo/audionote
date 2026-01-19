@@ -3,6 +3,7 @@ import SwiftUI
 struct HistoryListView: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @State private var selectedRecord: TranscriptionRecord?
+    @State private var showDeleteConfirmation = false
     @State private var recordToDelete: TranscriptionRecord?
     @StateObject private var actionsViewModel = RecordActionsViewModel()
 
@@ -27,7 +28,7 @@ struct HistoryListView: View {
                     )
                 }
             }
-            .alert("History.Delete.Confirm".localized, isPresented: .constant(recordToDelete != nil)) {
+            .alert("History.Delete.Confirm".localized, isPresented: $showDeleteConfirmation) {
                 Button("Action.Cancel".localized, role: .cancel) {
                     recordToDelete = nil
                 }
@@ -88,6 +89,7 @@ struct HistoryListView: View {
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     recordToDelete = record
+                                    showDeleteConfirmation = true
                                 } label: {
                                     Label("Action.Delete".localized, systemImage: "trash")
                                 }
@@ -96,6 +98,7 @@ struct HistoryListView: View {
                     .onDelete { indexSet in
                         if let firstIndex = indexSet.first {
                             recordToDelete = group.records[firstIndex]
+                            showDeleteConfirmation = true
                         }
                     }
                 }
@@ -163,6 +166,7 @@ struct HistoryListView: View {
 
         Button(role: .destructive) {
             recordToDelete = record
+            showDeleteConfirmation = true
         } label: {
             Label("Action.Delete".localized, systemImage: "trash")
         }
