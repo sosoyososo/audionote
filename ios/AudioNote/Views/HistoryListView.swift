@@ -143,9 +143,7 @@ struct HistoryListView: View {
     }
 
     private func deleteRecord(_ record: TranscriptionRecord) {
-        Task {
-            await viewModel.deleteRecord(id: record.id)
-        }
+        viewModel.deleteRecord(id: record.id)
     }
 
     @ViewBuilder

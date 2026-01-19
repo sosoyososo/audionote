@@ -196,14 +196,15 @@ final class TranscriptionViewModel: ObservableObject {
         }
     }
 
-    func deleteRecord(id: UUID) async {
+    func deleteRecord(id: UUID) {
         Logger.info("Deleting record: \(id.uuidString)")
-        do {
-            try await storage.delete(id: id)
-            await loadHistory()
-        } catch {
-            Logger.error("Failed to delete record: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+        historyRecords.removeAll { $0.id == id }
+        Task {
+            do {
+                try await storage.delete(id: id)
+            } catch {
+                Logger.error("Failed to delete record: \(error.localizedDescription)")
+            }
         }
     }
 
