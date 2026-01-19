@@ -76,6 +76,8 @@ struct HistoryListView: View {
                 Section(header: Text(group.dateKey)) {
                     ForEach(group.records) { record in
                         RecordRowView(record: record)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                               // 添加这行
                             .contentShape(Rectangle())
                             .onTapGesture {
                                 selectedRecord = record
@@ -188,6 +190,7 @@ struct RecordRowView: View {
                 }
             }
         }
+        .frame(maxWidth: .infinity, alignment:.leading)  // 让 VStack 撑满宽度
         .padding(.vertical, 4)
     }
 }
