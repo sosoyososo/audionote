@@ -1,8 +1,8 @@
 import SwiftUI
 
 struct LanguageSelectorView: View {
-    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var languageManager: LanguageManager
+    @Environment(\.dismiss) private var dismiss
     let onLanguageSelected: ((AppLanguage) -> Void)?
 
     init(onLanguageSelected: ((AppLanguage) -> Void)? = nil) {
@@ -47,6 +47,7 @@ struct LanguageSelectorView: View {
                 }
             }
         }
+        .frame(maxHeight: 220)
         .background(Color(.systemBackground))
     }
 

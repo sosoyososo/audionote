@@ -47,8 +47,16 @@ struct RecordingView: View {
                 ShareSheet(items: [viewModel.transcribedText])
             }
             .sheet(isPresented: $showLanguageSelector) {
-                LanguageSelectorView()
-                    .environmentObject(languageManager)
+                if #available(iOS 16.0, *) {
+                    LanguageSelectorView()
+                        .environmentObject(languageManager)
+                        .presentationDetents([.height(220)])
+                        .presentationDragIndicator(.visible)
+                } else {
+                    LanguageSelectorView()
+                        .environmentObject(languageManager)
+                        .frame(maxHeight: 220)
+                }
             }
             .alert("Permission.Title".localized, isPresented: $showPermissionAlert) {
                 Button("Permission.Settings".localized) {
