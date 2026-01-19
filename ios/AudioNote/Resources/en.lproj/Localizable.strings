@@ -45,6 +45,7 @@
 "History.Delete.Confirm" = "Confirm Delete";
 "History.Delete.Message" = "This record cannot be recovered after deletion. Are you sure you want to delete it?";
 "History.ViewDetail" = "View Details";
+"History.Duration" = "Duration";
 
 /* Detail View */
 "Detail.Title" = "Transcription Details";

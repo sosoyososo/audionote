@@ -184,9 +184,9 @@ struct RecordRowView: View {
                 Text(record.createdAt, style: .time)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                
+
                 if let duration = record.duration, duration > 0 {
-                    Text(record.formattedDuration)
+                    Text("History.Duration".localized + " " + record.formattedDuration)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

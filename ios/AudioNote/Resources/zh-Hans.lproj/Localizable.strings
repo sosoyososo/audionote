@@ -45,6 +45,7 @@
 "History.Delete.Confirm" = "确认删除";
 "History.Delete.Message" = "删除后无法恢复，确定要删除这条记录吗？";
 "History.ViewDetail" = "查看详情";
+"History.Duration" = "时长";
 
 /* Detail View */
 "Detail.Title" = "转写详情";
