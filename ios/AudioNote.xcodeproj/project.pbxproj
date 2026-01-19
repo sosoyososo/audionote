@@ -15,6 +15,7 @@
 		50069B38DBC02785CB81B5FC /* HistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38681BEB722E44E9C2117736 /* HistoryListView.swift */; };
 		5683090D34B4B61F60CDB84D /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */; };
 		648AB7A793E032461CBDC184 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028757B1D218AC83505E84C0 /* ContentView.swift */; };
+		7D8A26030ABD60CDF7EF2C25 /* LanguageSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */; };
 		84E6AEB1B2C0E8355A3E376E /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA9FE19E7F88A212478178E /* PermissionsManager.swift */; };
 		85CC2307EC35E04425B21FD2 /* TranscriptionStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */; };
 		A132FDD494904F02D6959028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F9C6851265C12C1D964A808F /* Assets.xcassets */; };
@@ -56,6 +57,7 @@
 		78BA671DCA8B93226BA5AB87 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStorage.swift; sourceTree = "<group>"; };
 		8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
+		9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelectorView.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		B3EF8AB4FC9E68CAACD63647 /* Preview_Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Preview_Assets.xcassets; sourceTree = "<group>"; };
 		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -104,6 +106,7 @@
 			isa = PBXGroup;
 			children = (
 				8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */,
+				9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */,
 				5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */,
 				EEA9FE19E7F88A212478178E /* PermissionsManager.swift */,
 			);
@@ -329,6 +332,7 @@
 				648AB7A793E032461CBDC184 /* ContentView.swift in Sources */,
 				50069B38DBC02785CB81B5FC /* HistoryListView.swift in Sources */,
 				EB66EBF0B75C46D3CC54D705 /* LanguageManager.swift in Sources */,
+				7D8A26030ABD60CDF7EF2C25 /* LanguageSelectorView.swift in Sources */,
 				D8DD3B1E8205064D27444A9A /* Logger.swift in Sources */,
 				84E6AEB1B2C0E8355A3E376E /* PermissionsManager.swift in Sources */,
 				11CA2D835B8653989B1F76DB /* RecognitionLanguage.swift in Sources */,
