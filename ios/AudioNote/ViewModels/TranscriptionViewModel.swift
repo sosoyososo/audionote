@@ -42,7 +42,6 @@ final class TranscriptionViewModel: ObservableObject {
 
         Task { @MainActor in
             await loadHistory()
-            updateAuthorizationStatus()
             loadSavedLanguage()
         }
     }
@@ -62,8 +61,10 @@ final class TranscriptionViewModel: ObservableObject {
 
     func updateAuthorizationStatus() {
         let permissionsManager = PermissionsManager.shared
-        authorizationStatus = permissionsManager.isAllAuthorized ? .authorized : permissionsManager.speechAuthorizationStatus
-        Logger.info("Authorization status updated: \(String(describing: authorizationStatus))")
+        let newStatus = permissionsManager.isAllAuthorized ? .authorized : permissionsManager.speechAuthorizationStatus
+        guard newStatus != authorizationStatus else { return }
+        authorizationStatus = newStatus
+        Logger.info("Authorization status updated: \(newStatus)")
     }
 
     func requestPermissions() async {
