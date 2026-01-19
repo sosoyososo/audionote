@@ -190,13 +190,21 @@ struct RecordingView: View {
                 }
             }
             .frame(width: 100, height: 100)
-            .disabled(viewModel.authorizationStatus != .authorized && !viewModel.isRecording)
+            .disabled(viewModel.authorizationStatus == .denied || viewModel.authorizationStatus == .restricted)
 
             // Status text when not recording
             if !viewModel.isRecording && viewModel.transcribedText.isEmpty {
                 Text("Recording.TapToStart".localized)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
+            }
+
+            // Permission denied hint
+            if viewModel.authorizationStatus == .denied || viewModel.authorizationStatus == .restricted {
+                Text("Recording.PermissionDeniedHint".localized)
+                    .font(.caption)
+                    .foregroundColor(.orange)
+                    .padding(.top, 8)
             }
         }
     }

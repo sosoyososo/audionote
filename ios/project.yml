@@ -57,10 +57,6 @@ targets:
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
           UISceneConfigurations: {}
-        NSMicrophoneUsageDescription: "AudioNote 需要访问麦克风以进行语音录制和识别。"
-        NSSpeechRecognitionUsageDescription: "AudioNote 需要使用语音识别功能将您的语音转换为文字。"
-        NSAppleMusicUsageDescription: ""
-        NSMotionUsageDescription: ""
 
   AudioNoteTests:
     type: bundle.unit-test

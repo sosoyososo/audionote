@@ -16,12 +16,30 @@ final class TranscriptionViewModel: ObservableObject {
 
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
+    private let permissionsManager = PermissionsManager.shared
     private var durationTimer: Timer?
     private var recordingStartTime: Date?
     private var textStreamTask: Task<Void, Never>?
+    private var cancellables = Set<AnyCancellable>()
 
     init() {
         Logger.info("TranscriptionViewModel initialized")
+
+        // Observe permission changes
+        permissionsManager.$speechAuthorizationStatus
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateAuthorizationStatus()
+            }
+            .store(in: &cancellables)
+
+        permissionsManager.$microphoneAuthorizationStatus
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in
+                self?.updateAuthorizationStatus()
+            }
+            .store(in: &cancellables)
+
         Task { @MainActor in
             await loadHistory()
             updateAuthorizationStatus()
@@ -71,10 +89,17 @@ final class TranscriptionViewModel: ObservableObject {
     func startRecording() async {
         updateAuthorizationStatus()
 
-        guard authorizationStatus == .authorized else {
+        // Request permissions if not determined
+        if authorizationStatus != .authorized {
             Logger.info("Not authorized, requesting permissions")
             await requestPermissions()
-            return
+
+            // Check again after permission request
+            updateAuthorizationStatus()
+            guard authorizationStatus == .authorized else {
+                Logger.info("Permissions still not granted after request")
+                return
+            }
         }
 
         do {

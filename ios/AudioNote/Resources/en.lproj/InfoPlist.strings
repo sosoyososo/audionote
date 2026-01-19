@@ -1,0 +1,5 @@
+/* Microphone permission - English */
+"NSMicrophoneUsageDescription" = "AudioNote needs access to your microphone to record voice for speech-to-text transcription.";
+
+/* Speech recognition permission - English */
+"NSSpeechRecognitionUsageDescription" = "AudioNote uses speech recognition to convert your voice into text in real time.";

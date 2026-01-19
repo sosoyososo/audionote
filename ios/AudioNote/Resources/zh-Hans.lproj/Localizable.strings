@@ -67,3 +67,6 @@
 "Recording.Result" = "识别结果";
 "Permission.MicRequired" = "需要麦克风权限";
 "Permission.MicMessage" = "请在设置中开启麦克风权限以使用语音识别功能";
+
+/* Permission denied hint */
+"Recording.PermissionDeniedHint" = "权限被拒绝。点击前往设置。";

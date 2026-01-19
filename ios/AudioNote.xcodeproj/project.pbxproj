@@ -14,6 +14,7 @@
 		44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */; };
 		50069B38DBC02785CB81B5FC /* HistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38681BEB722E44E9C2117736 /* HistoryListView.swift */; };
 		5683090D34B4B61F60CDB84D /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */; };
+		5AA39EEDE33625FA2932CA20 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2F39CFC43A6C3D7C165FEF32 /* InfoPlist.strings */; };
 		648AB7A793E032461CBDC184 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028757B1D218AC83505E84C0 /* ContentView.swift */; };
 		7D8A26030ABD60CDF7EF2C25 /* LanguageSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */; };
 		84E6AEB1B2C0E8355A3E376E /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA9FE19E7F88A212478178E /* PermissionsManager.swift */; };
@@ -53,6 +54,7 @@
 		4809CE80311A7BC8E5147009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionViewModel.swift; sourceTree = "<group>"; };
 		5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
+		70063F7D2FAB4A9AB8B647E2 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		735C55B04244C142BD1F8263 /* AudioNoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNoteApp.swift; sourceTree = "<group>"; };
 		78BA671DCA8B93226BA5AB87 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStorage.swift; sourceTree = "<group>"; };
@@ -66,6 +68,7 @@
 		D4057F868CEC5B158A661901 /* AudioNoteUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AudioNoteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		EEA9FE19E7F88A212478178E /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
+		F2FEBF1C15433C38A45E7B81 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F9C6851265C12C1D964A808F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -190,6 +193,7 @@
 			children = (
 				F9C6851265C12C1D964A808F /* Assets.xcassets */,
 				4809CE80311A7BC8E5147009 /* Info.plist */,
+				2F39CFC43A6C3D7C165FEF32 /* InfoPlist.strings */,
 				6F11E3E2CD920AD3340B9F45 /* Localizable.strings */,
 			);
 			path = Resources;
@@ -302,6 +306,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A132FDD494904F02D6959028 /* Assets.xcassets in Resources */,
+				5AA39EEDE33625FA2932CA20 /* InfoPlist.strings in Resources */,
 				178DCB9F4CA61E4B827900BD /* Localizable.strings in Resources */,
 				CE8FF6E20E29DD880455A9EE /* Preview_Assets.xcassets in Resources */,
 			);
@@ -362,6 +367,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		2F39CFC43A6C3D7C165FEF32 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F2FEBF1C15433C38A45E7B81 /* en */,
+				70063F7D2FAB4A9AB8B647E2 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		6F11E3E2CD920AD3340B9F45 /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (

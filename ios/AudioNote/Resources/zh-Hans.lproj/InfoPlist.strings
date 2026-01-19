@@ -1,0 +1,5 @@
+/* Microphone permission - Chinese */
+"NSMicrophoneUsageDescription" = "AudioNote 需要访问麦克风以录制您的语音，支持录音转文字功能。";
+
+/* Speech recognition permission - Chinese */
+"NSSpeechRecognitionUsageDescription" = "AudioNote 使用语音识别将您的语音实时转换为文字。";

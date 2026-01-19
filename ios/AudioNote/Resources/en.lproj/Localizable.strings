@@ -67,3 +67,6 @@
 "Recording.Result" = "Recognition Result";
 "Permission.MicRequired" = "Microphone Permission Required";
 "Permission.MicMessage" = "Please enable microphone permission in Settings to use speech recognition";
+
+/* Permission denied hint */
+"Recording.PermissionDeniedHint" = "Permission denied. Tap to open Settings.";
