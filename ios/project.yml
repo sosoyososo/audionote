@@ -45,6 +45,7 @@ targets:
         LSRequiresIPhoneOS: true
         UILaunchScreen:
           UIColorName: ""
+          UILaunchStoryboardName: "LaunchScreen"
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationLandscapeLeft

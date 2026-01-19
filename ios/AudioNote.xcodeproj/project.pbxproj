@@ -12,6 +12,7 @@
 		178DCB9F4CA61E4B827900BD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F11E3E2CD920AD3340B9F45 /* Localizable.strings */; };
 		22119CA9A83C3B68897D4B43 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27A05976893E36E23155678 /* SharedComponents.swift */; };
 		44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */; };
+		470E0D5C2F1E15AA002F619E /* launchscree.xib in Resources */ = {isa = PBXBuildFile; fileRef = 470E0D5B2F1E15AA002F619E /* launchscree.xib */; };
 		50069B38DBC02785CB81B5FC /* HistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 38681BEB722E44E9C2117736 /* HistoryListView.swift */; };
 		5683090D34B4B61F60CDB84D /* SpeechRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */; };
 		5AA39EEDE33625FA2932CA20 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2F39CFC43A6C3D7C165FEF32 /* InfoPlist.strings */; };
@@ -20,7 +21,6 @@
 		84E6AEB1B2C0E8355A3E376E /* PermissionsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEA9FE19E7F88A212478178E /* PermissionsManager.swift */; };
 		85CC2307EC35E04425B21FD2 /* TranscriptionStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */; };
 		A132FDD494904F02D6959028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F9C6851265C12C1D964A808F /* Assets.xcassets */; };
-		CE8FF6E20E29DD880455A9EE /* Preview_Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = B3EF8AB4FC9E68CAACD63647 /* Preview_Assets.xcassets */; };
 		D4CD0207DFF15BD3B7897B16 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012369EA9DDAC70389CD813F /* RecordingView.swift */; };
 		D8DD3B1E8205064D27444A9A /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */; };
 		DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */; };
@@ -51,6 +51,7 @@
 		144A777BB064CB5BDBB285DE /* AudioNoteTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AudioNoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		29C7909478FB6C95105DD1E4 /* TranscriptionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionDetailView.swift; sourceTree = "<group>"; };
 		38681BEB722E44E9C2117736 /* HistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryListView.swift; sourceTree = "<group>"; };
+		470E0D5B2F1E15AA002F619E /* launchscree.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = launchscree.xib; sourceTree = "<group>"; };
 		4809CE80311A7BC8E5147009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionViewModel.swift; sourceTree = "<group>"; };
 		5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
@@ -61,7 +62,6 @@
 		8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelectorView.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		B3EF8AB4FC9E68CAACD63647 /* Preview_Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Preview_Assets.xcassets; sourceTree = "<group>"; };
 		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C27A05976893E36E23155678 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		CF858C446B93248AD38C924E /* RecognitionLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecognitionLanguage.swift; sourceTree = "<group>"; };
@@ -95,7 +95,6 @@
 			children = (
 				7EDCC1B16B1FA099E419F242 /* App */,
 				6B65700CA39402B242C43161 /* Models */,
-				AC27E98026B6930B2A28FA6A /* Preview Content */,
 				FA85C1F40D9348CEA96E8E28 /* Resources */,
 				005B2DFE470598EDDF3437CD /* Services */,
 				2F64F454EE70B7E65B45161C /* Utilities */,
@@ -161,19 +160,12 @@
 		A9D344E48523A55813F66EBB = {
 			isa = PBXGroup;
 			children = (
+				470E0D5B2F1E15AA002F619E /* launchscree.xib */,
 				159BA64DF15A821FBA1ECBC0 /* AudioNote */,
 				050E2774A9009EA458429B67 /* AudioNoteTests */,
 				5BDEFA1685A48755D3A11453 /* AudioNoteUITests */,
 				92D5FB0B6F1300F483D4CA51 /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		AC27E98026B6930B2A28FA6A /* Preview Content */ = {
-			isa = PBXGroup;
-			children = (
-				B3EF8AB4FC9E68CAACD63647 /* Preview_Assets.xcassets */,
-			);
-			path = "Preview Content";
 			sourceTree = "<group>";
 		};
 		E367F36CFEF9D60185438B62 /* Views */ = {
@@ -306,9 +298,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				A132FDD494904F02D6959028 /* Assets.xcassets in Resources */,
+				470E0D5C2F1E15AA002F619E /* launchscree.xib in Resources */,
 				5AA39EEDE33625FA2932CA20 /* InfoPlist.strings in Resources */,
 				178DCB9F4CA61E4B827900BD /* Localizable.strings in Resources */,
-				CE8FF6E20E29DD880455A9EE /* Preview_Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -392,6 +384,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -412,6 +405,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
