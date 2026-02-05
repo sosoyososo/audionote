@@ -110,6 +110,11 @@ final class SpeechRecognizer: @unchecked Sendable {
         recognitionRequest.shouldReportPartialResults = true
         recognitionRequest.requiresOnDeviceRecognition = false
 
+        // iOS 16+ 添加标点符号
+        if #available(iOS 16.0, *) {
+            recognitionRequest.addsPunctuation = true
+        }
+
         // Get audio format for the input node
         let recordingFormat = audioEngine.inputNode.outputFormat(forBus: 0)
 
