@@ -1,6 +1,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import Network
 
 enum SpeechRecognitionError: LocalizedError {
     case notAvailable
@@ -45,6 +46,9 @@ final class SpeechRecognizer: @unchecked Sendable {
     init() {
         speechRecognizer = SFSpeechRecognizer(locale: currentLanguage.locale)
         Logger.info("SpeechRecognizer initialized with language: \(currentLanguage.displayName)")
+
+        // Start network monitoring
+        NetworkMonitor.shared.startMonitoring()
     }
 
     var availability: Bool {
@@ -107,8 +111,13 @@ final class SpeechRecognizer: @unchecked Sendable {
             throw SpeechRecognitionError.audioEngineFailed(NSError(domain: "SpeechRecognizer", code: 1))
         }
 
+        // T003, T004: Check network and set recognition mode
+        let useOnDeviceRecognition = !NetworkMonitor.shared.checkConnectivity()
         recognitionRequest.shouldReportPartialResults = true
-        recognitionRequest.requiresOnDeviceRecognition = false
+        recognitionRequest.requiresOnDeviceRecognition = useOnDeviceRecognition
+
+        let mode = useOnDeviceRecognition ? "offline (on-device)" : "online"
+        Logger.speechEvent("Network check", details: "Using \(mode) recognition")
 
         // iOS 16+ 添加标点符号
         if #available(iOS 16.0, *) {
