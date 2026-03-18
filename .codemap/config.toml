@@ -1,0 +1,14 @@
+# Number of notes to show when running `codemap show`
+default_note_count = 3
+
+# Timestamp format for logs (unused for now)
+timestamp_format = "iso8601"
+
+# Optional: Project tag for filtering later (future feature)
+project_name = "my-project"
+
+# LLM (optional)
+llm_provider = "openai"        # openai | cmd (cmd not used in MVP)
+llm_model = "gpt-4o-mini"
+llm_api_key = ""               # or set OPENAI_API_KEY in env
+max_prompt_chars = 4000

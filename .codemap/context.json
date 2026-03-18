@@ -1,0 +1,275 @@
+{
+  "folders": {
+    "ios/AudioNoteTests": {
+      "children": []
+    },
+    "ios/AudioNote.xcodeproj/xcuserdata": {
+      "children": [
+        "karsa.xcuserdatad"
+      ]
+    },
+    ".specify/scripts": {
+      "children": [
+        "bash"
+      ]
+    },
+    "specs/002-i18n-support": {
+      "children": [
+        "checklists",
+        "contracts",
+        "quickstart.md",
+        "tasks.md",
+        "research.md",
+        "data-model.md",
+        "plan.md",
+        "spec.md"
+      ]
+    },
+    "specs/002-i18n-support/contracts": {
+      "children": [
+        "language-selector.md"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/xcuserdata/karsa.xcuserdatad": {
+      "children": [
+        "xcdebugger",
+        "xcschemes"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/xcuserdata/karsa.xcuserdatad/xcschemes": {
+      "children": [
+        "xcschememanagement.plist"
+      ]
+    },
+    "ios/AudioNote/Resources/zh-Hans.lproj": {
+      "children": [
+        "Localizable.strings",
+        "InfoPlist.strings"
+      ]
+    },
+    "ios/AudioNote/Utilities": {
+      "children": [
+        "LanguageManager.swift",
+        "LanguageSelectorView.swift",
+        "Logger.swift",
+        "PermissionsManager.swift",
+        "GradientView.swift"
+      ]
+    },
+    ".specify/templates": {
+      "children": [
+        "agent-file-template.md",
+        "checklist-template.md",
+        "tasks-template.md",
+        "spec-template.md",
+        "plan-template.md"
+      ]
+    },
+    "ios/AudioNote/Resources/Assets.xcassets/AppIcon.appiconset": {
+      "children": [
+        "Contents.json",
+        "image.png"
+      ]
+    },
+    "specs/001-voice-transcription/contracts": {
+      "children": [
+        "services.md"
+      ]
+    },
+    "ios/AudioNote.xcodeproj": {
+      "children": [
+        "project.pbxproj",
+        "xcuserdata",
+        "project.xcworkspace",
+        "xcshareddata"
+      ]
+    },
+    "ios/AudioNote/App": {
+      "children": [
+        "AudioNoteApp.swift"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace/xcshareddata/swiftpm": {
+      "children": [
+        "configuration"
+      ]
+    },
+    "specs/001-voice-transcription": {
+      "children": [
+        "checklists",
+        "contracts",
+        "quickstart.md",
+        "tasks.md",
+        "research.md",
+        "data-model.md",
+        "plan.md",
+        "spec.md"
+      ]
+    },
+    "specs/001-voice-transcription/checklists": {
+      "children": [
+        "requirements.md"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/xcuserdata/karsa.xcuserdatad/xcdebugger": {
+      "children": [
+        "Breakpoints_v2.xcbkptlist"
+      ]
+    },
+    "ios/AudioNote/Resources/Assets.xcassets": {
+      "children": [
+        "launch_logo.imageset",
+        "AppIcon.appiconset",
+        "Contents.json"
+      ]
+    },
+    ".claude/commands": {
+      "children": [
+        "speckit.checklist.md",
+        "speckit.plan.md",
+        "speckit.analyze.md",
+        "speckit.constitution.md",
+        "speckit.clarify.md",
+        "speckit.implement.md",
+        "speckit.taskstoissues.md",
+        "speckit.specify.md",
+        "speckit.tasks.md"
+      ]
+    },
+    "ios/AudioNote/Resources/Assets.xcassets/launch_logo.imageset": {
+      "children": [
+        "Contents.json",
+        "launch_logo.png"
+      ]
+    },
+    "specs": {
+      "children": [
+        "002-i18n-support",
+        "001-voice-transcription"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace/xcuserdata": {
+      "children": [
+        "karsa.xcuserdatad"
+      ]
+    },
+    "ios/AudioNote/Services": {
+      "children": [
+        "SpeechRecognizer.swift",
+        "TranscriptionStorage.swift"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace/xcuserdata/karsa.xcuserdatad": {
+      "children": [
+        "UserInterfaceState.xcuserstate"
+      ]
+    },
+    "ios/AudioNote/Resources": {
+      "children": [
+        "zh-Hans.lproj",
+        "en.lproj",
+        "Assets.xcassets",
+        "Info.plist"
+      ]
+    },
+    ".specify/memory": {
+      "children": [
+        "constitution.md"
+      ]
+    },
+    "ios/AudioNote/Resources/en.lproj": {
+      "children": [
+        "Localizable.strings",
+        "InfoPlist.strings"
+      ]
+    },
+    "ios/AudioNote/Views": {
+      "children": [
+        "TranscriptionDetailView.swift",
+        "RecordingView.swift",
+        "SharedComponents.swift",
+        "ContentView.swift",
+        "HistoryListView.swift"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace": {
+      "children": [
+        "contents.xcworkspacedata",
+        "xcuserdata",
+        "xcshareddata"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace/xcshareddata": {
+      "children": [
+        "swiftpm"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/configuration": {
+      "children": []
+    },
+    "ios/AudioNote": {
+      "children": [
+        "ViewModels",
+        ".DS_Store",
+        "App",
+        "Resources",
+        "Models",
+        "Utilities",
+        "Views",
+        "Services"
+      ]
+    },
+    ".specify/scripts/bash": {
+      "children": [
+        "common.sh",
+        "setup-plan.sh",
+        "check-prerequisites.sh",
+        "update-agent-context.sh",
+        "create-new-feature.sh"
+      ]
+    },
+    "ios": {
+      "children": [
+        ".DS_Store",
+        "launchscree.xib",
+        "project.yml",
+        ".gitignore",
+        "AudioNoteTests",
+        "AudioNoteUITests",
+        "AudioNote.xcodeproj",
+        "AudioNote"
+      ]
+    },
+    "specs/002-i18n-support/checklists": {
+      "children": [
+        "requirements.md"
+      ]
+    },
+    "ios/AudioNote.xcodeproj/xcshareddata": {
+      "children": []
+    },
+    "ios/AudioNote/ViewModels": {
+      "children": [
+        "TranscriptionViewModel.swift"
+      ]
+    },
+    "ios/AudioNote/Models": {
+      "children": [
+        "TranscriptionRecord.swift",
+        "RecognitionLanguage.swift"
+      ]
+    },
+    "ios/AudioNoteUITests": {
+      "children": []
+    },
+    ".codemap": {
+      "children": [
+        "log.json",
+        "config.toml"
+      ]
+    }
+  },
+  "files": {},
+  "entry_points": [],
+  "project_brief": null
+}

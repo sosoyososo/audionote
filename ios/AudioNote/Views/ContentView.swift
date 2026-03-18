@@ -1,4 +1,4 @@
-import SwiftUI
+ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = TranscriptionViewModel()
