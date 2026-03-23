@@ -27,6 +27,8 @@
 		DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */; };
 		EB66EBF0B75C46D3CC54D705 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */; };
 		F35A858E6E57C1C00EB3BA41 /* AudioNoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735C55B04244C142BD1F8263 /* AudioNoteApp.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2B3C4D5E6F1A2B3C4D5E6F /* AudioRecorderService.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6A7B8C9D0E1F2A3B4 /* AudioPlayerManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +75,8 @@
 		F2FEBF1C15433C38A45E7B81 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F9C6851265C12C1D964A808F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechRecognizer.swift; sourceTree = "<group>"; };
+		1A2B3C4D5E6F1A2B3C4D5E6F /* AudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderService.swift; sourceTree = "<group>"; };
+		C3D4E5F6A7B8C9D0E1F2A3B4 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -80,6 +84,8 @@
 			isa = PBXGroup;
 			children = (
 				FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */,
+				1A2B3C4D5E6F1A2B3C4D5E6F /* AudioRecorderService.swift */,
+				C3D4E5F6A7B8C9D0E1F2A3B4 /* AudioPlayerManager.swift */,
 				7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */,
 			);
 			path = Services;
@@ -346,6 +352,8 @@
 				44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */,
 				85CC2307EC35E04425B21FD2 /* TranscriptionStorage.swift in Sources */,
 				DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* AudioRecorderService.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* AudioPlayerManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
