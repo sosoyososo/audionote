@@ -106,12 +106,6 @@ final class SpeechRecognizer: @unchecked Sendable {
         try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
 
-        // Create AudioRecorderService
-        currentRecordingId = UUID()
-        guard let recordingId = currentRecordingId else { return }
-        let fileUrl = AudioRecorderService.generateFileUrl(for: recordingId)
-        audioRecorder = try AudioRecorderService(fileUrl: fileUrl, recordingFormat: recordingFormat)
-
         // Create recognition request
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
         guard let recognitionRequest = recognitionRequest else {
@@ -136,6 +130,14 @@ final class SpeechRecognizer: @unchecked Sendable {
         let recordingFormat = audioEngine.inputNode.outputFormat(forBus: 0)
 
         Logger.info("Audio format: \(recordingFormat)")
+
+        // Create AudioRecorderService
+        currentRecordingId = UUID()
+        guard let recordingId = currentRecordingId else {
+            throw SpeechRecognitionError.audioEngineFailed(NSError(domain: "SpeechRecognizer", code: 2))
+        }
+        let fileUrl = AudioRecorderService.generateFileUrl(for: recordingId)
+        audioRecorder = try AudioRecorderService(fileUrl: fileUrl, recordingFormat: recordingFormat)
 
         return AsyncStream { [weak self] continuation in
             guard let selfRef = self else {

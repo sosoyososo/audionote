@@ -3,7 +3,7 @@ import AVFoundation
 import Combine
 
 @MainActor
-final class AudioPlayerManager: ObservableObject, AVAudioPlayerDelegate {
+final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegate {
     static let shared = AudioPlayerManager()
 
     @Published var isPlaying = false
@@ -15,7 +15,9 @@ final class AudioPlayerManager: ObservableObject, AVAudioPlayerDelegate {
     private var timer: Timer?
     private var currentFileName: String?
 
-    private init() {}
+    private override init() {
+        super.init()
+    }
 
     func play(fileName: String) {
         guard fileName != currentFileName else {
