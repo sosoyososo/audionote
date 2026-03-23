@@ -6,19 +6,22 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
     let createdAt: Date
     var duration: TimeInterval?
     var language: String?
+    var audioFileName: String?
 
     init(
         id: UUID = UUID(),
         content: String,
         createdAt: Date = Date(),
         duration: TimeInterval? = nil,
-        language: String? = nil
+        language: String? = nil,
+        audioFileName: String? = nil
     ) {
         self.id = id
         self.content = content
         self.createdAt = createdAt
         self.duration = duration
         self.language = language
+        self.audioFileName = audioFileName
     }
 
     var formattedDuration: String {
