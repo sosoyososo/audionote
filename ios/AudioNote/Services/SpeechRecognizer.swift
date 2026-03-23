@@ -39,6 +39,8 @@ final class SpeechRecognizer: @unchecked Sendable {
     private var recognitionTask: SFSpeechRecognitionTask?
     private var allRecognizedText: [String] = []
     private var isStreaming = false
+    private var audioRecorder: AudioRecorderService?
+    private var currentRecordingId: UUID?
 
     // Serial queue for thread safety
     private let stateQueue = DispatchQueue(label: "info.karsa.app.ios.audionote.speechstate")
@@ -103,6 +105,12 @@ final class SpeechRecognizer: @unchecked Sendable {
         let audioSession = AVAudioSession.sharedInstance()
         try audioSession.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
         try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+        // Create AudioRecorderService
+        currentRecordingId = UUID()
+        guard let recordingId = currentRecordingId else { return }
+        let fileUrl = AudioRecorderService.generateFileUrl(for: recordingId)
+        audioRecorder = try AudioRecorderService(fileUrl: fileUrl, recordingFormat: recordingFormat)
 
         // Create recognition request
         recognitionRequest = SFSpeechAudioBufferRecognitionRequest()
@@ -187,6 +195,7 @@ final class SpeechRecognizer: @unchecked Sendable {
             // Install tap on input node
             selfRef.audioEngine.inputNode.installTap(onBus: 0, bufferSize: 1024, format: recordingFormat) { buffer, _ in
                 selfRef.recognitionRequest?.append(buffer)
+                selfRef.audioRecorder?.appendBuffer(buffer)
             }
 
             // Start audio engine after everything is set up
@@ -217,6 +226,10 @@ final class SpeechRecognizer: @unchecked Sendable {
         // Stop audio engine
         audioEngine.stop()
 
+        // Finish audio recording
+        audioRecorder?.finishRecording()
+        audioRecorder = nil
+
         // End recognition request
         recognitionRequest?.endAudio()
         recognitionRequest = nil
@@ -235,5 +248,10 @@ final class SpeechRecognizer: @unchecked Sendable {
         stateQueue.sync {
             allRecognizedText.joined(separator: " ")
         }
+    }
+
+    func getAudioFileName() -> String? {
+        guard let id = currentRecordingId else { return nil }
+        return "\(id.uuidString).m4a"
     }
 }
