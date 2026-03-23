@@ -22,6 +22,11 @@ struct TranscriptionDetailView: View {
                 Divider()
 
                 contentSection
+
+                if let audioFileName = record.audioFileName {
+                    PlaybackControlBar(audioFileName: audioFileName)
+                        .padding(.top, 8)
+                }
             }
             .padding()
         }
