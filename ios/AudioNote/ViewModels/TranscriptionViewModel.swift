@@ -161,13 +161,16 @@ final class TranscriptionViewModel: ObservableObject {
 
         Logger.info("Saving record - content length: \(contentToSave.count), duration: \(duration)")
 
+        let audioFileName = speechRecognizer.getAudioFileName()
+
         // Always use the currentRecordId (generated at startRecording)
         let record = TranscriptionRecord(
             id: currentRecordId ?? UUID(),
             content: contentToSave,
             createdAt: recordingStartTime ?? Date(),
             duration: duration,
-            language: selectedLanguage.rawValue
+            language: selectedLanguage.rawValue,
+            audioFileName: audioFileName
         )
 
         // Save the transcribed text for display
