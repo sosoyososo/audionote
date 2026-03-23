@@ -70,3 +70,51 @@ public final class RecordActionsViewModel: ObservableObject {
         }
     }
 }
+
+// MARK: - Playback Control Bar
+
+struct PlaybackControlBar: View {
+    @ObservedObject var playerManager = AudioPlayerManager.shared
+    let audioFileName: String
+
+    private var formattedCurrentTime: String {
+        formatTime(playerManager.currentTime)
+    }
+
+    private var formattedDuration: String {
+        formatTime(playerManager.duration)
+    }
+
+    private func formatTime(_ time: TimeInterval) -> String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Button {
+                playerManager.togglePlayPause(fileName: audioFileName)
+            } label: {
+                Image(systemName: playerManager.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+            }
+
+            Slider(value: Binding(
+                get: { playerManager.progress },
+                set: { playerManager.seek(to: $0) }
+            ))
+            .tint(.accentColor)
+
+            Text("\(formattedCurrentTime)/\(formattedDuration)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .monospacedDigit()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
