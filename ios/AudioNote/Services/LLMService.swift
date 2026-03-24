@@ -61,6 +61,7 @@ actor LLMService {
 
     func process(_ transcription: String, token: String) async throws -> LLMResult {
         guard !token.isEmpty else {
+            Logger.error("LLM process failed: token not set")
             throw LLMError.tokenNotSet
         }
 
@@ -79,9 +80,12 @@ actor LLMService {
 
         for attempt in 0..<maxRetries {
             do {
-                return try await callAPI(request: request, token: token)
+                let result = try await callAPI(request: request, token: token)
+                Logger.info("LLM process succeeded on attempt \(attempt + 1)")
+                return result
             } catch let error as LLMError {
                 lastError = error
+                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxRetries)): \(error.errorDescription ?? "unknown")")
                 // Only retry on transient errors (HTTP 5xx and network errors)
                 let shouldRetry: Bool
                 switch error {
@@ -95,20 +99,26 @@ actor LLMService {
 
                 if shouldRetry && attempt < maxRetries - 1 {
                     let delay = baseDelay * pow(2.0, Double(attempt))
+                    Logger.info("Retrying in \(delay)s...")
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 } else if !shouldRetry {
+                    Logger.error("LLM process failed: non-retryable error - \(error.errorDescription ?? "unknown")")
                     throw error
                 }
             } catch {
                 lastError = error
+                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxRetries)): \(error.localizedDescription)")
                 if attempt < maxRetries - 1 {
                     let delay = baseDelay * pow(2.0, Double(attempt))
+                    Logger.info("Retrying in \(delay)s...")
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             }
         }
 
-        throw lastError ?? LLMError.networkError(NSError(domain: "LLMService", code: -1))
+        let finalError = lastError ?? LLMError.networkError(NSError(domain: "LLMService", code: -1))
+        Logger.error("LLM process failed after \(maxRetries) attempts: \(finalError.localizedDescription)")
+        throw finalError
     }
 
     private func callAPI(request: APIRequest, token: String) async throws -> LLMResult {
