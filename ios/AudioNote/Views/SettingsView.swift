@@ -5,7 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var languageManager: LanguageManager
 
     var body: some View {
-        NavigationStack {
+        NavigationView {
             Form {
                 Section {
                     SecureField("LLM API Token", text: $viewModel.llmToken)

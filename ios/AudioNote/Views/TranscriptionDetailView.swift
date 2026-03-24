@@ -161,7 +161,7 @@ struct TranscriptionDetailView: View {
                             Text("Detail.LLM.Tags".localized)
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                            FlowLayout(tags: tags)
+                            TagFlowView(tags: tags)
                         }
                     }
 
@@ -234,54 +234,21 @@ struct TranscriptionDetailView: View {
     }
 }
 
-struct FlowLayout: Layout {
+struct TagFlowView: View {
     let tags: [String]
 
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let result = FlowResult(
-            in: proposal.width ?? 0,
-            subviews: subviews
-        )
-        return result.size
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        let result = FlowResult(
-            in: bounds.width,
-            subviews: subviews
-        )
-        for (index, subview) in subviews.enumerated() {
-            let point = result.positions[index]
-            subview.place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: .unspecified)
-        }
-    }
-
-    struct FlowResult {
-        var positions: [CGPoint] = []
-        var size: CGSize = .zero
-
-        init(in maxWidth: CGFloat, subviews: Subviews) {
-            var x: CGFloat = 0
-            var y: CGFloat = 0
-            var maxHeight: CGFloat = 0
-            var lineHeight: CGFloat = 0
-
-            for subview in subviews {
-                let viewSize = subview.sizeThatFits(.unspecified)
-
-                if x + viewSize.width > maxWidth && x > 0 {
-                    x = 0
-                    y += lineHeight + 8
-                    lineHeight = 0
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(tags, id: \.self) { tag in
+                    Text(tag)
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.1))
+                        .cornerRadius(8)
                 }
-
-                positions.append(CGPoint(x: x, y: y))
-                lineHeight = max(lineHeight, viewSize.height)
-                x += viewSize.width + 8
-                maxHeight = y + lineHeight
             }
-
-            size = CGSize(width: maxWidth, height: maxHeight)
         }
     }
 }
