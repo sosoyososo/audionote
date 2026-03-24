@@ -1,5 +1,12 @@
 import Foundation
 
+enum LLMStatus: String, Codable {
+    case pending
+    case processing
+    case completed
+    case failed
+}
+
 struct TranscriptionRecord: Codable, Identifiable, Equatable {
     let id: UUID
     var content: String
@@ -8,13 +15,23 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
     var language: String?
     var audioFileName: String?
 
+    // LLM processing fields
+    var title: String?
+    var summary: String?
+    var tags: [String]?
+    var llmProcessingStatus: LLMStatus?
+
     init(
         id: UUID = UUID(),
         content: String,
         createdAt: Date = Date(),
         duration: TimeInterval? = nil,
         language: String? = nil,
-        audioFileName: String? = nil
+        audioFileName: String? = nil,
+        title: String? = nil,
+        summary: String? = nil,
+        tags: [String]? = nil,
+        llmProcessingStatus: LLMStatus? = nil
     ) {
         self.id = id
         self.content = content
@@ -22,6 +39,10 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         self.duration = duration
         self.language = language
         self.audioFileName = audioFileName
+        self.title = title
+        self.summary = summary
+        self.tags = tags
+        self.llmProcessingStatus = llmProcessingStatus
     }
 
     var formattedDuration: String {
