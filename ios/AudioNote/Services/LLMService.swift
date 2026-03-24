@@ -32,7 +32,7 @@ actor LLMService {
     private let baseDelay: TimeInterval = 1.0
 
     struct APIRequest: Encodable {
-        let model: String = "gpt-4o-mini"
+        let model: String = "deepseek-chat"
         let messages: [Message]
 
         struct Message: Encodable {
