@@ -8,11 +8,13 @@ struct TranscriptionDetailView: View {
     @State private var isEditing = false
     @State private var editedContent: String = ""
     @State private var isProcessing = false
+    @State private var currentLLMStatus: LLMStatus?
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
         self.viewModel = viewModel
         self._editedContent = State(initialValue: record.content)
+        self._currentLLMStatus = State(initialValue: record.llmProcessingStatus)
     }
 
     var body: some View {
@@ -174,65 +176,57 @@ struct TranscriptionDetailView: View {
 
     @ViewBuilder
     private var llmStatusView: some View {
-        let status = record.llmProcessingStatus
-
-        switch status {
-        case .none, .pending:
-            // Never processed or pending - show start button
-            Button {
-                reprocessRecord()
-            } label: {
-                HStack {
-                    Image(systemName: "sparkles")
-                    Text("Detail.LLM.Start".localized)
-                }
-            }
-
-        case .processing:
+        if isProcessing {
             // Currently processing - show disabled button with spinner
-            Button {
-                // No action
-            } label: {
-                HStack {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle())
-                        .scaleEffect(0.8)
-                    Text("Detail.LLM.Processing".localized)
-                }
+            HStack {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+                    .scaleEffect(0.8)
+                Text("Detail.LLM.Processing".localized)
             }
             .disabled(true)
-
-        case .completed:
-            // Already completed - show reprocess button
+        } else {
+            // Show action button based on status
             Button {
                 reprocessRecord()
             } label: {
                 HStack {
-                    Image(systemName: "arrow.clockwise")
-                    Text("Detail.LLM.Reprocess".localized)
-                }
-            }
-
-        case .failed:
-            // Failed - show retry button
-            Button {
-                reprocessRecord()
-            } label: {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle")
-                    Text("Detail.LLM.Failed".localized)
+                    Image(systemName: buttonIcon)
+                    Text(buttonTitle)
                 }
             }
         }
     }
 
+    private var buttonIcon: String {
+        switch currentLLMStatus {
+        case .completed: return "arrow.clockwise"
+        case .failed: return "exclamationmark.triangle"
+        default: return "sparkles"
+        }
+    }
+
+    private var buttonTitle: String {
+        switch currentLLMStatus {
+        case .completed: return "Detail.LLM.Reprocess".localized
+        case .failed: return "Detail.LLM.Failed".localized
+        default: return "Detail.LLM.Start".localized
+        }
+    }
+
     private func reprocessRecord() {
         isProcessing = true
+        currentLLMStatus = .processing
         Task {
             let service = AIProcessingService()
-            _ = await service.processRecord(record)
+            let updatedRecord = await service.processRecord(record)
             await MainActor.run {
                 isProcessing = false
+                if updatedRecord.llmProcessingStatus == .completed {
+                    currentLLMStatus = .completed
+                } else {
+                    currentLLMStatus = .failed
+                }
             }
             await viewModel.loadHistory()
         }
