@@ -81,7 +81,7 @@ actor LLMService {
         for attempt in 0..<maxRetries {
             do {
                 let result = try await callAPI(request: request, token: token)
-                Logger.info("LLM process succeeded on attempt \(attempt + 1)")
+                Logger.info("LLM process succeeded on attempt \(attempt + 1) \(result)")
                 return result
             } catch let error as LLMError {
                 lastError = error
