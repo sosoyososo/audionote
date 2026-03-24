@@ -132,6 +132,10 @@ actor LLMService {
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.httpBody = try JSONEncoder().encode(request)
 
+        if let bodyString = String(data: urlRequest.httpBody ?? Data(), encoding: .utf8) {
+            Logger.debug("LLM request body: \(bodyString)")
+        }
+
         let (data, response) = try await URLSession.shared.data(for: urlRequest)
 
         guard let httpResponse = response as? HTTPURLResponse else {
@@ -139,6 +143,8 @@ actor LLMService {
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
+            let responseBody = String(data: data, encoding: .utf8) ?? "unable to decode response body"
+            Logger.error("LLM API error: HTTP \(httpResponse.statusCode), body: \(responseBody)")
             throw LLMError.httpError(httpResponse.statusCode)
         }
 
