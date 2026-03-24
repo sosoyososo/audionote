@@ -17,6 +17,11 @@ struct ContentView: View {
                     .tabItem {
                         Label("Tab.History".localized(for: languageManager.current), systemImage: "list.bullet")
                     }
+
+                SettingsView()
+                    .tabItem {
+                        Label("Tab.Settings".localized(for: languageManager.current), systemImage: "gear")
+                    }
             }
             .environmentObject(viewModel)
         }
