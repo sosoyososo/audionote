@@ -55,6 +55,9 @@
 "Detail.LLM.Summary" = "Summary";
 "Detail.LLM.Tags" = "Tags";
 "Detail.LLM.Reprocess" = "AI Reprocess";
+"Detail.LLM.Start" = "Start AI Analysis";
+"Detail.LLM.Processing" = "Analyzing...";
+"Detail.LLM.Failed" = "Analysis Failed, Tap to Retry";
 
 /* Permissions */
 "Permission.Title" = "Permission Required";

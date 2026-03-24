@@ -131,54 +131,96 @@ struct TranscriptionDetailView: View {
     }
 
     private var llmResultsSection: some View {
-        Group {
+        VStack(alignment: .leading, spacing: 12) {
+            Divider()
+
+            // Show results if available
             if record.title != nil || record.summary != nil || record.tags != nil {
-                VStack(alignment: .leading, spacing: 12) {
-                    Divider()
-
-                    if let title = record.title, !title.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Detail.LLM.Title".localized)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(title)
-                                .font(.headline)
-                        }
+                if let title = record.title, !title.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Detail.LLM.Title".localized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(title)
+                            .font(.headline)
                     }
+                }
 
-                    if let summary = record.summary, !summary.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Detail.LLM.Summary".localized)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(summary)
-                                .font(.body)
-                        }
+                if let summary = record.summary, !summary.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Detail.LLM.Summary".localized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Text(summary)
+                            .font(.body)
                     }
+                }
 
-                    if let tags = record.tags, !tags.isEmpty {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Detail.LLM.Tags".localized)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            TagFlowView(tags: tags)
-                        }
+                if let tags = record.tags, !tags.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Detail.LLM.Tags".localized)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        TagFlowView(tags: tags)
                     }
+                }
+            }
 
-                    Button {
-                        reprocessRecord()
-                    } label: {
-                        HStack {
-                            if isProcessing {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle())
-                                    .scaleEffect(0.8)
-                            }
-                            Text("Detail.LLM.Reprocess".localized)
-                        }
-                    }
-                    .disabled(isProcessing)
-                    .padding(.top, 8)
+            // Status indicator and action button
+            llmStatusView
+                .padding(.top, 8)
+        }
+    }
+
+    @ViewBuilder
+    private var llmStatusView: some View {
+        let status = record.llmProcessingStatus
+
+        switch status {
+        case .none, .pending:
+            // Never processed or pending - show start button
+            Button {
+                reprocessRecord()
+            } label: {
+                HStack {
+                    Image(systemName: "sparkles")
+                    Text("Detail.LLM.Start".localized)
+                }
+            }
+
+        case .processing:
+            // Currently processing - show disabled button with spinner
+            Button {
+                // No action
+            } label: {
+                HStack {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle())
+                        .scaleEffect(0.8)
+                    Text("Detail.LLM.Processing".localized)
+                }
+            }
+            .disabled(true)
+
+        case .completed:
+            // Already completed - show reprocess button
+            Button {
+                reprocessRecord()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Detail.LLM.Reprocess".localized)
+                }
+            }
+
+        case .failed:
+            // Failed - show retry button
+            Button {
+                reprocessRecord()
+            } label: {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                    Text("Detail.LLM.Failed".localized)
                 }
             }
         }

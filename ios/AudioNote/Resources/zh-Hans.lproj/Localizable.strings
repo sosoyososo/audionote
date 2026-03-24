@@ -55,6 +55,9 @@
 "Detail.LLM.Summary" = "摘要";
 "Detail.LLM.Tags" = "标签";
 "Detail.LLM.Reprocess" = "AI 重新处理";
+"Detail.LLM.Start" = "开始 AI 分析";
+"Detail.LLM.Processing" = "分析中...";
+"Detail.LLM.Failed" = "分析失败，点击重试";
 
 /* Permissions */
 "Permission.Title" = "需要权限";
