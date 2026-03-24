@@ -80,6 +80,25 @@ actor LLMService {
         for attempt in 0..<maxRetries {
             do {
                 return try await callAPI(request: request, token: token)
+            } catch let error as LLMError {
+                lastError = error
+                // Only retry on transient errors (HTTP 5xx and network errors)
+                let shouldRetry: Bool
+                switch error {
+                case .httpError(let code) where (500...599).contains(code):
+                    shouldRetry = true
+                case .networkError:
+                    shouldRetry = true
+                default:
+                    shouldRetry = false
+                }
+
+                if shouldRetry && attempt < maxRetries - 1 {
+                    let delay = baseDelay * pow(2.0, Double(attempt))
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } else if !shouldRetry {
+                    throw error
+                }
             } catch {
                 lastError = error
                 if attempt < maxRetries - 1 {
