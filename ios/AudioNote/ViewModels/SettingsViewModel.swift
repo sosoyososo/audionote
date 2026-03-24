@@ -6,7 +6,7 @@ final class SettingsViewModel: ObservableObject {
     @Published var llmToken: String = ""
     @Published var showSaveConfirmation: Bool = false
 
-    private let tokenKey = "llm.api.token"
+    private let tokenKey = "audioNote:llmToken"
 
     init() {
         loadToken()
@@ -19,12 +19,6 @@ final class SettingsViewModel: ObservableObject {
     func saveToken() {
         UserDefaults.standard.set(llmToken, forKey: tokenKey)
         showSaveConfirmation = true
-
-        // Reset confirmation after delay
-        Task {
-            try? await Task.sleep(nanoseconds: 2_000_000_000)
-            showSaveConfirmation = false
-        }
     }
 
     var hasToken: Bool {
