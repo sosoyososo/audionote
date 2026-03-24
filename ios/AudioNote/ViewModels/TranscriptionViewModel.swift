@@ -61,7 +61,6 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func updateAuthorizationStatus() {
-        let permissionsManager = PermissionsManager.shared
         let newStatus = permissionsManager.isAllAuthorized ? .authorized : permissionsManager.speechAuthorizationStatus
         guard newStatus != authorizationStatus else { return }
         authorizationStatus = newStatus
