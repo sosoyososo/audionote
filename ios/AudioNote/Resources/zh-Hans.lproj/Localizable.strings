@@ -51,6 +51,10 @@
 "Detail.Title" = "转写详情";
 "Detail.Edit.Title" = "编辑内容";
 "Detail.NoContent" = "(无内容)";
+"Detail.LLM.Title" = "标题";
+"Detail.LLM.Summary" = "摘要";
+"Detail.LLM.Tags" = "标签";
+"Detail.LLM.Reprocess" = "AI 重新处理";
 
 /* Permissions */
 "Permission.Title" = "需要权限";

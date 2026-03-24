@@ -7,6 +7,7 @@ struct TranscriptionDetailView: View {
     @StateObject private var actionsViewModel = RecordActionsViewModel()
     @State private var isEditing = false
     @State private var editedContent: String = ""
+    @State private var isProcessing = false
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
@@ -27,6 +28,8 @@ struct TranscriptionDetailView: View {
                     PlaybackControlBar(audioFileName: audioFileName)
                         .padding(.top, 8)
                 }
+
+                llmResultsSection
             }
             .padding()
         }
@@ -127,13 +130,84 @@ struct TranscriptionDetailView: View {
         }
     }
 
+    private var llmResultsSection: some View {
+        Group {
+            if record.title != nil || record.summary != nil || record.tags != nil {
+                VStack(alignment: .leading, spacing: 12) {
+                    Divider()
+
+                    if let title = record.title, !title.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Detail.LLM.Title".localized)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(title)
+                                .font(.headline)
+                        }
+                    }
+
+                    if let summary = record.summary, !summary.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Detail.LLM.Summary".localized)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Text(summary)
+                                .font(.body)
+                        }
+                    }
+
+                    if let tags = record.tags, !tags.isEmpty {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Detail.LLM.Tags".localized)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            FlowLayout(tags: tags)
+                        }
+                    }
+
+                    Button {
+                        reprocessRecord()
+                    } label: {
+                        HStack {
+                            if isProcessing {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle())
+                                    .scaleEffect(0.8)
+                            }
+                            Text("Detail.LLM.Reprocess".localized)
+                        }
+                    }
+                    .disabled(isProcessing)
+                    .padding(.top, 8)
+                }
+            }
+        }
+    }
+
+    private func reprocessRecord() {
+        isProcessing = true
+        Task {
+            let service = AIProcessingService()
+            _ = await service.processRecord(record)
+            await MainActor.run {
+                isProcessing = false
+            }
+            await viewModel.loadHistory()
+        }
+    }
+
     private func saveEditing() {
         let updatedRecord = TranscriptionRecord(
             id: record.id,
             content: editedContent,
             createdAt: record.createdAt,
             duration: record.duration,
-            language: record.language
+            language: record.language,
+            audioFileName: record.audioFileName,
+            title: record.title,
+            summary: record.summary,
+            tags: record.tags,
+            llmProcessingStatus: record.llmProcessingStatus
         )
 
         Task {
@@ -157,6 +231,58 @@ struct TranscriptionDetailView: View {
     private func enterEditingMode() {
         editedContent = record.content
         isEditing = true
+    }
+}
+
+struct FlowLayout: Layout {
+    let tags: [String]
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResult(
+            in: proposal.width ?? 0,
+            subviews: subviews
+        )
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResult(
+            in: bounds.width,
+            subviews: subviews
+        )
+        for (index, subview) in subviews.enumerated() {
+            let point = result.positions[index]
+            subview.place(at: CGPoint(x: bounds.minX + point.x, y: bounds.minY + point.y), proposal: .unspecified)
+        }
+    }
+
+    struct FlowResult {
+        var positions: [CGPoint] = []
+        var size: CGSize = .zero
+
+        init(in maxWidth: CGFloat, subviews: Subviews) {
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var maxHeight: CGFloat = 0
+            var lineHeight: CGFloat = 0
+
+            for subview in subviews {
+                let viewSize = subview.sizeThatFits(.unspecified)
+
+                if x + viewSize.width > maxWidth && x > 0 {
+                    x = 0
+                    y += lineHeight + 8
+                    lineHeight = 0
+                }
+
+                positions.append(CGPoint(x: x, y: y))
+                lineHeight = max(lineHeight, viewSize.height)
+                x += viewSize.width + 8
+                maxHeight = y + lineHeight
+            }
+
+            size = CGSize(width: maxWidth, height: maxHeight)
+        }
     }
 }
 
