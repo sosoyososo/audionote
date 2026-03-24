@@ -40,7 +40,7 @@ struct SettingsView: View {
             .navigationTitle("Tab.Settings".localized)
             .overlay(alignment: .bottom) {
                 if viewModel.showSaveConfirmation {
-                    ToastView(message: "Settings.Saved".localized, isShowing: .constant(true))
+                    ToastView(message: "Settings.Saved".localized, isShowing: $viewModel.showSaveConfirmation)
                         .padding(.bottom, 40)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
