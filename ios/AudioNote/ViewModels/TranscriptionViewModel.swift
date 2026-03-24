@@ -17,6 +17,7 @@ final class TranscriptionViewModel: ObservableObject {
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
+    private let aiProcessingService = AIProcessingService()
     private var durationTimer: Timer?
     private var recordingStartTime: Date?
     private var textStreamTask: Task<Void, Never>?
@@ -180,6 +181,10 @@ final class TranscriptionViewModel: ObservableObject {
             try await storage.save(record)
             Logger.info("Record saved successfully with ID: \(record.id.uuidString)")
             await loadHistory()
+
+            Task {
+                await aiProcessingService.processPendingRecords()
+            }
         } catch {
             Logger.error("Failed to save record: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
@@ -224,7 +229,12 @@ final class TranscriptionViewModel: ObservableObject {
             content: record.content,
             createdAt: existingRecord?.createdAt ?? record.createdAt,
             duration: record.duration,
-            language: record.language
+            language: record.language,
+            // Preserve LLM fields
+            title: record.title,
+            summary: record.summary,
+            tags: record.tags,
+            llmProcessingStatus: record.llmProcessingStatus
         )
         try await storage.save(updatedRecord)
         await loadHistory()
