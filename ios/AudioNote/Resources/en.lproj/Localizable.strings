@@ -71,3 +71,10 @@
 
 /* Permission denied hint */
 "Recording.PermissionDeniedHint" = "Permission denied. Tap to open Settings.";
+
+/* Settings */
+"Tab.Settings" = "Settings";
+"Settings.LLM.Title" = "LLM Configuration";
+"Settings.LLM.Footer" = "Enter your API token for LLM processing. Token is stored locally on device.";
+"Settings.LLM.Status" = "Token Status";
+"Settings.Saved" = "Settings saved";

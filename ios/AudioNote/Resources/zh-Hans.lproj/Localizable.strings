@@ -71,3 +71,10 @@
 
 /* Permission denied hint */
 "Recording.PermissionDeniedHint" = "权限被拒绝。点击前往设置。";
+
+/* Settings */
+"Tab.Settings" = "设置";
+"Settings.LLM.Title" = "LLM 配置";
+"Settings.LLM.Footer" = "输入您的 API token 用于 LLM 处理。Token 仅存储在本地设备上。";
+"Settings.LLM.Status" = "Token 状态";
+"Settings.Saved" = "设置已保存";
