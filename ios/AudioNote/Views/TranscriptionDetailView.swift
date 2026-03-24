@@ -9,12 +9,18 @@ struct TranscriptionDetailView: View {
     @State private var editedContent: String = ""
     @State private var isProcessing = false
     @State private var currentLLMStatus: LLMStatus?
+    @State private var currentTitle: String?
+    @State private var currentSummary: String?
+    @State private var currentTags: [String]?
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
         self.viewModel = viewModel
         self._editedContent = State(initialValue: record.content)
         self._currentLLMStatus = State(initialValue: record.llmProcessingStatus)
+        self._currentTitle = State(initialValue: record.title)
+        self._currentSummary = State(initialValue: record.summary)
+        self._currentTags = State(initialValue: record.tags)
     }
 
     var body: some View {
@@ -137,8 +143,8 @@ struct TranscriptionDetailView: View {
             Divider()
 
             // Show results if available
-            if record.title != nil || record.summary != nil || record.tags != nil {
-                if let title = record.title, !title.isEmpty {
+            if currentTitle != nil || currentSummary != nil || currentTags != nil {
+                if let title = currentTitle, !title.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Title".localized)
                             .font(.caption)
@@ -148,7 +154,7 @@ struct TranscriptionDetailView: View {
                     }
                 }
 
-                if let summary = record.summary, !summary.isEmpty {
+                if let summary = currentSummary, !summary.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Summary".localized)
                             .font(.caption)
@@ -158,7 +164,7 @@ struct TranscriptionDetailView: View {
                     }
                 }
 
-                if let tags = record.tags, !tags.isEmpty {
+                if let tags = currentTags, !tags.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Tags".localized)
                             .font(.caption)
@@ -224,6 +230,9 @@ struct TranscriptionDetailView: View {
                 isProcessing = false
                 if updatedRecord.llmProcessingStatus == .completed {
                     currentLLMStatus = .completed
+                    currentTitle = updatedRecord.title
+                    currentSummary = updatedRecord.summary
+                    currentTags = updatedRecord.tags
                 } else {
                     currentLLMStatus = .failed
                 }
