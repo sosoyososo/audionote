@@ -122,18 +122,31 @@ struct TranscriptionDetailView: View {
     }
 
     private var contentSection: some View {
-        Group {
-            if isEditing {
-                TextEditor(text: $editedContent)
-                    .font(.body)
-                    .frame(minHeight: 200)
-                    .padding(8)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(8)
-            } else {
-                Text(editedContent)
-                    .font(.body)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 8) {
+            if record.optimizedContent != nil {
+                HStack {
+                    Image(systemName: "checkmark.seal.fill")
+                        .foregroundColor(.green)
+                    Text("优化后")
+                        .font(.caption)
+                        .foregroundColor(.green)
+                    Spacer()
+                }
+            }
+
+            Group {
+                if isEditing {
+                    TextEditor(text: $editedContent)
+                        .font(.body)
+                        .frame(minHeight: 200)
+                        .padding(8)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(8)
+                } else {
+                    Text(editedContent)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
     }
@@ -224,20 +237,44 @@ struct TranscriptionDetailView: View {
         isProcessing = true
         currentLLMStatus = .processing
         Task {
-            let service = AIProcessingService()
-            let updatedRecord = await service.processRecord(record)
-            await MainActor.run {
-                isProcessing = false
-                if updatedRecord.llmProcessingStatus == .completed {
+            let originalText = record.optimizedContent ?? record.content
+            let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+            let llmService = LLMService()
+
+            do {
+                let result = try await llmService.optimizeAndProcess(originalText, token: token)
+                let updatedRecord = TranscriptionRecord(
+                    id: record.id,
+                    content: result.optimizedText,
+                    createdAt: record.createdAt,
+                    duration: record.duration,
+                    language: record.language,
+                    audioFileName: record.audioFileName,
+                    title: result.title,
+                    summary: result.summary,
+                    tags: result.tags,
+                    llmProcessingStatus: .completed,
+                    optimizedContent: originalText != record.content ? originalText : record.optimizedContent
+                )
+                try await viewModel.updateRecord(updatedRecord)
+                await MainActor.run {
+                    isProcessing = false
                     currentLLMStatus = .completed
-                    currentTitle = updatedRecord.title
-                    currentSummary = updatedRecord.summary
-                    currentTags = updatedRecord.tags
-                } else {
+                    currentTitle = result.title
+                    currentSummary = result.summary
+                    currentTags = result.tags
+                    editedContent = result.optimizedText
+                    Task {
+                        await viewModel.loadHistory()
+                    }
+                }
+            } catch {
+                Logger.error("LLM reprocess failed: \(error.localizedDescription)")
+                await MainActor.run {
+                    isProcessing = false
                     currentLLMStatus = .failed
                 }
             }
-            await viewModel.loadHistory()
         }
     }
 
