@@ -159,6 +159,17 @@ final class TranscriptionViewModel: ObservableObject {
         // Use partialText if finalText is empty but partialText has content
         let contentToSave = finalText.isEmpty ? partialText : finalText
 
+        // Check if there's actual content to save
+        let trimmedContent = contentToSave.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmedContent.isEmpty {
+            Logger.info("No valid content detected, skipping save and LLM processing")
+            speechRecognizer.stopRecording()
+            isRecording = false
+            stopDurationTimer()
+            transcribedText = ""
+            return
+        }
+
         speechRecognizer.stopRecording()
         isRecording = false
         stopDurationTimer()
@@ -235,7 +246,7 @@ final class TranscriptionViewModel: ObservableObject {
                 if attempt < maxAttempts - 1 {
                     let delay = 1.0 * pow(2.0, Double(attempt))
                     Logger.info("Retrying in \(delay)s...")
-                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             }
         }
