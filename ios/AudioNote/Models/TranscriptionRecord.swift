@@ -20,6 +20,7 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
     var summary: String?
     var tags: [String]?
     var llmProcessingStatus: LLMStatus?
+    var optimizedContent: String? // Original content before LLM optimization
 
     init(
         id: UUID = UUID(),
@@ -31,7 +32,8 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         title: String? = nil,
         summary: String? = nil,
         tags: [String]? = nil,
-        llmProcessingStatus: LLMStatus? = nil
+        llmProcessingStatus: LLMStatus? = nil,
+        optimizedContent: String? = nil
     ) {
         self.id = id
         self.content = content
@@ -43,6 +45,7 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         self.summary = summary
         self.tags = tags
         self.llmProcessingStatus = llmProcessingStatus
+        self.optimizedContent = optimizedContent
     }
 
     var formattedDuration: String {

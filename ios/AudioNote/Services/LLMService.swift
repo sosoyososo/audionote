@@ -121,6 +121,98 @@ actor LLMService {
         throw finalError
     }
 
+    func optimize(_ text: String, token: String) async throws -> String {
+        guard !token.isEmpty else {
+            Logger.error("LLM optimize failed: token not set")
+            throw LLMError.tokenNotSet
+        }
+
+        let systemPrompt = """
+你是一个语音转录文本优化助手。原始文本由 iOS Speech SDK 生成，可能存在标点缺失、同音词错误等问题。
+请直接返回优化后的文本，不要添加任何解释或标记。
+"""
+
+        let request = APIRequest(messages: [
+            APIRequest.Message(role: "system", content: systemPrompt),
+            APIRequest.Message(role: "user", content: text)
+        ])
+
+        var lastError: Error?
+
+        for attempt in 0..<maxRetries {
+            do {
+                let result = try await callOptimizeAPI(request: request, token: token)
+                Logger.info("LLM optimize succeeded on attempt \(attempt + 1)")
+                return result
+            } catch let error as LLMError {
+                lastError = error
+                Logger.warning("LLM optimize failed (attempt \(attempt + 1)/\(maxRetries)): \(error.errorDescription ?? "unknown")")
+                let shouldRetry: Bool
+                switch error {
+                case .httpError(let code) where (500...599).contains(code):
+                    shouldRetry = true
+                case .networkError:
+                    shouldRetry = true
+                default:
+                    shouldRetry = false
+                }
+
+                if shouldRetry && attempt < maxRetries - 1 {
+                    let delay = baseDelay * pow(2.0, Double(attempt))
+                    Logger.info("Retrying in \(delay)s...")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                } else if !shouldRetry {
+                    Logger.error("LLM optimize failed: non-retryable error - \(error.errorDescription ?? "unknown")")
+                    throw error
+                }
+            } catch {
+                lastError = error
+                Logger.warning("LLM optimize failed (attempt \(attempt + 1)/\(maxRetries)): \(error.localizedDescription)")
+                if attempt < maxRetries - 1 {
+                    let delay = baseDelay * pow(2.0, Double(attempt))
+                    Logger.info("Retrying in \(delay)s...")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            }
+        }
+
+        let finalError = lastError ?? LLMError.networkError(NSError(domain: "LLMService", code: -1))
+        Logger.error("LLM optimize failed after \(maxRetries) attempts: \(finalError.localizedDescription)")
+        throw finalError
+    }
+
+    private func callOptimizeAPI(request: APIRequest, token: String) async throws -> String {
+        guard let url = URL(string: baseURL) else {
+            throw LLMError.invalidURL
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw LLMError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let responseBody = String(data: data, encoding: .utf8) ?? "unable to decode response body"
+            Logger.error("LLM API error: HTTP \(httpResponse.statusCode), body: \(responseBody)")
+            throw LLMError.httpError(httpResponse.statusCode)
+        }
+
+        let apiResponse = try JSONDecoder().decode(APIResponse.self, from: data)
+
+        guard let content = apiResponse.choices.first?.message.content else {
+            throw LLMError.invalidResponse
+        }
+
+        return content
+    }
+
     private func callAPI(request: APIRequest, token: String) async throws -> LLMResult {
         guard let url = URL(string: baseURL) else {
             throw LLMError.invalidURL

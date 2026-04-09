@@ -25,6 +25,38 @@ struct SettingsView: View {
 
                 Section {
                     HStack {
+                        Text("启用录音内容优化")
+                        Spacer()
+                        if viewModel.isValidating {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                        } else {
+                            Toggle("", isOn: $viewModel.enableLLMOptimization)
+                                .labelsHidden()
+                                .disabled(!viewModel.hasToken)
+                                .onChange(of: viewModel.enableLLMOptimization) { newValue in
+                                    if newValue && !viewModel.isValidating {
+                                        viewModel.validateLLMConfiguration()
+                                    } else if !newValue {
+                                        viewModel.saveOptimizationSetting()
+                                    }
+                                }
+                        }
+                    }
+
+                    if !viewModel.hasToken {
+                        Text("请先配置 API Token")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                } header: {
+                    Text("LLM 优化设置")
+                } footer: {
+                    Text("开启后，录音结束后自动优化转录文本，修正标点和同音词错误")
+                }
+
+                Section {
+                    HStack {
                         Text("Settings.LLM.Status")
                         Spacer()
                         if viewModel.hasToken {
@@ -41,6 +73,10 @@ struct SettingsView: View {
             .overlay(alignment: .bottom) {
                 if viewModel.showSaveConfirmation {
                     ToastView(message: "Settings.Saved".localized, isShowing: $viewModel.showSaveConfirmation)
+                        .padding(.bottom, 40)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                } else if viewModel.showValidationResult, let message = viewModel.validationMessage {
+                    ToastView(message: message, isShowing: $viewModel.showValidationResult)
                         .padding(.bottom, 40)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }

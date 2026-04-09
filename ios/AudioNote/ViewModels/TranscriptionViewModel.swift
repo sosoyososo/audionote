@@ -13,11 +13,13 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var authorizationStatus: PermissionStatus = .notDetermined
     @Published var errorMessage: String?
     @Published var selectedLanguage: RecognitionLanguage = .chinese
+    @Published var isOptimizing: Bool = false
 
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
     private let aiProcessingService = AIProcessingService()
+    private let llmService = LLMService()
     private var durationTimer: Timer?
     private var recordingStartTime: Date?
     private var textStreamTask: Task<Void, Never>?
@@ -181,6 +183,12 @@ final class TranscriptionViewModel: ObservableObject {
             Logger.info("Record saved successfully with ID: \(record.id.uuidString)")
             await loadHistory()
 
+            // Check if LLM optimization is enabled
+            let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
+            if optimizationEnabled {
+                await optimizeTranscription(recordId: record.id)
+            }
+
             Task {
                 await aiProcessingService.processPendingRecords()
             }
@@ -190,6 +198,31 @@ final class TranscriptionViewModel: ObservableObject {
         }
 
         // Keep currentRecordId for potential editing - only clear when starting new recording
+    }
+
+    func optimizeTranscription(recordId: UUID) async {
+        isOptimizing = true
+
+        let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+
+        do {
+            let optimizedContent = try await llmService.optimize(transcribedText, token: token)
+            Logger.info("LLM optimization succeeded, original length: \(transcribedText.count), optimized length: \(optimizedContent.count)")
+
+            // Update the record with optimized content
+            if var record = try? await storage.get(id: recordId) {
+                record.content = optimizedContent
+                record.optimizedContent = transcribedText // Keep original
+                try await storage.save(record)
+                transcribedText = optimizedContent
+                await loadHistory()
+            }
+        } catch {
+            Logger.error("LLM optimization failed: \(error.localizedDescription)")
+            // Keep original text if optimization fails
+        }
+
+        isOptimizing = false
     }
 
     func loadHistory() async {

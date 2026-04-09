@@ -247,6 +247,16 @@ struct RecordingView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
+                } else if viewModel.isOptimizing {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
+                        Text("正在优化...")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    Spacer()
                 } else {
                     Text("Recording.Result".localized)
                         .font(.caption)
@@ -289,6 +299,19 @@ struct RecordingView: View {
                 } else if isEditing {
                     // Editable text editor
                     editingTextView
+                } else if viewModel.isOptimizing {
+                    // Optimization loading
+                    VStack {
+                        ProgressView()
+                            .padding()
+                        Text("正在优化转录内容...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
                 } else {
                     // Final transcribed text
                     resultTextView
