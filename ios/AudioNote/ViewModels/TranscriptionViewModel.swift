@@ -14,6 +14,9 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedLanguage: RecognitionLanguage = .chinese
     @Published var isOptimizing: Bool = false
+    @Published var isLLMProcessing: Bool = false
+    @Published var llmProcessingFailed: Bool = false
+    @Published var isTextOptimized: Bool = false
 
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
@@ -119,6 +122,7 @@ final class TranscriptionViewModel: ObservableObject {
             recordingDuration = 0
             transcribedText = ""
             partialText = ""
+            isTextOptimized = false
 
             startDurationTimer()
 
@@ -186,11 +190,7 @@ final class TranscriptionViewModel: ObservableObject {
             // Check if LLM optimization is enabled
             let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
             if optimizationEnabled {
-                await optimizeTranscription(recordId: record.id)
-            }
-
-            Task {
-                await aiProcessingService.processPendingRecords()
+                await processWithLLM(recordId: record.id, originalText: contentToSave)
             }
         } catch {
             Logger.error("Failed to save record: \(error.localizedDescription)")
@@ -200,29 +200,56 @@ final class TranscriptionViewModel: ObservableObject {
         // Keep currentRecordId for potential editing - only clear when starting new recording
     }
 
-    func optimizeTranscription(recordId: UUID) async {
-        isOptimizing = true
+    func processWithLLM(recordId: UUID, originalText: String) async {
+        isLLMProcessing = true
+        llmProcessingFailed = false
 
         let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+        let maxAttempts = 3
 
-        do {
-            let optimizedContent = try await llmService.optimize(transcribedText, token: token)
-            Logger.info("LLM optimization succeeded, original length: \(transcribedText.count), optimized length: \(optimizedContent.count)")
+        for attempt in 0..<maxAttempts {
+            do {
+                let result = try await llmService.optimizeAndProcess(originalText, token: token)
+                Logger.info("LLM processWithLLM succeeded on attempt \(attempt + 1)")
 
-            // Update the record with optimized content
-            if var record = try? await storage.get(id: recordId) {
-                record.content = optimizedContent
-                record.optimizedContent = transcribedText // Keep original
-                try await storage.save(record)
-                transcribedText = optimizedContent
-                await loadHistory()
+                // Update the record with all fields
+                if var record = try? await storage.get(id: recordId) {
+                    record.optimizedContent = originalText // Keep original
+                    record.content = result.optimizedText
+                    record.title = result.title
+                    record.summary = result.summary
+                    record.tags = result.tags
+                    record.llmProcessingStatus = .completed
+                    try await storage.save(record)
+                    transcribedText = result.optimizedText
+                    isTextOptimized = true
+                    await loadHistory()
+                }
+
+                isLLMProcessing = false
+                llmProcessingFailed = false
+                return
+            } catch {
+                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
+
+                if attempt < maxAttempts - 1 {
+                    let delay = 1.0 * pow(2.0, Double(attempt))
+                    Logger.info("Retrying in \(delay)s...")
+                    try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
             }
-        } catch {
-            Logger.error("LLM optimization failed: \(error.localizedDescription)")
-            // Keep original text if optimization fails
         }
 
-        isOptimizing = false
+        // All attempts failed
+        Logger.error("LLM processWithLLM failed after \(maxAttempts) attempts")
+        isLLMProcessing = false
+        llmProcessingFailed = true
+
+        // Mark record as failed
+        if var record = try? await storage.get(id: recordId) {
+            record.llmProcessingStatus = .failed
+            try? await storage.save(record)
+        }
     }
 
     func loadHistory() async {
