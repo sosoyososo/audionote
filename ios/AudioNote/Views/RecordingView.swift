@@ -247,14 +247,33 @@ struct RecordingView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                } else if viewModel.isOptimizing {
+                } else if viewModel.isLLMProcessing {
                     HStack(spacing: 6) {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
                             .scaleEffect(0.8)
-                        Text("正在优化...")
+                        Text("正在处理...")
                             .font(.caption)
                             .foregroundColor(.secondary)
+                    }
+                    Spacer()
+                } else if viewModel.llmProcessingFailed {
+                    HStack(spacing: 6) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                        Text("处理失败")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                        Button("重试") {
+                            Task {
+                                if let recordId = viewModel.currentRecordId,
+                                   let record = await viewModel.getRecord(id: recordId) {
+                                    await viewModel.processWithLLM(recordId: recordId, originalText: record.optimizedContent ?? record.content)
+                                }
+                            }
+                        }
+                        .font(.caption)
+                        .foregroundColor(.accentColor)
                     }
                     Spacer()
                 } else {
@@ -299,12 +318,26 @@ struct RecordingView: View {
                 } else if isEditing {
                     // Editable text editor
                     editingTextView
-                } else if viewModel.isOptimizing {
-                    // Optimization loading
+                } else if viewModel.isLLMProcessing {
+                    // LLM processing loading
                     VStack {
                         ProgressView()
                             .padding()
-                        Text("正在优化转录内容...")
+                        Text("正在处理转录内容...")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.bottom)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                } else if viewModel.llmProcessingFailed {
+                    // Show original text with retry option
+                    VStack {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundColor(.orange)
+                            .padding(.top)
+                        Text("处理失败，请点击上方重试")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .padding(.bottom)
@@ -364,6 +397,17 @@ struct RecordingView: View {
     private var resultTextView: some View {
         Group {
             if !viewModel.transcribedText.isEmpty {
+                if viewModel.isTextOptimized {
+                    HStack {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundColor(.green)
+                        Text("优化后")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                        Spacer()
+                    }
+                    .padding(.bottom, 4)
+                }
                 ScrollView {
                     Text(viewModel.transcribedText)
                         .font(.body)
