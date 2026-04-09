@@ -26,6 +26,13 @@ struct LLMResult {
     let tags: [String]
 }
 
+struct LLMOptimizeAndProcessResult: Decodable {
+    let optimizedText: String
+    let title: String
+    let summary: String
+    let tags: [String]
+}
+
 actor LLMService {
     private let baseURL = "https://llm.karsa.info/v1/chat/completions"
     private let maxRetries = 3
@@ -181,6 +188,33 @@ actor LLMService {
         throw finalError
     }
 
+    func optimizeAndProcess(_ text: String, token: String) async throws -> LLMOptimizeAndProcessResult {
+        guard !token.isEmpty else {
+            Logger.error("LLM optimizeAndProcess failed: token not set")
+            throw LLMError.tokenNotSet
+        }
+
+        let systemPrompt = """
+你是一个语音转录文本优化助手和笔记组织助手。原始文本由 iOS Speech SDK 生成，可能存在标点缺失、同音词错误等问题。
+
+请完成以下任务：
+1. 优化转录文本，修正标点和同音词错误
+2. 为笔记提取标题（简短明了）
+3. 生成50-100字的摘要
+4. 提取3-5个标签
+
+请严格按照以下JSON格式返回，不要添加任何解释或标记：
+{"optimizedText": "...", "title": "...", "summary": "...", "tags": [...]}
+"""
+
+        let request = APIRequest(messages: [
+            APIRequest.Message(role: "system", content: systemPrompt),
+            APIRequest.Message(role: "user", content: text)
+        ])
+
+        return try await callOptimizeAndProcessAPI(request: request, token: token)
+    }
+
     private func callOptimizeAPI(request: APIRequest, token: String) async throws -> String {
         guard let url = URL(string: baseURL) else {
             throw LLMError.invalidURL
@@ -211,6 +245,42 @@ actor LLMService {
         }
 
         return content
+    }
+
+    private func callOptimizeAndProcessAPI(request: APIRequest, token: String) async throws -> LLMOptimizeAndProcessResult {
+        guard let url = URL(string: baseURL) else {
+            throw LLMError.invalidURL
+        }
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+
+        let (data, response) = try await URLSession.shared.data(for: urlRequest)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw LLMError.invalidResponse
+        }
+
+        guard (200...299).contains(httpResponse.statusCode) else {
+            let responseBody = String(data: data, encoding: .utf8) ?? "unable to decode response body"
+            Logger.error("LLM API error: HTTP \(httpResponse.statusCode), body: \(responseBody)")
+            throw LLMError.httpError(httpResponse.statusCode)
+        }
+
+        let apiResponse = try JSONDecoder().decode(APIResponse.self, from: data)
+
+        guard let content = apiResponse.choices.first?.message.content else {
+            throw LLMError.invalidResponse
+        }
+
+        guard let jsonData = content.data(using: .utf8) else {
+            throw LLMError.decodingError
+        }
+
+        return try JSONDecoder().decode(LLMOptimizeAndProcessResult.self, from: jsonData)
     }
 
     private func callAPI(request: APIRequest, token: String) async throws -> LLMResult {
