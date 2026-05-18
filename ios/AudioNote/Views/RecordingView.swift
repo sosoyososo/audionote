@@ -158,6 +158,19 @@ struct RecordingView: View {
                 }
             }
 
+            // Recognition mode indicator
+            if viewModel.isRecording {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(modeColor)
+                        .frame(width: 8, height: 8)
+                    Text(modeLabel)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.vertical, 4)
+            }
+
             // Main recording button
             Button {
                 Task {
@@ -280,6 +293,13 @@ struct RecordingView: View {
                     Text("Recording.Result".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                    Text(modeLabel)
+                        .font(.caption2)
+                        .foregroundColor(modeColor)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(modeColor.opacity(0.1))
+                        .cornerRadius(4)
                     Spacer()
 
                     if !viewModel.transcribedText.isEmpty {
@@ -541,6 +561,24 @@ struct RecordingView: View {
     private func autoHideToast() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             showCopiedToast = false
+        }
+    }
+
+    private var modeColor: Color {
+        switch viewModel.recognitionMode {
+        case .online: return .green
+        case .onDevice: return .yellow
+        case .enhanced: return .blue
+        case .failed: return .red
+        }
+    }
+
+    private var modeLabel: String {
+        switch viewModel.recognitionMode {
+        case .online: return "在线识别"
+        case .onDevice: return "离线识别"
+        case .enhanced: return "已在线升级"
+        case .failed: return "识别失败"
         }
     }
 }
