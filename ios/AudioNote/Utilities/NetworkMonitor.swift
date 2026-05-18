@@ -10,8 +10,9 @@ final class NetworkMonitor: @unchecked Sendable {
     private(set) var isConnected: Bool = true
     private(set) var connectionType: ConnectionType = .unknown
 
-    /// Called on .main actor when connectivity transitions from disconnected → connected
-    var onStatusChange: (@MainActor (_ isConnected: Bool) -> Void)?
+    /// Called when connectivity transitions from disconnected → connected
+    @MainActor
+    var onStatusChange: ((_ isConnected: Bool) -> Void)?
 
     enum ConnectionType {
         case wifi
