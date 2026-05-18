@@ -17,6 +17,8 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var isLLMProcessing: Bool = false
     @Published var llmProcessingFailed: Bool = false
     @Published var isTextOptimized: Bool = false
+    @Published var recognitionMode: RecognitionMode = .online
+    @Published var isEnhancing: Bool = false
 
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
@@ -27,6 +29,8 @@ final class TranscriptionViewModel: ObservableObject {
     private var recordingStartTime: Date?
     private var textStreamTask: Task<Void, Never>?
     private var cancellables = Set<AnyCancellable>()
+    private var networkRecoveryTask: Task<Void, Never>?
+    private let networkRecoveryDebounce: UInt64 = 2_000_000_000  // 2 seconds
 
     init() {
         Logger.info("TranscriptionViewModel initialized")
@@ -49,6 +53,20 @@ final class TranscriptionViewModel: ObservableObject {
         Task { @MainActor in
             await loadHistory()
             loadSavedLanguage()
+        }
+        setupNetworkMonitor()
+    }
+
+    private func setupNetworkMonitor() {
+        NetworkMonitor.shared.onStatusChange = { [weak self] isConnected in
+            guard let self = self, isConnected else { return }
+            // Debounce: cancel previous pending task
+            self.networkRecoveryTask?.cancel()
+            self.networkRecoveryTask = Task { @MainActor in
+                try? await Task.sleep(nanoseconds: self.networkRecoveryDebounce)
+                guard !Task.isCancelled else { return }
+                await self.networkDidRecover()
+            }
         }
     }
 
@@ -135,8 +153,10 @@ final class TranscriptionViewModel: ObservableObject {
                     Logger.debug("Received text: \(text)")
                     partialText = text
                 }
-                Logger.info("Text stream completed")
             }
+
+            recognitionMode = speechRecognizer.recognitionMode
+            Logger.info("Recognition mode: \(speechRecognizer.recognitionMode)")
         } catch {
             Logger.error("Failed to start recording: \(error.localizedDescription)")
             isRecording = false
@@ -152,63 +172,171 @@ final class TranscriptionViewModel: ObservableObject {
         textStreamTask?.cancel()
         textStreamTask = nil
 
-        // Get the final accumulated text
         let finalText = speechRecognizer.getFinalText()
         Logger.info("Final text from recognizer: \(finalText)")
 
-        // Use partialText if finalText is empty but partialText has content
         let contentToSave = finalText.isEmpty ? partialText : finalText
-
-        // Check if there's actual content to save
         let trimmedContent = contentToSave.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmedContent.isEmpty {
-            Logger.info("No valid content detected, skipping save and LLM processing")
-            speechRecognizer.stopRecording()
-            isRecording = false
-            stopDurationTimer()
-            transcribedText = ""
-            return
+
+        // Determine final recognition mode
+        let mode: RecognitionMode
+        if speechRecognizer.hasRecognitionError && trimmedContent.isEmpty {
+            mode = .failed
+        } else if speechRecognizer.hasRecognitionError && !trimmedContent.isEmpty {
+            // Framework fell back to on-device or returned partial results
+            mode = .onDevice
+        } else {
+            mode = speechRecognizer.recognitionMode
         }
+        recognitionMode = mode
 
         speechRecognizer.stopRecording()
         isRecording = false
         stopDurationTimer()
 
+        // Handle empty content
+        if trimmedContent.isEmpty {
+            Logger.info("No valid content detected, skipping save and LLM processing")
+            transcribedText = ""
+            return
+        }
+
         let duration = recordingStartTime.map { Date().timeIntervalSince($0) } ?? recordingDuration
-
-        Logger.info("Saving record - content length: \(contentToSave.count), duration: \(duration)")
-
         let audioFileName = speechRecognizer.getAudioFileName()
 
-        // Always use the currentRecordId (generated at startRecording)
         let record = TranscriptionRecord(
             id: currentRecordId ?? UUID(),
             content: contentToSave,
             createdAt: recordingStartTime ?? Date(),
             duration: duration,
             language: selectedLanguage.rawValue,
-            audioFileName: audioFileName
+            audioFileName: audioFileName,
+            recognitionMode: mode
         )
 
-        // Save the transcribed text for display
         transcribedText = contentToSave
 
         do {
             try await storage.save(record)
-            Logger.info("Record saved successfully with ID: \(record.id.uuidString)")
+            Logger.info("Record saved with ID: \(record.id.uuidString), mode: \(mode)")
             await loadHistory()
 
-            // Check if LLM optimization is enabled
-            let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
-            if optimizationEnabled {
-                await processWithLLM(recordId: record.id, originalText: contentToSave)
-            }
+            // Phase 2: Assess and potentially enhance
+            await assessAndEnhance(record: record, originalText: contentToSave)
         } catch {
             Logger.error("Failed to save record: \(error.localizedDescription)")
             errorMessage = error.localizedDescription
         }
+    }
 
-        // Keep currentRecordId for potential editing - only clear when starting new recording
+    /// Phase 2: After saving, assess recognition quality and enhance if possible
+    private func assessAndEnhance(record: TranscriptionRecord, originalText: String) async {
+        let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
+
+        switch record.recognitionMode {
+        case .online:
+            // Best case: online recognition succeeded, go straight to LLM
+            if optimizationEnabled {
+                await processWithLLM(recordId: record.id, originalText: originalText)
+            }
+
+        case .onDevice:
+            // On-device succeeded but can be upgraded
+            if NetworkMonitor.shared.checkConnectivity() {
+                // Auto-upgrade to online recognition
+                await enhanceRecognition(recordId: record.id)
+            }
+            // Run LLM if online (either now or after enhance completes)
+            if optimizationEnabled && NetworkMonitor.shared.checkConnectivity() {
+                await processWithLLM(recordId: record.id, originalText: originalText)
+            }
+
+        case .failed:
+            // Recognition failed — try online if available
+            if NetworkMonitor.shared.checkConnectivity() {
+                await retryRecognitionFromFile(recordId: record.id)
+            }
+
+        default:
+            break
+        }
+    }
+
+    /// Re-recognize a record's audio using online recognition for better quality
+    func enhanceRecognition(recordId: UUID) async {
+        guard let record = try? await storage.get(id: recordId),
+              let audioFileName = record.audioFileName else {
+            Logger.warning("Cannot enhance: record or audio file not found")
+            return
+        }
+
+        let audioFileId = audioFileName.replacingOccurrences(of: ".m4a", with: "")
+        guard let uuid = UUID(uuidString: audioFileId) else {
+            Logger.warning("Cannot enhance: invalid audio file name format")
+            return
+        }
+        let audioURL = AudioRecorderService.generateFileUrl(for: uuid)
+
+        // Check if user has edited the text — if so, don't overwrite
+        if record.optimizedContent != nil && record.content != record.optimizedContent {
+            Logger.info("Skipping auto-enhance: user has edited content")
+            return
+        }
+
+        isEnhancing = true
+        defer { isEnhancing = false }
+
+        do {
+            let enhancedText = try await speechRecognizer.recognizeFromFile(url: audioURL)
+            Logger.info("Enhanced recognition succeeded for record \(recordId)")
+
+            var updated = record
+            updated.content = enhancedText
+            updated.recognitionMode = .enhanced
+            try await storage.save(updated)
+
+            transcribedText = enhancedText
+            await loadHistory()
+        } catch {
+            Logger.error("Enhance recognition failed: \(error.localizedDescription)")
+            // Keep original on-device text, don't change mode
+        }
+    }
+
+    /// Retry recognition from saved audio file after a failure
+    func retryRecognitionFromFile(recordId: UUID) async {
+        guard let record = try? await storage.get(id: recordId),
+              let audioFileName = record.audioFileName else {
+            Logger.warning("Cannot retry: record or audio file not found")
+            return
+        }
+
+        let audioFileId = audioFileName.replacingOccurrences(of: ".m4a", with: "")
+        guard let uuid = UUID(uuidString: audioFileId) else {
+            Logger.warning("Cannot retry: invalid audio file name format")
+            return
+        }
+        let audioURL = AudioRecorderService.generateFileUrl(for: uuid)
+
+        do {
+            let text = try await speechRecognizer.recognizeFromFile(url: audioURL)
+            var updated = record
+            updated.content = text
+            updated.recognitionMode = .enhanced
+            try await storage.save(updated)
+
+            transcribedText = text
+            recognitionMode = .enhanced
+            await loadHistory()
+
+            // Now try LLM since we have text
+            let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
+            if optimizationEnabled {
+                await processWithLLM(recordId: record.id, originalText: text)
+            }
+        } catch {
+            Logger.error("Retry recognition failed: \(error.localizedDescription)")
+        }
     }
 
     func processWithLLM(recordId: UUID, originalText: String) async {
@@ -216,6 +344,19 @@ final class TranscriptionViewModel: ObservableObject {
         llmProcessingFailed = false
 
         let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+
+        // If offline, mark as failed immediately and wait for recovery
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("LLM processWithLLM skipped: offline")
+            isLLMProcessing = false
+            llmProcessingFailed = true
+            if var record = try? await storage.get(id: recordId) {
+                record.llmProcessingStatus = .failed
+                try? await storage.save(record)
+            }
+            return
+        }
+
         let maxAttempts = 3
 
         for attempt in 0..<maxAttempts {
@@ -223,9 +364,8 @@ final class TranscriptionViewModel: ObservableObject {
                 let result = try await llmService.optimizeAndProcess(originalText, token: token)
                 Logger.info("LLM processWithLLM succeeded on attempt \(attempt + 1)")
 
-                // Update the record with all fields
                 if var record = try? await storage.get(id: recordId) {
-                    record.optimizedContent = originalText // Keep original
+                    record.optimizedContent = originalText
                     record.content = result.optimizedText
                     record.title = result.title
                     record.summary = result.summary
@@ -240,27 +380,98 @@ final class TranscriptionViewModel: ObservableObject {
                 isLLMProcessing = false
                 llmProcessingFailed = false
                 return
-            } catch {
-                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
+            } catch let error as LLMError {
+                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.errorDescription ?? "unknown")")
+
+                if case .offline = error {
+                    // Don't retry on offline — mark failed, wait for network recovery
+                    isLLMProcessing = false
+                    llmProcessingFailed = true
+                    if var record = try? await storage.get(id: recordId) {
+                        record.llmProcessingStatus = .failed
+                        try? await storage.save(record)
+                    }
+                    return
+                }
 
                 if attempt < maxAttempts - 1 {
                     let delay = 1.0 * pow(2.0, Double(attempt))
-                    Logger.info("Retrying in \(delay)s...")
+                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                }
+            } catch {
+                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
+                if attempt < maxAttempts - 1 {
+                    let delay = 1.0 * pow(2.0, Double(attempt))
                     try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             }
         }
 
-        // All attempts failed
         Logger.error("LLM processWithLLM failed after \(maxAttempts) attempts")
         isLLMProcessing = false
         llmProcessingFailed = true
 
-        // Mark record as failed
         if var record = try? await storage.get(id: recordId) {
             record.llmProcessingStatus = .failed
             try? await storage.save(record)
         }
+    }
+
+    /// Called when network transitions from disconnected → connected (debounced)
+    func networkDidRecover() async {
+        Logger.info("Network recovered — processing pending items")
+        let records = (try? await storage.loadAll()) ?? []
+
+        // 1. Process records never LLM-processed
+        let pendingLLM = records.filter { $0.llmProcessingStatus == nil }
+        for record in pendingLLM {
+            guard NetworkMonitor.shared.checkConnectivity() else { return }
+            _ = await aiProcessingService.processRecord(record)
+        }
+
+        // 2. Upgrade on-device recognitions
+        let onDeviceRecords = records.filter {
+            $0.recognitionMode == .onDevice && $0.audioFileName != nil
+        }
+        for record in onDeviceRecords {
+            guard NetworkMonitor.shared.checkConnectivity() else { return }
+            await enhanceRecognition(recordId: record.id)
+        }
+
+        // 3. Retry failed recognitions
+        let failedRecords = records.filter {
+            $0.recognitionMode == .failed && $0.audioFileName != nil
+        }
+        for record in failedRecords {
+            guard NetworkMonitor.shared.checkConnectivity() else { return }
+            await retryRecognitionFromFile(recordId: record.id)
+        }
+
+        // 4. Retry failed LLM (that failed due to offline)
+        let failedLLM = records.filter { $0.llmProcessingStatus == .failed }
+        for record in failedLLM {
+            guard NetworkMonitor.shared.checkConnectivity() else { return }
+            let text = record.optimizedContent ?? record.content
+            await processWithLLM(recordId: record.id, originalText: text)
+        }
+
+        await loadHistory()
+    }
+
+    /// Manually trigger online re-recognition for a record (from UI)
+    func reRecognizeOnline(recordId: UUID) async {
+        guard let record = try? await storage.get(id: recordId) else { return }
+
+        if record.audioFileName != nil {
+            await retryRecognitionFromFile(recordId: recordId)
+        }
+    }
+
+    /// Manually retry LLM processing for a record (from UI)
+    func retryLLM(recordId: UUID) async {
+        guard let record = try? await storage.get(id: recordId) else { return }
+        let text = record.optimizedContent ?? record.content
+        await processWithLLM(recordId: recordId, originalText: text)
     }
 
     func loadHistory() async {
@@ -304,7 +515,8 @@ final class TranscriptionViewModel: ObservableObject {
             title: record.title,
             summary: record.summary,
             tags: record.tags,
-            llmProcessingStatus: record.llmProcessingStatus
+            llmProcessingStatus: record.llmProcessingStatus,
+            recognitionMode: record.recognitionMode ?? existingRecord?.recognitionMode
         )
         try await storage.save(updatedRecord)
         await loadHistory()

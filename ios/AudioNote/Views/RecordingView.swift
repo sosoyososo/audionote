@@ -512,7 +512,8 @@ struct RecordingView: View {
             content: editedText,
             createdAt: Date(),
             duration: viewModel.recordingDuration,
-            language: viewModel.selectedLanguage.rawValue
+            language: viewModel.selectedLanguage.rawValue,
+            recognitionMode: viewModel.recognitionMode
         )
 
         Task {
