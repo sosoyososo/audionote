@@ -12,6 +12,7 @@ struct TranscriptionDetailView: View {
     @State private var currentTitle: String?
     @State private var currentSummary: String?
     @State private var currentTags: [String]?
+    @State private var currentRecognitionMode: RecognitionMode?
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
@@ -21,6 +22,7 @@ struct TranscriptionDetailView: View {
         self._currentTitle = State(initialValue: record.title)
         self._currentSummary = State(initialValue: record.summary)
         self._currentTags = State(initialValue: record.tags)
+        self._currentRecognitionMode = State(initialValue: record.recognitionMode)
     }
 
     var body: some View {
@@ -31,6 +33,9 @@ struct TranscriptionDetailView: View {
                 Divider()
 
                 contentSection
+
+                actionsSection
+                    .padding(.top, 4)
 
                 if let audioFileName = record.audioFileName {
                     PlaybackControlBar(audioFileName: audioFileName)
@@ -115,6 +120,15 @@ struct TranscriptionDetailView: View {
                         .foregroundColor(.secondary)
                     Text(record.formattedDuration)
                         .foregroundColor(.secondary)
+                }
+            }
+
+            if let mode = currentRecognitionMode {
+                HStack {
+                    Image(systemName: recognitionModeIcon(for: mode))
+                        .foregroundColor(recognitionModeColor(for: mode))
+                    Text(recognitionModeLabel(for: mode))
+                        .foregroundColor(recognitionModeColor(for: mode))
                 }
             }
         }
@@ -233,6 +247,82 @@ struct TranscriptionDetailView: View {
         }
     }
 
+    // MARK: - Recognition Mode Helpers
+
+    private func recognitionModeIcon(for mode: RecognitionMode?) -> String {
+        switch mode {
+        case .online: return "cloud.fill"
+        case .onDevice: return "iphone.gen1"
+        case .enhanced: return "cloud.fill.badge.checkmark"
+        case .failed: return "xmark.shield.fill"
+        case .none: return "questionmark.circle"
+        }
+    }
+
+    private func recognitionModeColor(for mode: RecognitionMode?) -> Color {
+        switch mode {
+        case .online: return .green
+        case .onDevice: return .yellow
+        case .enhanced: return .blue
+        case .failed: return .red
+        case .none: return .secondary
+        }
+    }
+
+    private func recognitionModeLabel(for mode: RecognitionMode?) -> String {
+        switch mode {
+        case .online: return "在线识别"
+        case .onDevice: return "离线识别"
+        case .enhanced: return "已在线升级"
+        case .failed: return "识别失败"
+        case .none: return "未知"
+        }
+    }
+
+    @ViewBuilder
+    private var actionsSection: some View {
+        if let mode = currentRecognitionMode,
+           (mode == .onDevice || mode == .failed),
+           record.audioFileName != nil {
+            Button {
+                upgradeRecognition()
+            } label: {
+                HStack {
+                    if viewModel.isEnhancing {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle())
+                            .scaleEffect(0.8)
+                    } else {
+                        Image(systemName: "arrow.up.doc")
+                    }
+                    Text("在线升级识别")
+                }
+                .frame(maxWidth: .infinity)
+            }
+            .disabled(viewModel.isEnhancing)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 16)
+            .background(Color.blue.opacity(0.1))
+            .foregroundColor(.blue)
+            .cornerRadius(10)
+        }
+    }
+
+    private func upgradeRecognition() {
+        Task {
+            await viewModel.reRecognizeOnline(recordId: record.id)
+            if let updated = await viewModel.getRecord(id: record.id) {
+                await MainActor.run {
+                    currentRecognitionMode = updated.recognitionMode
+                    editedContent = updated.content
+                    Task {
+                        await viewModel.loadHistory()
+                    }
+                }
+            }
+        }
+    }
+
     private func reprocessRecord() {
         isProcessing = true
         currentLLMStatus = .processing
@@ -254,7 +344,8 @@ struct TranscriptionDetailView: View {
                     summary: result.summary,
                     tags: result.tags,
                     llmProcessingStatus: .completed,
-                    optimizedContent: originalText != record.content ? originalText : record.optimizedContent
+                    optimizedContent: originalText != record.content ? originalText : record.optimizedContent,
+                    recognitionMode: record.recognitionMode
                 )
                 try await viewModel.updateRecord(updatedRecord)
                 await MainActor.run {
@@ -289,7 +380,8 @@ struct TranscriptionDetailView: View {
             title: record.title,
             summary: record.summary,
             tags: record.tags,
-            llmProcessingStatus: record.llmProcessingStatus
+            llmProcessingStatus: record.llmProcessingStatus,
+            recognitionMode: record.recognitionMode
         )
 
         Task {
