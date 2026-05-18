@@ -32,6 +32,11 @@ actor AIProcessingService {
     /// Process records that have never been processed (llmProcessingStatus == nil)
     /// Records with .failed status are NOT auto-processed to avoid infinite loops
     func processPendingRecords() async {
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.info("Skipping pending LLM processing: device is offline")
+            return
+        }
+
         do {
             let records = try await storage.loadAll()
             // Only process records with nil status (never processed)

@@ -287,9 +287,6 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = 8D0EE74616E156E4C9C1D118;
 					};
-					8D0EE74616E156E4C9C1D118 = {
-						ProvisioningStyle = Automatic;
-					};
 				};
 			};
 			buildConfigurationList = 2421935F8093F3300066F3A4 /* Build configuration list for PBXProject "AudioNote" */;
@@ -412,7 +409,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AudioNote/Resources/Info.plist;
@@ -422,6 +420,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = info.karsa.app.ios.audionote;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -432,7 +431,8 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AudioNote/Resources/Info.plist;
@@ -442,6 +442,7 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = info.karsa.app.ios.audionote;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = iphoneos;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";

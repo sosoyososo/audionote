@@ -6,6 +6,7 @@ enum LLMError: Error, LocalizedError {
     case httpError(Int)
     case decodingError
     case tokenNotSet
+    case offline
     case networkError(Error)
 
     var errorDescription: String? {
@@ -15,6 +16,7 @@ enum LLMError: Error, LocalizedError {
         case .httpError(let code): return "HTTP error: \(code)"
         case .decodingError: return "Failed to decode response"
         case .tokenNotSet: return "API token not set"
+        case .offline: return "No network connection"
         case .networkError(let error): return error.localizedDescription
         }
     }
@@ -72,6 +74,11 @@ actor LLMService {
             throw LLMError.tokenNotSet
         }
 
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("LLM process skipped: device is offline")
+            throw LLMError.offline
+        }
+
         let systemPrompt = """
         You are a note organizer. Extract title, summary (50-100 chars), and tags (3-5) from the following transcription.
         Response JSON format only, no other text:
@@ -100,6 +107,8 @@ actor LLMService {
                     shouldRetry = true
                 case .networkError:
                     shouldRetry = true
+                case .offline:
+                    shouldRetry = false
                 default:
                     shouldRetry = false
                 }
@@ -134,6 +143,11 @@ actor LLMService {
             throw LLMError.tokenNotSet
         }
 
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("LLM optimize skipped: device is offline")
+            throw LLMError.offline
+        }
+
         let systemPrompt = """
 你是一个语音转录文本优化助手。原始文本由 iOS Speech SDK 生成，可能存在标点缺失、同音词错误等问题。
 请直接返回优化后的文本，不要添加任何解释或标记。
@@ -160,6 +174,8 @@ actor LLMService {
                     shouldRetry = true
                 case .networkError:
                     shouldRetry = true
+                case .offline:
+                    shouldRetry = false
                 default:
                     shouldRetry = false
                 }
@@ -192,6 +208,11 @@ actor LLMService {
         guard !token.isEmpty else {
             Logger.error("LLM optimizeAndProcess failed: token not set")
             throw LLMError.tokenNotSet
+        }
+
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("LLM optimizeAndProcess skipped: device is offline")
+            throw LLMError.offline
         }
 
         let systemPrompt = """
