@@ -41,6 +41,8 @@ final class SpeechRecognizer: @unchecked Sendable {
     private var isStreaming = false
     private var audioRecorder: AudioRecorderService?
     private var currentRecordingId: UUID?
+    private(set) var recognitionMode: RecognitionMode = .online
+    private var recognitionError: SpeechRecognitionError?
 
     // Serial queue for thread safety
     private let stateQueue = DispatchQueue(label: "info.karsa.app.ios.audionote.speechstate")
@@ -87,6 +89,8 @@ final class SpeechRecognizer: @unchecked Sendable {
     func startRecording() async throws -> AsyncStream<String> {
         guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
             Logger.error("Speech recognition not available")
+            recognitionMode = .failed
+            recognitionError = .notAvailable
             throw SpeechRecognitionError.notAvailable
         }
 
@@ -112,6 +116,8 @@ final class SpeechRecognizer: @unchecked Sendable {
 
         // T003, T004: Check network and set recognition mode
         let useOnDeviceRecognition = !NetworkMonitor.shared.checkConnectivity()
+        recognitionMode = useOnDeviceRecognition ? .onDevice : .online
+        recognitionError = nil
         recognitionRequest.shouldReportPartialResults = true
         recognitionRequest.requiresOnDeviceRecognition = useOnDeviceRecognition
 
@@ -182,12 +188,13 @@ final class SpeechRecognizer: @unchecked Sendable {
 
                 if let error = error as NSError? {
                     Logger.error("Recognition error: \(error.localizedDescription), code: \(error.code)")
-                    continuation.finish()
+                    selfStrong.recognitionError = .recognitionFailed(error)
+                    // Don't cancel — let recording continue, audio is saved
                 }
 
                 if error != nil {
                     Logger.warning("Unknown error in recognition task")
-                    continuation.finish()
+                    selfStrong.recognitionError = .recognitionFailed(nil)
                 }
             }
 
@@ -241,6 +248,13 @@ final class SpeechRecognizer: @unchecked Sendable {
             allRecognizedText.joined(separator: " ")
         }
         Logger.speechEvent("Recording stopped", details: "Accumulated text length: \(finalText.count)")
+
+        // Determine final mode based on errors and results
+        if recognitionError != nil && !finalText.isEmpty {
+            // Had error but got text via framework fallback — keep current mode
+        } else if recognitionError != nil && finalText.isEmpty {
+            recognitionMode = .failed
+        }
     }
 
     func getFinalText() -> String {
@@ -252,5 +266,53 @@ final class SpeechRecognizer: @unchecked Sendable {
     func getAudioFileName() -> String? {
         guard let id = currentRecordingId else { return nil }
         return "\(id.uuidString).m4a"
+    }
+
+    /// Re-recognize a saved audio file using online recognition.
+    /// Returns the recognized text.
+    func recognizeFromFile(url: URL) async throws -> String {
+        guard let speechRecognizer = speechRecognizer, speechRecognizer.isAvailable else {
+            throw SpeechRecognitionError.notAvailable
+        }
+
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("recognizeFromFile skipped: device is offline")
+            throw SpeechRecognitionError.notAvailable
+        }
+
+        Logger.info("Starting file-based online recognition: \(url.path)")
+
+        let request = SFSpeechURLRecognitionRequest(url: url)
+        request.shouldReportPartialResults = false
+        request.requiresOnDeviceRecognition = false  // Force online for upgrade
+        if #available(iOS 16.0, *) {
+            request.addsPunctuation = true
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            speechRecognizer.recognitionTask(with: request) { result, error in
+                if let error = error {
+                    Logger.error("File recognition error: \(error.localizedDescription)")
+                    continuation.resume(throwing: SpeechRecognitionError.recognitionFailed(error))
+                    return
+                }
+
+                if let result = result, result.isFinal {
+                    let text = result.bestTranscription.formattedString
+                    Logger.info("File recognition complete, text length: \(text.count)")
+                    continuation.resume(returning: text)
+                }
+            }
+        }
+    }
+
+    /// Whether the last recording session ended with a recognition error
+    var hasRecognitionError: Bool {
+        recognitionError != nil
+    }
+
+    /// The error from the last recognition session, if any
+    var lastRecognitionError: SpeechRecognitionError? {
+        recognitionError
     }
 }
