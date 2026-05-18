@@ -1,5 +1,12 @@
 import Foundation
 
+enum RecognitionMode: String, Codable {
+    case online
+    case onDevice
+    case enhanced
+    case failed
+}
+
 enum LLMStatus: String, Codable {
     case pending
     case processing
@@ -21,6 +28,7 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
     var tags: [String]?
     var llmProcessingStatus: LLMStatus?
     var optimizedContent: String? // Original content before LLM optimization
+    var recognitionMode: RecognitionMode?
 
     init(
         id: UUID = UUID(),
@@ -33,7 +41,8 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         summary: String? = nil,
         tags: [String]? = nil,
         llmProcessingStatus: LLMStatus? = nil,
-        optimizedContent: String? = nil
+        optimizedContent: String? = nil,
+        recognitionMode: RecognitionMode? = nil
     ) {
         self.id = id
         self.content = content
@@ -46,6 +55,7 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         self.tags = tags
         self.llmProcessingStatus = llmProcessingStatus
         self.optimizedContent = optimizedContent
+        self.recognitionMode = recognitionMode
     }
 
     var formattedDuration: String {
