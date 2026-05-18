@@ -190,10 +190,8 @@ final class SpeechRecognizer: @unchecked Sendable {
                     Logger.error("Recognition error: \(error.localizedDescription), code: \(error.code)")
                     selfStrong.recognitionError = .recognitionFailed(error)
                     // Don't cancel — let recording continue, audio is saved
-                }
-
-                if error != nil {
-                    Logger.warning("Unknown error in recognition task")
+                } else if error != nil {
+                    Logger.warning("Unknown non-NSError in recognition task")
                     selfStrong.recognitionError = .recognitionFailed(nil)
                 }
             }
