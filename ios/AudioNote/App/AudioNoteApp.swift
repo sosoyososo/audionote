@@ -4,6 +4,10 @@ import SwiftUI
 struct AudioNoteApp: App {
     @StateObject private var languageManager = LanguageManager.shared
 
+    init() {
+        NetworkMonitor.shared.startMonitoring()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

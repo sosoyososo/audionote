@@ -10,6 +10,9 @@ final class NetworkMonitor: @unchecked Sendable {
     private(set) var isConnected: Bool = true
     private(set) var connectionType: ConnectionType = .unknown
 
+    /// Called on .main actor when connectivity transitions from disconnected → connected
+    var onStatusChange: (@MainActor (_ isConnected: Bool) -> Void)?
+
     enum ConnectionType {
         case wifi
         case cellular
@@ -19,25 +22,28 @@ final class NetworkMonitor: @unchecked Sendable {
 
     private init() {
         monitor = NWPathMonitor()
+        // Sync-init from current path to avoid race
+        let currentPath = monitor.currentPath
+        isConnected = currentPath.status == .satisfied
+        updateConnectionType(from: currentPath)
     }
 
     func startMonitoring() {
         monitor.pathUpdateHandler = { [weak self] path in
             guard let self = self else { return }
 
+            let wasConnected = self.isConnected
             self.isConnected = path.status == .satisfied
-
-            if path.usesInterfaceType(.wifi) {
-                self.connectionType = .wifi
-            } else if path.usesInterfaceType(.cellular) {
-                self.connectionType = .cellular
-            } else if path.usesInterfaceType(.wiredEthernet) {
-                self.connectionType = .ethernet
-            } else {
-                self.connectionType = .unknown
-            }
+            self.updateConnectionType(from: path)
 
             Logger.info("Network status: \(self.isConnected), type: \(self.connectionType)")
+
+            // Fire callback on transition: disconnected → connected
+            if !wasConnected && self.isConnected {
+                Task { @MainActor in
+                    self.onStatusChange?(true)
+                }
+            }
         }
 
         monitor.start(queue: queue)
@@ -47,9 +53,19 @@ final class NetworkMonitor: @unchecked Sendable {
         monitor.cancel()
     }
 
-    /// Check network connectivity synchronously
-    /// Returns true if network is available
     func checkConnectivity() -> Bool {
-        return isConnected
+        isConnected
+    }
+
+    private func updateConnectionType(from path: NWPath) {
+        if path.usesInterfaceType(.wifi) {
+            connectionType = .wifi
+        } else if path.usesInterfaceType(.cellular) {
+            connectionType = .cellular
+        } else if path.usesInterfaceType(.wiredEthernet) {
+            connectionType = .ethernet
+        } else {
+            connectionType = .unknown
+        }
     }
 }

@@ -48,9 +48,6 @@ final class SpeechRecognizer: @unchecked Sendable {
     init() {
         speechRecognizer = SFSpeechRecognizer(locale: currentLanguage.locale)
         Logger.info("SpeechRecognizer initialized with language: \(currentLanguage.displayName)")
-
-        // Start network monitoring
-        NetworkMonitor.shared.startMonitoring()
     }
 
     var availability: Bool {
