@@ -241,14 +241,13 @@ final class TranscriptionViewModel: ObservableObject {
             }
 
         case .onDevice:
-            // On-device succeeded but can be upgraded
-            if NetworkMonitor.shared.checkConnectivity() {
-                // Auto-upgrade to online recognition
-                await enhanceRecognition(recordId: record.id)
-            }
-            // Run LLM if online (either now or after enhance completes)
+            // On-device succeeded. LLM (if enabled and online) will improve the text;
+            // skip separate enhanceRecognition since processWithLLM overwrites content anyway.
             if optimizationEnabled && NetworkMonitor.shared.checkConnectivity() {
                 await processWithLLM(recordId: record.id, originalText: originalText)
+            } else if NetworkMonitor.shared.checkConnectivity() {
+                // No LLM enabled — upgrade recognition quality only
+                await enhanceRecognition(recordId: record.id)
             }
 
         case .failed:
@@ -289,6 +288,7 @@ final class TranscriptionViewModel: ObservableObject {
         do {
             let enhancedText = try await speechRecognizer.recognizeFromFile(url: audioURL)
             Logger.info("Enhanced recognition succeeded for record \(recordId)")
+            recognitionMode = .enhanced
 
             var updated = record
             updated.content = enhancedText
@@ -426,7 +426,8 @@ final class TranscriptionViewModel: ObservableObject {
         let pendingLLM = records.filter { $0.llmProcessingStatus == nil }
         for record in pendingLLM {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
-            _ = await aiProcessingService.processRecord(record)
+            let text = record.optimizedContent ?? record.content
+            await processWithLLM(recordId: record.id, originalText: text)
         }
 
         // 2. Upgrade on-device recognitions
