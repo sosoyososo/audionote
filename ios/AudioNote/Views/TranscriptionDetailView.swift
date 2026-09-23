@@ -13,6 +13,7 @@ struct TranscriptionDetailView: View {
     @State private var currentSummary: String?
     @State private var currentTags: [String]?
     @State private var currentRecognitionMode: RecognitionMode?
+    @State private var localArchived: Bool = false
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
@@ -23,6 +24,7 @@ struct TranscriptionDetailView: View {
         self._currentSummary = State(initialValue: record.summary)
         self._currentTags = State(initialValue: record.tags)
         self._currentRecognitionMode = State(initialValue: record.recognitionMode)
+        self._localArchived = State(initialValue: record.archived)
     }
 
     var body: some View {
@@ -281,30 +283,68 @@ struct TranscriptionDetailView: View {
 
     @ViewBuilder
     private var actionsSection: some View {
-        if let mode = currentRecognitionMode,
-           (mode == .onDevice || mode == .failed),
-           record.audioFileName != nil {
-            Button {
-                upgradeRecognition()
-            } label: {
-                HStack {
-                    if viewModel.isEnhancing {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle())
-                            .scaleEffect(0.8)
-                    } else {
-                        Image(systemName: "arrow.up.doc")
+        HStack(spacing: 8) {
+            if let mode = currentRecognitionMode,
+               (mode == .onDevice || mode == .failed),
+               record.audioFileName != nil {
+                Button {
+                    upgradeRecognition()
+                } label: {
+                    HStack {
+                        if viewModel.isEnhancing {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                                .scaleEffect(0.8)
+                        } else {
+                            Image(systemName: "arrow.up.doc")
+                        }
+                        Text("在线升级识别")
                     }
-                    Text("在线升级识别")
+                    .frame(maxWidth: .infinity)
                 }
-                .frame(maxWidth: .infinity)
+                .disabled(viewModel.isEnhancing)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 16)
+                .background(Color.blue.opacity(0.1))
+                .foregroundColor(.blue)
+                .cornerRadius(10)
+            } else {
+                Spacer()
             }
-            .disabled(viewModel.isEnhancing)
+
+            archiveButton
+        }
+    }
+
+    private var archiveButton: some View {
+        Button {
+            archiveToggle()
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: localArchived ? "archivebox.fill" : "archivebox")
+                Text(localArchived
+                     ? "Detail.Action.Archived".localized
+                     : "Detail.Action.Archive".localized)
+                    .lineLimit(1)
+            }
             .padding(.vertical, 10)
             .padding(.horizontal, 16)
-            .background(Color.blue.opacity(0.1))
-            .foregroundColor(.blue)
+            .background(localArchived ? Color.orange.opacity(0.25) : Color.gray.opacity(0.1))
+            .foregroundColor(localArchived ? .orange : .primary)
             .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func archiveToggle() {
+        let nextState = !localArchived
+        localArchived = nextState
+        Task {
+            if nextState {
+                await viewModel.archiveRecord(id: record.id)
+            } else {
+                await viewModel.unarchiveRecord(id: record.id)
+            }
         }
     }
 
