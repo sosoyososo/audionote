@@ -15,7 +15,7 @@ struct ContentView: View {
 
                 HistoryListView(viewModel: viewModel)
                     .tabItem {
-                        Label("Tab.History".localized(for: languageManager.current), systemImage: "list.bullet")
+                        Label("Tab.Library".localized(for: languageManager.current), systemImage: "list.bullet")
                     }
 
                 SettingsView()
