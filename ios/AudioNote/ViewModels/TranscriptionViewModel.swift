@@ -631,6 +631,42 @@ final class TranscriptionViewModel: ObservableObject {
         selectedTags = []
     }
 
+    /// Mark a record as archived and persist the change. The record disappears from
+    /// `displayedRecords`; archived-hit counters update automatically.
+    func archiveRecord(id: UUID) async {
+        Logger.info("Archiving record: \(id.uuidString)")
+        guard var record = try? await storage.get(id: id) else {
+            Logger.warning("Cannot archive: record \(id.uuidString) not found")
+            return
+        }
+        record.archived = true
+        record.archivedAt = Date()
+        do {
+            try await storage.save(record)
+            await loadHistory()
+        } catch {
+            Logger.error("Failed to save archived record: \(error.localizedDescription)")
+        }
+    }
+
+    /// Restore an archived record to active state. The record reappears in
+    /// `displayedRecords` if it matches current filters.
+    func unarchiveRecord(id: UUID) async {
+        Logger.info("Unarchiving record: \(id.uuidString)")
+        guard var record = try? await storage.get(id: id) else {
+            Logger.warning("Cannot unarchive: record \(id.uuidString) not found")
+            return
+        }
+        record.archived = false
+        record.archivedAt = nil
+        do {
+            try await storage.save(record)
+            await loadHistory()
+        } catch {
+            Logger.error("Failed to save unarchived record: \(error.localizedDescription)")
+        }
+    }
+
     /// Case-insensitive substring match across title, summary, tags (joined), and content.
     /// Returns true when the query is empty (no filter active).
     private static func matchesSearch(_ record: TranscriptionRecord, query: String) -> Bool {
