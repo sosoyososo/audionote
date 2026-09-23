@@ -1,6 +1,6 @@
 /* Tab Bar */
 "Tab.Recording" = "录音";
-"Tab.History" = "历史记录";
+"Tab.Library" = "思录";
 
 /* Recording View */
 "Recording.Title" = "语音转文字";
@@ -58,6 +58,9 @@
 "Detail.LLM.Start" = "开始 AI 分析";
 "Detail.LLM.Processing" = "分析中...";
 "Detail.LLM.Failed" = "分析失败，点击重试";
+"Detail.Action.Archive" = "归档";
+"Detail.Action.Unarchive" = "取消归档";
+"Detail.Action.Archived" = "已归档 ✓";
 
 /* Permissions */
 "Permission.Title" = "需要权限";
@@ -85,3 +88,11 @@
 "Settings.LLM.Footer" = "输入您的 API token 用于 LLM 处理。Token 仅存储在本地设备上。";
 "Settings.LLM.Status" = "Token 状态";
 "Settings.Saved" = "设置已保存";
+
+/* Library (思录) */
+"Library.Search.Placeholder" = "搜索标题、摘要、标签、原文";
+"Library.NoResults" = "无匹配记录";
+"Library.NoTags" = "暂无标签 — 分析记录后可启用筛选";
+"Library.ArchivedBanner" = "已归档 %d 条匹配 · 点击查看";
+"Library.ArchivedSublistTitle" = "归档命中";
+"Library.ClearFilters" = "清除筛选";

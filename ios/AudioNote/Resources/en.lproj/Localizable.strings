@@ -1,6 +1,6 @@
 /* Tab Bar */
 "Tab.Recording" = "Record";
-"Tab.History" = "History";
+"Tab.Library" = "Library";
 
 /* Recording View */
 "Recording.Title" = "Voice Transcription";
@@ -58,6 +58,9 @@
 "Detail.LLM.Start" = "Start AI Analysis";
 "Detail.LLM.Processing" = "Analyzing...";
 "Detail.LLM.Failed" = "Analysis Failed, Tap to Retry";
+"Detail.Action.Archive" = "Archive";
+"Detail.Action.Unarchive" = "Unarchive";
+"Detail.Action.Archived" = "Archived ✓";
 
 /* Permissions */
 "Permission.Title" = "Permission Required";
@@ -85,3 +88,11 @@
 "Settings.LLM.Footer" = "Enter your API token for LLM processing. Token is stored locally on device.";
 "Settings.LLM.Status" = "Token Status";
 "Settings.Saved" = "Settings saved";
+
+/* Library */
+"Library.Search.Placeholder" = "Search title, summary, tags, content";
+"Library.NoResults" = "No matching records";
+"Library.NoTags" = "No tags yet — analyze records to enable filtering";
+"Library.ArchivedBanner" = "%d archived matches · tap to view";
+"Library.ArchivedSublistTitle" = "Archived matches";
+"Library.ClearFilters" = "Clear filters";
