@@ -20,6 +20,10 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var recognitionMode: RecognitionMode = .online
     @Published var isEnhancing: Bool = false
 
+    // MARK: - Library filter state (思录)
+    @Published var searchQuery: String = ""
+    @Published var selectedTags: Set<String> = []
+
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
@@ -542,5 +546,101 @@ final class TranscriptionViewModel: ObservableObject {
         let seconds = Int(recordingDuration) % 60
         let tenths = Int((recordingDuration.truncatingRemainder(dividingBy: 1)) * 10)
         return String(format: "%02d:%02d.%d", minutes, seconds, tenths)
+    }
+
+    // MARK: - Library filtering (思录)
+
+    /// Active records (non-archived) that match the current search query and selected tags.
+    /// Sort: tag-match-count desc → createdAt desc when tags are selected; otherwise createdAt desc.
+    var displayedRecords: [TranscriptionRecord] {
+        let activeMatching = historyRecords
+            .filter { !$0.archived }
+            .filter { Self.matchesSearch($0, query: searchQuery) }
+            .filter { record in
+                selectedTags.isEmpty
+                    || (record.tags ?? []).contains(where: selectedTags.contains)
+            }
+
+        if selectedTags.isEmpty {
+            return activeMatching.sorted { $0.createdAt > $1.createdAt }
+        }
+        return activeMatching.sorted { lhs, rhs in
+            let lhsCount = (lhs.tags ?? []).filter(selectedTags.contains).count
+            let rhsCount = (rhs.tags ?? []).filter(selectedTags.contains).count
+            if lhsCount != rhsCount { return lhsCount > rhsCount }
+            return lhs.createdAt > rhs.createdAt
+        }
+    }
+
+    /// All unique tags from active records, alphabetically sorted.
+    var availableTags: [String] {
+        var seen = Set<String>()
+        var result: [String] = []
+        for record in historyRecords where !record.archived {
+            for tag in record.tags ?? [] where !seen.contains(tag) {
+                seen.insert(tag)
+                result.append(tag)
+            }
+        }
+        return result.sorted()
+    }
+
+    /// Per-tag count of active records that also match the current search query.
+    var tagCounts: [String: Int] {
+        var counts: [String: Int] = [:]
+        for record in historyRecords where !record.archived {
+            guard Self.matchesSearch(record, query: searchQuery) else { continue }
+            for tag in record.tags ?? [] {
+                counts[tag, default: 0] += 1
+            }
+        }
+        return counts
+    }
+
+    /// IDs of archived records that match the current search query and selected tags.
+    var archivedHitIDs: [UUID] {
+        historyRecords
+            .filter { $0.archived }
+            .filter { Self.matchesSearch($0, query: searchQuery) }
+            .filter { record in
+                selectedTags.isEmpty
+                    || (record.tags ?? []).contains(where: selectedTags.contains)
+            }
+            .map { $0.id }
+    }
+
+    /// Count of archived records that match the current search query and selected tags.
+    var archivedHitCount: Int {
+        archivedHitIDs.count
+    }
+
+    func setSearchQuery(_ query: String) {
+        searchQuery = query
+    }
+
+    func toggleTag(_ tag: String) {
+        if selectedTags.contains(tag) {
+            selectedTags.remove(tag)
+        } else {
+            selectedTags.insert(tag)
+        }
+    }
+
+    func clearFilters() {
+        searchQuery = ""
+        selectedTags = []
+    }
+
+    /// Case-insensitive substring match across title, summary, tags (joined), and content.
+    /// Returns true when the query is empty (no filter active).
+    private static func matchesSearch(_ record: TranscriptionRecord, query: String) -> Bool {
+        guard !query.isEmpty else { return true }
+        let haystack = [
+            record.title ?? "",
+            record.summary ?? "",
+            (record.tags ?? []).joined(separator: " "),
+            record.content
+        ].joined(separator: " ")
+        return haystack.localizedCaseInsensitiveContains(query)
     }
 }
