@@ -30,6 +30,10 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
     var optimizedContent: String? // Original content before LLM optimization
     var recognitionMode: RecognitionMode?
 
+    // Archive fields
+    var archived: Bool = false
+    var archivedAt: Date? = nil
+
     init(
         id: UUID = UUID(),
         content: String,
@@ -42,7 +46,9 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         tags: [String]? = nil,
         llmProcessingStatus: LLMStatus? = nil,
         optimizedContent: String? = nil,
-        recognitionMode: RecognitionMode? = nil
+        recognitionMode: RecognitionMode? = nil,
+        archived: Bool = false,
+        archivedAt: Date? = nil
     ) {
         self.id = id
         self.content = content
@@ -56,6 +62,8 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
         self.llmProcessingStatus = llmProcessingStatus
         self.optimizedContent = optimizedContent
         self.recognitionMode = recognitionMode
+        self.archived = archived
+        self.archivedAt = archivedAt
     }
 
     var formattedDuration: String {
