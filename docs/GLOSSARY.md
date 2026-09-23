@@ -21,6 +21,8 @@
 | **TranscriptionRecord** | `ios/AudioNote/Models/TranscriptionRecord.swift:17` | The on-disk model. JSON-serialized by `TranscriptionStorage`. Adding a field is a **schema change** — see Contracts (not yet written) |
 | **optimizedContent** | field on `TranscriptionRecord` | User-edited text. **Invariant**: when `optimizedContent != content`, auto-enhance MUST skip (see `assessAndEnhance` skipped branch) |
 | **audioFileName** | field on `TranscriptionRecord` | UUID + `.m4a`. File URL is reconstructed via `AudioRecorderService.generateFileUrl(for: uuid)` — **do not** store URLs directly |
+| **archived** | field on `TranscriptionRecord` (Bool, default `false`) | When true, record is hidden from `LibraryListView.displayedRecords`. Still counted by `archivedHitIDs` when matching the current search/tag filters |
+| **archivedAt** | field on `TranscriptionRecord` (`Date?`, default `nil`) | Set when archived; cleared on unarchive. Drives archive ordering and freshness logic if added later |
 | **TranscriptionStorage** | `ios/AudioNote/Services/TranscriptionStorage.swift:26` | Single source of truth for read/write of records. Always go through this; don't write JSON manually |
 
 ## Domain: Services (boundary, do not cross directly)
@@ -39,6 +41,13 @@
 |---|---|---|
 | **enableLLMOptimization** | `UserDefaults` key `audioNote:enableLLMOptimization` | Read at `assessAndEnhance:234` and elsewhere. **Boolean UserDefaults, not a Settings field** — it's an old shortcut |
 | **SettingsViewModel** | `ios/AudioNote/ViewModels/SettingsViewModel.swift:1` | Surface for user-facing toggles. The internal flag is synced from this VM |
+
+## Domain: Navigation
+
+| Term | Symbol | Note |
+|---|---|---|
+| **思录 (Library)** | `ios/AudioNote/Views/LibraryListView.swift:3` | The renamed History tab (zh: 思录, en: Library). Hosts the records browser with search, tag filter, and archived banner. Previously `HistoryListView`; renamed per docs/superpowers/specs/2026-09-23-library-search-tag-archive-design.md |
+| **LibraryArchivedMatchesView** | `ios/AudioNote/Views/LibraryListView.swift` (same file) | Pushed sub-page reached from the archived-hit banner. Shows only archived records that match the parent's current search/tag filters |
 
 ## Anti-glossary (terms that exist but should NOT be used)
 
