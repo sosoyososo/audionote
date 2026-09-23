@@ -13,7 +13,7 @@ struct ContentView: View {
                         Label("Tab.Recording".localized(for: languageManager.current), systemImage: "mic.fill")
                     }
 
-                HistoryListView(viewModel: viewModel)
+                LibraryListView(viewModel: viewModel)
                     .tabItem {
                         Label("Tab.Library".localized(for: languageManager.current), systemImage: "list.bullet")
                     }

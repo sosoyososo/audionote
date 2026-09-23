@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct HistoryListView: View {
+struct LibraryListView: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @State private var selectedRecord: TranscriptionRecord?
     @State private var showDeleteConfirmation = false
@@ -198,5 +198,5 @@ struct RecordRowView: View {
 }
 
 #Preview {
-    HistoryListView(viewModel: TranscriptionViewModel())
+    LibraryListView(viewModel: TranscriptionViewModel())
 }
