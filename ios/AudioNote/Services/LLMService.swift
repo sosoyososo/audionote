@@ -41,7 +41,7 @@ actor LLMService {
     private let baseDelay: TimeInterval = 1.0
 
     struct APIRequest: Encodable {
-        let model: String = "deepseek-chat"
+        let model: String = "MiniMax-M2.7"
         let messages: [Message]
 
         struct Message: Encodable {

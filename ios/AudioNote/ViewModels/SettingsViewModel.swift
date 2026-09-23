@@ -71,4 +71,37 @@ final class SettingsViewModel: ObservableObject {
             }
         }
     }
+
+    /// On-demand connectivity test. Independent of the optimization toggle — does NOT
+    /// auto-enable/disable `enableLLMOptimization`. Calls `optimize()` (single string in/out,
+    /// exercises auth + endpoint + model, no JSON parsing) and surfaces the result via the
+    /// existing validation toast.
+    func testLLMConnection() {
+        guard hasToken else {
+            validationMessage = "请先配置 API Token"
+            showValidationResult = true
+            return
+        }
+
+        isValidating = true
+        validationMessage = nil
+
+        Task {
+            do {
+                let testText = "你好，这是一个测试。"
+                _ = try await llmService.optimize(testText, token: llmToken)
+                await MainActor.run {
+                    self.isValidating = false
+                    self.validationMessage = "测试成功！LLM API 可用"
+                    self.showValidationResult = true
+                }
+            } catch {
+                await MainActor.run {
+                    self.isValidating = false
+                    self.validationMessage = "测试失败：\(error.localizedDescription)"
+                    self.showValidationResult = true
+                }
+            }
+        }
+    }
 }

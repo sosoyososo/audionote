@@ -17,6 +17,11 @@ struct SettingsView: View {
                         viewModel.saveToken()
                     }
                     .disabled(viewModel.llmToken.isEmpty)
+
+                    Button("测试连接") {
+                        viewModel.testLLMConnection()
+                    }
+                    .disabled(viewModel.llmToken.isEmpty || viewModel.isValidating)
                 } header: {
                     Text("Settings.LLM.Title")
                 } footer: {
