@@ -297,11 +297,63 @@ actor LLMService {
             throw LLMError.invalidResponse
         }
 
-        guard let jsonData = content.data(using: .utf8) else {
-            throw LLMError.decodingError
+        // Happy path: model honored "JSON only, no other text".
+        if let directData = content.data(using: .utf8),
+           let directResult = try? JSONDecoder().decode(LLMOptimizeAndProcessResult.self, from: directData) {
+            return directResult
         }
 
-        return try JSONDecoder().decode(LLMOptimizeAndProcessResult.self, from: jsonData)
+        // Direct decode failed — model likely wrapped the JSON in markdown
+        // fences or surrounding prose despite the explicit instruction.
+        // Log first 500 chars for diagnosis, then try balanced-brace extraction.
+        Logger.warning("LLM optimizeAndProcess: direct JSON decode failed; attempting extraction. Raw (first 500 chars): \(String(content.prefix(500)))")
+
+        if let extracted = Self.extractFirstJSONObject(from: content),
+           let extractedData = extracted.data(using: .utf8),
+           let extractedResult = try? JSONDecoder().decode(LLMOptimizeAndProcessResult.self, from: extractedData) {
+            Logger.info("LLM optimizeAndProcess: extraction succeeded")
+            return extractedResult
+        }
+
+        Logger.error("LLM optimizeAndProcess: extraction failed. Full content: \(content)")
+        throw LLMError.decodingError
+    }
+
+    /// Find the first balanced top-level `{...}` substring in `text`, respecting JSON
+    /// string boundaries (quotes and backslash escapes). Returns nil if no balanced
+    /// object exists.
+    private static func extractFirstJSONObject(from text: String) -> String? {
+        guard let firstBrace = text.firstIndex(of: "{") else { return nil }
+        var depth = 0
+        var inString = false
+        var escapeNext = false
+        var lastBraceIndex: String.Index?
+
+        var idx = firstBrace
+        while idx < text.endIndex {
+            let c = text[idx]
+            if escapeNext {
+                escapeNext = false
+            } else if c == "\\" {
+                escapeNext = true
+            } else if c == "\"" {
+                inString.toggle()
+            } else if !inString {
+                if c == "{" {
+                    depth += 1
+                } else if c == "}" {
+                    depth -= 1
+                    if depth == 0 {
+                        lastBraceIndex = idx
+                        break
+                    }
+                }
+            }
+            idx = text.index(after: idx)
+        }
+
+        guard let end = lastBraceIndex else { return nil }
+        return String(text[firstBrace...end])
     }
 
     private func callAPI(request: APIRequest, token: String) async throws -> LLMResult {
