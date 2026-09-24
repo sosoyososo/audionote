@@ -24,6 +24,7 @@
 | **archived** | field on `TranscriptionRecord` (Bool, default `false`) | When true, record is hidden from `LibraryListView.displayedRecords`. Still counted by `archivedHitIDs` when matching the current search/tag filters |
 | **archivedAt** | field on `TranscriptionRecord` (`Date?`, default `nil`) | Set when archived; cleared on unarchive. Drives archive ordering and freshness logic if added later |
 | **TranscriptionStorage** | `ios/AudioNote/Services/TranscriptionStorage.swift:26` | Single source of truth for read/write of records. Always go through this; don't write JSON manually |
+| **StorageCoordinator** | `ios/AudioNote/Services/StorageCoordinator.swift` (singleton, `@MainActor`) | Owns the user-picked `AudioNote` folder URL in the Files app + its security-scoped bookmark (one, root-level, persisted in `UserDefaults`). **All** file path resolution goes through `StorageCoordinator.shared.audioURL(for:)` / `.jsonURL` / `.rootURL`. Never write to `Documents/` directly — old sandbox data is unrecoverable. Bootstrap on launch (`ContentView.onAppear`); gate the tab UI on `.isReady`; release/re-acquire on scene-phase transitions (wired in `AudioNoteApp` `WindowGroup`) |
 
 ## Domain: Services (boundary, do not cross directly)
 
