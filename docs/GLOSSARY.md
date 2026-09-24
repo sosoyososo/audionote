@@ -48,6 +48,7 @@
 |---|---|---|
 | **思录 (Library)** | `ios/AudioNote/Views/LibraryListView.swift:3` | The renamed History tab (zh: 思录, en: Library). Hosts the records browser with search, tag filter, and archived banner. Previously `HistoryListView`; renamed per docs/superpowers/specs/2026-09-23-library-search-tag-archive-design.md |
 | **LibraryArchivedMatchesView** | `ios/AudioNote/Views/LibraryListView.swift` (same file) | Pushed sub-page reached from the archived-hit banner. Shows only archived records that match the parent's current search/tag filters |
+| **TaggedItem** | `ios/AudioNote/Models/TranscriptionRecord.swift` | `(name: String, score: Double)` — a tag with LLM-assigned relevance score in `[0.0, 1.0]`. LLM is prompted to return tags sorted by score desc. Legacy `[String]` records on disk auto-migrate via `decodeTags` with a descending pseudo-score ladder (1.0, 0.75, 0.5, 0.25, 0.0) |
 
 ## Anti-glossary (terms that exist but should NOT be used)
 

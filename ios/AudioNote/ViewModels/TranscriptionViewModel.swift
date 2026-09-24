@@ -566,31 +566,45 @@ final class TranscriptionViewModel: ObservableObject {
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter { record in
                 selectedTags.isEmpty
-                    || (record.tags ?? []).contains(where: selectedTags.contains)
+                    || record.tagNames.contains(where: selectedTags.contains)
             }
 
         if selectedTags.isEmpty {
             return activeMatching.sorted { $0.createdAt > $1.createdAt }
         }
         return activeMatching.sorted { lhs, rhs in
-            let lhsCount = (lhs.tags ?? []).filter(selectedTags.contains).count
-            let rhsCount = (rhs.tags ?? []).filter(selectedTags.contains).count
+            let lhsCount = lhs.tagNames.filter(selectedTags.contains).count
+            let rhsCount = rhs.tagNames.filter(selectedTags.contains).count
             if lhsCount != rhsCount { return lhsCount > rhsCount }
             return lhs.createdAt > rhs.createdAt
         }
     }
 
-    /// All unique tags from active records, alphabetically sorted.
+    /// All unique tag names from active records. Order is by the maximum relevance
+    /// score across all records that carry the tag (descending), so the most
+    /// "important" tags surface first; ties break alphabetically. Legacy records
+    /// without scores still surface, ordered alphabetically among themselves.
     var availableTags: [String] {
-        var seen = Set<String>()
-        var result: [String] = []
+        struct ScoredTag { let name: String; let maxScore: Double; let hasScore: Bool }
+        var byName: [String: ScoredTag] = [:]
         for record in historyRecords where !record.archived {
-            for tag in record.tags ?? [] where !seen.contains(tag) {
-                seen.insert(tag)
-                result.append(tag)
+            for tag in record.tags ?? [] {
+                let prev = byName[tag.name]
+                let prevScore = prev?.maxScore ?? -.infinity
+                let newScore = max(prevScore, tag.score)
+                byName[tag.name] = ScoredTag(
+                    name: tag.name,
+                    maxScore: newScore,
+                    hasScore: (prev?.hasScore ?? false) || true
+                )
             }
         }
-        return result.sorted()
+        return byName.values
+            .sorted { lhs, rhs in
+                if lhs.maxScore != rhs.maxScore { return lhs.maxScore > rhs.maxScore }
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+            .map(\.name)
     }
 
     /// Per-tag count of active records that also match the current search query.
@@ -598,8 +612,8 @@ final class TranscriptionViewModel: ObservableObject {
         var counts: [String: Int] = [:]
         for record in historyRecords where !record.archived {
             guard Self.matchesSearch(record, query: searchQuery) else { continue }
-            for tag in record.tags ?? [] {
-                counts[tag, default: 0] += 1
+            for name in record.tagNames {
+                counts[name, default: 0] += 1
             }
         }
         return counts
@@ -612,7 +626,7 @@ final class TranscriptionViewModel: ObservableObject {
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter { record in
                 selectedTags.isEmpty
-                    || (record.tags ?? []).contains(where: selectedTags.contains)
+                    || record.tagNames.contains(where: selectedTags.contains)
             }
             .map { $0.id }
     }
@@ -682,7 +696,7 @@ final class TranscriptionViewModel: ObservableObject {
         let haystack = [
             record.title ?? "",
             record.summary ?? "",
-            (record.tags ?? []).joined(separator: " "),
+            record.tagNames.joined(separator: " "),
             record.content
         ].joined(separator: " ")
         return haystack.localizedCaseInsensitiveContains(query)

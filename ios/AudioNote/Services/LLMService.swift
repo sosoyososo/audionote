@@ -25,14 +25,14 @@ enum LLMError: Error, LocalizedError {
 struct LLMResult {
     let title: String
     let summary: String
-    let tags: [String]
+    let tags: [TaggedItem]
 }
 
 struct LLMOptimizeAndProcessResult: Decodable {
     let optimizedText: String
     let title: String
     let summary: String
-    let tags: [String]
+    let tags: [TaggedItem]
 }
 
 actor LLMService {
@@ -65,7 +65,7 @@ actor LLMService {
     struct LLMResponse: Decodable {
         let title: String
         let summary: String
-        let tags: [String]
+        let tags: [TaggedItem]
     }
 
     func process(_ transcription: String, token: String) async throws -> LLMResult {
@@ -80,9 +80,11 @@ actor LLMService {
         }
 
         let systemPrompt = """
-        You are a note organizer. Extract title, summary (50-100 chars), and tags (3-5) from the following transcription.
-        Response JSON format only, no other text:
-        {"title": "...", "summary": "...", "tags": [...]}
+        You are a note organizer. Extract a title, a 50-100 character summary, and 3-5 tags from the following transcription.
+        For each tag, also assign a relevance score in [0.0, 1.0] (1.0 = highly relevant, 0.0 = marginal). Return tags sorted by score descending.
+
+        Respond with JSON only — no prose, no markdown fences. Use this exact shape:
+        {"title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
         """
 
         let request = APIRequest(messages: [
@@ -222,10 +224,10 @@ actor LLMService {
 1. 优化转录文本，修正标点和同音词错误
 2. 为笔记提取标题（简短明了）
 3. 生成50-100字的摘要
-4. 提取3-5个标签
+4. 提取3-5个标签，每个标签附带 0.0-1.0 的相关性分数（1.0=高度相关，0.0=边缘相关），按分数从高到低排序
 
-请严格按照以下JSON格式返回，不要添加任何解释或标记：
-{"optimizedText": "...", "title": "...", "summary": "...", "tags": [...]}
+请严格按照以下JSON格式返回，不要添加任何解释或 markdown 标记：
+{"optimizedText": "...", "title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
 """
 
         let request = APIRequest(messages: [

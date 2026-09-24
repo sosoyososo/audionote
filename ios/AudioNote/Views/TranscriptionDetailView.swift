@@ -11,7 +11,7 @@ struct TranscriptionDetailView: View {
     @State private var currentLLMStatus: LLMStatus?
     @State private var currentTitle: String?
     @State private var currentSummary: String?
-    @State private var currentTags: [String]?
+    @State private var currentTags: [TaggedItem]?
     @State private var currentRecognitionMode: RecognitionMode?
     @State private var localArchived: Bool = false
 
@@ -449,18 +449,24 @@ struct TranscriptionDetailView: View {
 }
 
 struct TagFlowView: View {
-    let tags: [String]
+    let tags: [TaggedItem]
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(tags, id: \.self) { tag in
-                    Text(tag)
-                        .font(.caption)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.accentColor.opacity(0.1))
-                        .cornerRadius(8)
+                ForEach(tags, id: \.name) { tag in
+                    HStack(spacing: 4) {
+                        Text(tag.name)
+                            .font(.caption)
+                        Text(String(format: "%.2f", tag.score))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.accentColor.opacity(0.1))
+                    .cornerRadius(8)
                 }
             }
         }

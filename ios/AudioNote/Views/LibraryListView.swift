@@ -365,16 +365,19 @@ struct RecordRowView: View {
     /// De-emphasized inline `#tag` row. Matches the existing caption + secondary
     /// visual language used by time / duration / archived badge so tags don't
     /// out-shout the title or summary. Renders nothing when there are no tags,
-    /// collapses overflow past 3 tags into `+N`.
+    /// collapses overflow past 3 tags into `+N`. Sort order: LLM-provided
+    /// relevance score descending (so the most relevant tag comes first).
     @ViewBuilder
     private var tagsRow: some View {
-        let cleaned = record.tags?.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? []
+        let cleaned = (record.tags ?? [])
+            .filter { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            .sorted { $0.score > $1.score }
         if !cleaned.isEmpty {
             let shown = Array(cleaned.prefix(3))
             let overflow = cleaned.count - shown.count
             HStack(spacing: 6) {
-                ForEach(shown, id: \.self) { tag in
-                    Text("#\(tag)")
+                ForEach(shown, id: \.name) { tag in
+                    Text("#\(tag.name)")
                         .lineLimit(1)
                 }
                 if overflow > 0 {
