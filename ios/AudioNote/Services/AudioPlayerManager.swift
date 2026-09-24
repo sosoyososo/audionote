@@ -30,8 +30,13 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
         stop()
         currentFileName = fileName
 
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let fileUrl = documentsPath.appendingPathComponent("Recordings").appendingPathComponent(fileName)
+        let url = URL(fileURLWithPath: fileName)
+        let basename = url.deletingPathExtension().lastPathComponent
+        guard let id = UUID(uuidString: basename) else {
+            Logger.error("Audio fileName is not a UUID: \(fileName)")
+            return
+        }
+        let fileUrl = StorageCoordinator.shared.audioURL(for: id)
 
         guard FileManager.default.fileExists(atPath: fileUrl.path) else {
             Logger.error("Audio file not found: \(fileUrl.path)")
