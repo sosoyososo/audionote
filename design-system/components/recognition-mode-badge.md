@@ -1,10 +1,13 @@
 # RecognitionModeStyle
 
-> **Status: inferred → confirmed in practice** — applied in
-> `ios/AudioNote/Views/SharedComponents.swift:74-127` and consumed by
-> `ios/AudioNote/Views/RecordingView.swift:169, :294` (2026-09-24).
+> **Status: confirmed in practice** — applied across both consumers:
+> `ios/AudioNote/Views/RecordingView.swift:169, :294` (via `ModeBadge`)
+> and `ios/AudioNote/Views/TranscriptionDetailView.swift:127-134` (direct
+> struct use). The Detail page's `recognitionModeColor/Icon/Label` helpers
+> are gone (deleted 2026-09-24).
 >
-> This is the **strongest** deduplication candidate in the codebase, now live.
+> This was the **strongest** deduplication candidate in the codebase, now
+> consolidated.
 
 ## §1. Problem — duplicated visual semantics
 

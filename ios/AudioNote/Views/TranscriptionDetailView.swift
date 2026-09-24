@@ -125,12 +125,12 @@ struct TranscriptionDetailView: View {
             }
 
             if let mode = currentRecord.recognitionMode {
-                HStack {
-                    Image(systemName: recognitionModeIcon(for: mode))
-                        .foregroundColor(recognitionModeColor(for: mode))
-                    Text(recognitionModeLabel(for: mode))
-                        .foregroundColor(recognitionModeColor(for: mode))
+                let style = RecognitionModeStyle(mode: mode)
+                HStack(spacing: 6) {
+                    Image(systemName: style.icon)
+                    Text(style.label)
                 }
+                .foregroundColor(style.color)
             }
         }
         .font(.subheadline)
@@ -250,36 +250,11 @@ struct TranscriptionDetailView: View {
     }
 
     // MARK: - Recognition Mode Helpers
-
-    private func recognitionModeIcon(for mode: RecognitionMode?) -> String {
-        switch mode {
-        case .online: return "cloud.fill"
-        case .onDevice: return "iphone.gen1"
-        case .enhanced: return "cloud.fill.badge.checkmark"
-        case .failed: return "xmark.shield.fill"
-        case .none: return "questionmark.circle"
-        }
-    }
-
-    private func recognitionModeColor(for mode: RecognitionMode?) -> Color {
-        switch mode {
-        case .online: return .green
-        case .onDevice: return .yellow
-        case .enhanced: return .blue
-        case .failed: return .red
-        case .none: return .secondary
-        }
-    }
-
-    private func recognitionModeLabel(for mode: RecognitionMode?) -> String {
-        switch mode {
-        case .online: return "在线识别"
-        case .onDevice: return "离线识别"
-        case .enhanced: return "已在线升级"
-        case .failed: return "识别失败"
-        case .none: return "未知"
-        }
-    }
+//
+// `RecognitionModeStyle` lives in `SharedComponents.swift` and is the
+// single source of truth for mode → {icon, color, label}. This view
+// consumes it via the `if let mode = currentRecord.recognitionMode`
+// binding above — no per-view helper duplication.
 
     @ViewBuilder
     private var actionsSection: some View {
