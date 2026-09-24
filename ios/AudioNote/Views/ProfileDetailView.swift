@@ -59,6 +59,17 @@ struct ProfileDetailView: View {
     var body: some View {
         NavigationView {
             Form {
+                if case .create = mode {
+                    Section {
+                        Text("ProfileDetail.DataFlow.Body".localized)
+                            .font(.footnote)
+                            .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } header: {
+                        Text("ProfileDetail.DataFlow.Title".localized)
+                    }
+                }
+
                 Section {
                     TextField("Settings.LLM.Profile.DisplayName".localized, text: $displayName)
                         .textInputAutocapitalization(.never)

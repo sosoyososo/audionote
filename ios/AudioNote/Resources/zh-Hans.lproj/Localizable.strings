@@ -102,9 +102,6 @@
 "Settings.LLM.ProviderProfiles.Add" = "添加 Provider";
 "Settings.LLM.ProviderProfiles.NoneActive" = "尚未配置 — 添加一个 Provider 后才能启用 LLM 优化";
 "Settings.LLM.ProviderProfiles.Footer" = "支持 OpenAI、DeepSeek、Groq、Ollama 等 OpenAI 兼容端点";
-"Settings.LLM.Optimize.Header" = "LLM 优化";
-"Settings.LLM.Optimize.Title" = "启用录音内容优化";
-"Settings.LLM.Optimize.Footer" = "开启后,录音结束后自动优化转录文本,修正标点和同音词错误";
 "Settings.LLM.Status.NotSet" = "未配置";
 "Settings.LLM.Status" = "状态";
 "Settings.LLM.Migration.Toast" = "LLM 设置已迁移:请配置 Provider";
@@ -132,3 +129,7 @@
 "Settings.LLM.Profile.Error.UnsupportedScheme" = "Base URL 协议必须是 http 或 https";
 "Settings.LLM.Profile.Error.PlainHttpNotLocal" = "http 仅允许用于 localhost 或局域网";
 "Settings.LLM.Profile.Error.MissingModel" = "模型名称不能为空";
+
+/* Provider 编辑页 — 数据流向说明（仅 create 模式） */
+"ProfileDetail.DataFlow.Title" = "数据流向";
+"ProfileDetail.DataFlow.Body" = "保存该 Provider 后,录音转成的文本将发送给该 Provider 用于优化（文本整理、标题、摘要、标签）。\n\n原始音频始终只与 Apple 通讯（设备本地识别或 Apple Cloud 识别），不会发送给该 Provider。\n\n如不希望文本离开本机,请不要配置 Provider —— 此时录音文本仅做本地识别与保存。";

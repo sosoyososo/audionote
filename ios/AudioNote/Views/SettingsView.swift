@@ -11,7 +11,6 @@ struct SettingsView: View {
 
     @State private var editingProfile: LLMProviderProfile? = nil
     @State private var isCreatingNew: Bool = false
-    @State private var optimizeEnabled: Bool = false
 
     var body: some View {
         NavigationView {
@@ -31,36 +30,21 @@ struct SettingsView: View {
                     } label: {
                         Label("Settings.LLM.ProviderProfiles.Add".localized, systemImage: "plus.circle.fill")
                     }
+                    if viewModel.isPinging {
+                        HStack {
+                            ProgressView().progressViewStyle(CircularProgressViewStyle())
+                            Text("Settings.LLM.Profile.Test".localized)
+                        }
+                    } else {
+                        Button("Settings.LLM.Profile.Test".localized) {
+                            viewModel.testActiveConnection()
+                        }
+                        .disabled(viewModel.activeProfile == nil)
+                    }
                 } header: {
                     Text("Settings.LLM.ProviderProfiles.Title".localized)
                 } footer: {
                     Text("Settings.LLM.ProviderProfiles.Footer".localized)
-                }
-
-                // MARK: Optimization toggle
-                Section {
-                    HStack {
-                        Text("Settings.LLM.Optimize.Title".localized)
-                        Spacer()
-                        if viewModel.isPinging {
-                            ProgressView().progressViewStyle(CircularProgressViewStyle())
-                        } else {
-                            Toggle("", isOn: $optimizeEnabled)
-                                .labelsHidden()
-                                .disabled(!viewModel.canEnableOptimization)
-                                .onChange(of: optimizeEnabled) { newValue in
-                                    UserDefaults.standard.set(newValue, forKey: "audioNote:enableLLMOptimization")
-                                }
-                        }
-                    }
-                    Button("Settings.LLM.Profile.Test".localized) {
-                        viewModel.testActiveConnection()
-                    }
-                    .disabled(viewModel.activeProfile == nil || viewModel.isPinging)
-                } header: {
-                    Text("Settings.LLM.Optimize.Header".localized)
-                } footer: {
-                    Text("Settings.LLM.Optimize.Footer".localized)
                 }
 
                 // MARK: Active profile status
@@ -106,9 +90,6 @@ struct SettingsView: View {
                     .padding(.bottom, 40)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
-            }
-            .onAppear {
-                optimizeEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
             }
         }
     }

@@ -40,16 +40,6 @@ final class SettingsViewModel: ObservableObject {
     var activeProfile: LLMProviderProfile? { store.active }
     var activeProfileId: UUID? { store.activeProfileId }
 
-    /// True when there is at least one profile AND it has its API key
-    /// available (if required). Drives the "enable optimization" toggle.
-    var canEnableOptimization: Bool {
-        guard let active = store.active else { return false }
-        if active.requiresAPIKey {
-            return (store.apiKey(for: active.id)?.isEmpty == false)
-        }
-        return true
-    }
-
     // MARK: - Profile CRUD (delegated)
 
     func upsert(_ profile: LLMProviderProfile, apiKey: String?) {
