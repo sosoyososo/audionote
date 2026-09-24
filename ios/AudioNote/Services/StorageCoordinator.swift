@@ -47,12 +47,13 @@ final class StorageCoordinator: ObservableObject {
                 isReady = false
                 return
             }
-            guard url.startAccessingSecurityScopedResource() else {
-                isReady = false
-                errorMessage = "无法访问存储位置,请重新选择"
-                return
-            }
-            // If stale, refresh bookmark on next changeLocation call
+            // URLs returned by UIDocumentPickerViewController on iOS are NOT
+            // security-scoped (that's for FileProvider extensions). The system
+            // grants access implicitly while the picker is alive; after that,
+            // we just use the resolved URL directly. Do NOT call
+            // `startAccessingSecurityScopedResource()` here — it returns
+            // `false` for non-scoped URLs and traps the user into re-picking.
+            // If stale, refresh bookmark
             if isStale {
                 // Best-effort refresh — re-create bookmark data and re-save
                 if let fresh = try? url.bookmarkData(
@@ -64,7 +65,7 @@ final class StorageCoordinator: ObservableObject {
                 }
             }
             resolvedRoot = url
-            didStartAccess = true
+            didStartAccess = true  // kept so handleScenePhase is a no-op (not security-scoped)
             errorMessage = nil
             isReady = true
         } catch {
