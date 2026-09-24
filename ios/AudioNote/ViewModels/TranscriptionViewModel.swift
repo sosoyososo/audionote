@@ -477,6 +477,12 @@ final class TranscriptionViewModel: ObservableObject {
         if !StorageCoordinator.shared.isReady {
             await StorageCoordinator.shared.bootstrap()
         }
+        // If bootstrap didn't resolve a bookmark (first launch, no folder picked yet),
+        // `StorageCoordinator.rootURL` would trap. Bail until the user picks a
+        // folder via OnboardingView. The gate in ContentView keeps OnboardingView
+        // visible until `isReady` flips, and any subsequent loadHistory call after
+        // a successful re-pick will reach the body below.
+        guard StorageCoordinator.shared.isReady else { return }
         Logger.debug("Loading history")
         do {
             let records = try await storage.loadAll()
