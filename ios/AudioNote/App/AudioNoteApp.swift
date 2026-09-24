@@ -10,6 +10,12 @@ struct AudioNoteApp: App {
         // Migrate legacy single `audioNote:llmToken` UserDefaults entry into
         // the new ProviderProfileStore / Keychain layout. Idempotent.
         ProviderProfileStore.runLegacyTokenMigration()
+        // Pre-resolve the Files-app bookmark so ContentView's first frame
+        // already knows `StorageCoordinator.isReady`. Avoids the OnboardingView
+        // flash on subsequent launches (when the bookmark is already saved).
+        if let url = StorageCoordinator.shared.resolveSync() {
+            StorageCoordinator.shared.setReady(url: url)
+        }
     }
 
     var body: some Scene {

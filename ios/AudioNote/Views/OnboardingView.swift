@@ -4,6 +4,7 @@ import UIKit
 struct OnboardingView: View {
     @ObservedObject private var storage = StorageCoordinator.shared
     @State private var isPickerPresented = false
+    @State private var isApplyingPick = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -23,15 +24,34 @@ struct OnboardingView: View {
             Button {
                 isPickerPresented = true
             } label: {
-                Text("选择存储位置")
-                    .font(.headline)
+                if isApplyingPick {
+                    HStack(spacing: 8) {
+                        ProgressView().tint(.white)
+                        Text("正在保存…").font(.headline)
+                    }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.accentColor)
+                    .background(Color.accentColor.opacity(0.7))
                     .cornerRadius(12)
+                } else {
+                    Text("选择存储位置")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .cornerRadius(12)
+                }
             }
+            .disabled(isApplyingPick)
             .padding(.horizontal, 40)
+
+            if isApplyingPick {
+                Text("首次保存该目录的书签,请稍候…")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             if let err = storage.errorMessage {
                 Text(err)
@@ -42,7 +62,12 @@ struct OnboardingView: View {
         .padding()
         .sheet(isPresented: $isPickerPresented) {
             FolderPickerSheet { url in
-                Task { await storage.acceptPickerResult(url: url) }
+                isPickerPresented = false
+                isApplyingPick = true
+                Task {
+                    await storage.acceptPickerResult(url: url)
+                    isApplyingPick = false
+                }
             }
         }
     }

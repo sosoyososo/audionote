@@ -23,55 +23,67 @@ final class StorageCoordinator: ObservableObject {
 
     // MARK: - Bootstrap
 
+    /// Apply a URL already resolved synchronously (called from
+    /// `AudioNoteApp.init()` after `resolveSync()`). Sets state without
+    /// any further UserDefaults reads or file system checks.
+    @MainActor
+    func setReady(url: URL) {
+        resolvedRoot = url
+        didStartAccess = true
+        errorMessage = nil
+        isReady = true
+    }
+
+    /// Synchronous bookmark resolution. Has no `await` inside `bootstrap()`,
+    /// so we expose this path for `init()`-time calls (eliminates the
+    /// OnboardingView flash on subsequent launches). If the bookmark is
+    /// missing, stale, or points at a missing/non-directory URL, returns
+    /// `nil` and clears UserDefaults.
+    @MainActor
+    func resolveSync() -> URL? {
+        guard let data = UserDefaults.standard.data(forKey: StorageBookmarkKey.rootBookmark) else {
+            return nil
+        }
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: data,
+            options: [],
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else {
+            UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
+            return nil
+        }
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+              isDir.boolValue else {
+            UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
+            return nil
+        }
+        if isStale {
+            // Best-effort refresh
+            if let fresh = try? url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            ) {
+                UserDefaults.standard.set(fresh, forKey: StorageBookmarkKey.rootBookmark)
+            }
+        }
+        return url
+    }
+
     /// Resolves stored bookmark, acquires security-scoped resource, sets `isReady`.
     /// If no bookmark, bookmark stale, or the URL no longer points at a directory,
     /// leaves `isReady = false` (so `OnboardingView` is shown again).
     func bootstrap() async {
-        guard let data = UserDefaults.standard.data(forKey: StorageBookmarkKey.rootBookmark) else {
-            isReady = false
-            return
-        }
-        var isStale = false
-        do {
-            let url = try URL(
-                resolvingBookmarkData: data,
-                options: [],
-                relativeTo: nil,
-                bookmarkDataIsStale: &isStale
-            )
-            // Reject if URL doesn't exist or isn't a directory
-            var isDir: ObjCBool = false
-            guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
-                  isDir.boolValue else {
-                UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
-                isReady = false
-                return
-            }
-            // URLs returned by UIDocumentPickerViewController on iOS are NOT
-            // security-scoped (that's for FileProvider extensions). The system
-            // grants access implicitly while the picker is alive; after that,
-            // we just use the resolved URL directly. Do NOT call
-            // `startAccessingSecurityScopedResource()` here — it returns
-            // `false` for non-scoped URLs and traps the user into re-picking.
-            // If stale, refresh bookmark
-            if isStale {
-                // Best-effort refresh — re-create bookmark data and re-save
-                if let fresh = try? url.bookmarkData(
-                    options: [],
-                    includingResourceValuesForKeys: nil,
-                    relativeTo: nil
-                ) {
-                    UserDefaults.standard.set(fresh, forKey: StorageBookmarkKey.rootBookmark)
-                }
-            }
+        if let url = resolveSync() {
             resolvedRoot = url
-            didStartAccess = true  // kept so handleScenePhase is a no-op (not security-scoped)
+            didStartAccess = true
             errorMessage = nil
             isReady = true
-        } catch {
-            UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
+        } else {
             isReady = false
-            errorMessage = "存储位置读取失败,请重新选择"
         }
     }
 
