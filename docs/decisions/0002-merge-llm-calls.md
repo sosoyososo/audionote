@@ -1,11 +1,15 @@
 # ADR-0002: Single merged LLM call for optimize + process
 
+> **SUPERSEDED by ADR-0003 (2026-09-24) — multi-provider LLM.**
+>
+> The endpoint-locked-by-proxy assumption no longer holds. The schema (4 fields + `[TaggedItem]`) and the merged-call preference **are** still valid — see ADR-0003 §"Relationship to earlier ADRs".
+
 | Field | Value |
 |---|---|
-| **Status** | ACCEPTED |
+| **Status** | SUPERSEDED |
 | **Date** | 2026-04-09 |
 | **Supersedes** | — |
-| **Superseded-by** | — |
+| **Superseded-by** | ADR-0003 (2026-09-24) — schema + merged-call preference still in force; endpoint-locked assumption retired |
 | **Author** | — |
 
 ## Context

@@ -1,5 +1,9 @@
 # 合并 LLM 调用设计文档
 
+> **SUPERSEDED by ADR-0003 (2026-09-24) — multi-provider LLM.**
+>
+> The endpoint-locked-by-proxy assumption no longer holds. The schema (4 fields + `[TaggedItem]`) and the merged-call preference **are** still valid — see ADR-0003 §"Relationship to earlier ADRs".
+
 ## 概述
 
 将录音结束后分别调用 LLM 优化文本和提取标签的两个独立操作，合并为一次 LLM 调用完成。

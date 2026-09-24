@@ -96,3 +96,33 @@
 "Library.ArchivedBanner" = "已归档 %d 条匹配 · 点击查看";
 "Library.ArchivedSublistTitle" = "归档命中";
 "Library.ClearFilters" = "清除筛选";
+
+/* Settings — LLM Provider (multi-profile, 2026-09-24) */
+"Settings.LLM.ProviderProfiles.Title" = "LLM Provider";
+"Settings.LLM.ProviderProfiles.Add" = "添加 Provider";
+"Settings.LLM.ProviderProfiles.NoneActive" = "尚未配置 — 添加一个 Provider 后才能启用 LLM 优化";
+"Settings.LLM.ProviderProfiles.Footer" = "支持 OpenAI、DeepSeek、Groq、Ollama 等 OpenAI 兼容端点";
+"Settings.LLM.Optimize.Header" = "LLM 优化";
+"Settings.LLM.Optimize.Title" = "启用录音内容优化";
+"Settings.LLM.Optimize.Footer" = "开启后,录音结束后自动优化转录文本,修正标点和同音词错误";
+"Settings.LLM.Status.NotSet" = "未配置";
+"Settings.LLM.Status" = "状态";
+"Settings.LLM.Migration.Toast" = "LLM 设置已迁移:请配置 Provider";
+"Settings.LLM.Profile.New" = "添加 Provider";
+"Settings.LLM.Profile.Edit" = "编辑 Provider";
+"Settings.LLM.Profile.DisplayName" = "显示名称";
+"Settings.LLM.Profile.Provider" = "Provider";
+"Settings.LLM.Profile.BaseURL.Hint" = "必须是 OpenAI 兼容的 /chat/completions 端点";
+"Settings.LLM.Profile.Model" = "模型名称";
+"Settings.LLM.Profile.Auth" = "鉴权";
+"Settings.LLM.Profile.Auth.Footer" = "本地推理(Ollama / LM Studio)通常不需要 API Key";
+"Settings.LLM.Profile.RequiresAPIKey" = "需要 API Key";
+"Settings.LLM.Profile.APIKey" = "API Key";
+"Settings.LLM.Profile.Test" = "测试连接";
+"Settings.LLM.Profile.SetActive" = "设为活动";
+"Settings.LLM.Profile.Save" = "保存";
+"Settings.LLM.Profile.Cancel" = "取消";
+"Settings.LLM.Test.Success" = "✓ 连接成功";
+"Settings.LLM.Test.Fail" = "连接失败: %@";
+"Settings.LLM.Test.NoProfile" = "请先配置 Provider";
+"Settings.LLM.Profile.Error.InvalidURL" = "Base URL 格式不合法";

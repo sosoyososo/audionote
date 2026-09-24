@@ -27,7 +27,6 @@ final class TranscriptionViewModel: ObservableObject {
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
-    private let aiProcessingService = AIProcessingService()
     private let llmService = LLMService()
     private var durationTimer: Timer?
     private var recordingStartTime: Date?
@@ -347,7 +346,14 @@ final class TranscriptionViewModel: ObservableObject {
         isLLMProcessing = true
         llmProcessingFailed = false
 
-        let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+        // Pull the active profile + its API key from the store. If the user
+        // hasn't configured one yet, skip silently — the LLM path is opt-in.
+        guard let profile = ProviderProfileStore.shared.active else {
+            Logger.warning("LLM processWithLLM skipped: no active profile")
+            isLLMProcessing = false
+            return
+        }
+        let apiKey = ProviderProfileStore.shared.apiKey(for: profile.id)
 
         // If offline, mark as failed immediately and wait for recovery
         guard NetworkMonitor.shared.checkConnectivity() else {
@@ -361,63 +367,58 @@ final class TranscriptionViewModel: ObservableObject {
             return
         }
 
-        let maxAttempts = 3
+        // LLMService owns the retry loop now (3x exponential backoff for
+        // 5xx + network errors). This view-model layer only handles the
+        // success/fail outcome and the offline edge case.
+        do {
+            let result = try await llmService.optimizeAndProcess(originalText, profile: profile, apiKey: apiKey)
+            Logger.info("LLM processWithLLM succeeded")
 
-        for attempt in 0..<maxAttempts {
-            do {
-                let result = try await llmService.optimizeAndProcess(originalText, token: token)
-                Logger.info("LLM processWithLLM succeeded on attempt \(attempt + 1)")
-
-                if var record = try? await storage.get(id: recordId) {
-                    record.optimizedContent = originalText
-                    record.content = result.optimizedText
-                    record.title = result.title
-                    record.summary = result.summary
-                    record.tags = result.tags
-                    record.llmProcessingStatus = .completed
-                    try await storage.save(record)
-                    transcribedText = result.optimizedText
-                    isTextOptimized = true
-                    await loadHistory()
-                }
-
-                isLLMProcessing = false
-                llmProcessingFailed = false
-                return
-            } catch let error as LLMError {
-                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.errorDescription ?? "unknown")")
-
-                if case .offline = error {
-                    // Don't retry on offline — mark failed, wait for network recovery
-                    isLLMProcessing = false
-                    llmProcessingFailed = true
-                    if var record = try? await storage.get(id: recordId) {
-                        record.llmProcessingStatus = .failed
-                        try? await storage.save(record)
-                    }
-                    return
-                }
-
-                if attempt < maxAttempts - 1 {
-                    let delay = 1.0 * pow(2.0, Double(attempt))
-                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                }
-            } catch {
-                Logger.warning("LLM processWithLLM failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
-                if attempt < maxAttempts - 1 {
-                    let delay = 1.0 * pow(2.0, Double(attempt))
-                    try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-                }
+            if var record = try? await storage.get(id: recordId) {
+                record.optimizedContent = originalText
+                record.content = result.optimizedText
+                record.title = result.title
+                record.summary = result.summary
+                record.tags = result.tags
+                record.llmProcessingStatus = .completed
+                try await storage.save(record)
+                transcribedText = result.optimizedText
+                isTextOptimized = true
+                await loadHistory()
             }
-        }
 
-        Logger.error("LLM processWithLLM failed after \(maxAttempts) attempts")
-        isLLMProcessing = false
-        llmProcessingFailed = true
+            isLLMProcessing = false
+            llmProcessingFailed = false
+        } catch let error as LLMError {
+            Logger.warning("LLM processWithLLM failed: \(error.errorDescription ?? "unknown")")
 
-        if var record = try? await storage.get(id: recordId) {
-            record.llmProcessingStatus = .failed
-            try? await storage.save(record)
+            if case .offline = error {
+                // Don't retry on offline — mark failed, wait for network recovery
+                isLLMProcessing = false
+                llmProcessingFailed = true
+                if var record = try? await storage.get(id: recordId) {
+                    record.llmProcessingStatus = .failed
+                    try? await storage.save(record)
+                }
+                return
+            }
+
+            Logger.error("LLM processWithLLM failed after retries")
+            isLLMProcessing = false
+            llmProcessingFailed = true
+
+            if var record = try? await storage.get(id: recordId) {
+                record.llmProcessingStatus = .failed
+                try? await storage.save(record)
+            }
+        } catch {
+            Logger.warning("LLM processWithLLM failed (non-LLMError): \(error.localizedDescription)")
+            isLLMProcessing = false
+            llmProcessingFailed = true
+            if var record = try? await storage.get(id: recordId) {
+                record.llmProcessingStatus = .failed
+                try? await storage.save(record)
+            }
         }
     }
 

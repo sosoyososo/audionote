@@ -6,6 +6,9 @@ struct AudioNoteApp: App {
 
     init() {
         NetworkMonitor.shared.startMonitoring()
+        // Migrate legacy single `audioNote:llmToken` UserDefaults entry into
+        // the new ProviderProfileStore / Keychain layout. Idempotent.
+        ProviderProfileStore.runLegacyTokenMigration()
     }
 
     var body: some Scene {

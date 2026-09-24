@@ -1,105 +1,111 @@
 import Foundation
 import Combine
 
+/// View-model for the Settings tab. Surfaces the ProviderProfileStore for
+/// the profile list / "set active" UI and provides the "测试连接" handler
+/// that delegates to `LLMService.ping`.
+///
+/// The legacy single `audioNote:llmToken` field and the old
+/// `validateLLMConfiguration` / `testLLMConnection` are gone — see
+/// `docs/superpowers/specs/2026-09-24-multi-provider-llm-design.md`
+/// for the migration story.
 @MainActor
 final class SettingsViewModel: ObservableObject {
-    @Published var llmToken: String = ""
-    @Published var showSaveConfirmation: Bool = false
-    @Published var enableLLMOptimization: Bool = false
-    @Published var isValidating: Bool = false
-    @Published var validationMessage: String?
-    @Published var showValidationResult: Bool = false
+    @Published var isPinging: Bool = false
+    @Published var pingResult: PingResult? = nil
 
-    private let tokenKey = "audioNote:llmToken"
-    private let optimizationKey = "audioNote:enableLLMOptimization"
+    /// One-shot migration toast: shown the first time the new build sees
+    /// the old single-token layout. Acknowledged after the first display.
+    @Published var migrationToast: String? = nil
+
+    private let store: ProviderProfileStore
     private let llmService = LLMService()
 
-    init() {
-        loadToken()
-        loadOptimizationSetting()
+    enum PingResult: Equatable {
+        case success
+        case failure(String)
     }
 
-    func loadToken() {
-        llmToken = UserDefaults.standard.string(forKey: tokenKey) ?? ""
+    init(store: ProviderProfileStore = .shared) {
+        self.store = store
+        if store.needsProviderSetup {
+            self.migrationToast = "Settings.LLM.Migration.Toast".localized
+            store.acknowledgeNeedsSetup()
+        }
     }
 
-    func loadOptimizationSetting() {
-        enableLLMOptimization = UserDefaults.standard.bool(forKey: optimizationKey)
+    // MARK: - Profile list accessors
+
+    var profiles: [LLMProviderProfile] { store.profiles }
+    var activeProfile: LLMProviderProfile? { store.active }
+    var activeProfileId: UUID? { store.activeProfileId }
+
+    /// True when there is at least one profile AND it has its API key
+    /// available (if required). Drives the "enable optimization" toggle.
+    var canEnableOptimization: Bool {
+        guard let active = store.active else { return false }
+        if active.requiresAPIKey {
+            return (store.apiKey(for: active.id)?.isEmpty == false)
+        }
+        return true
     }
 
-    func saveToken() {
-        UserDefaults.standard.set(llmToken, forKey: tokenKey)
-        showSaveConfirmation = true
+    // MARK: - Profile CRUD (delegated)
+
+    func upsert(_ profile: LLMProviderProfile, apiKey: String?) {
+        do {
+            try store.upsert(profile, apiKey: apiKey)
+        } catch {
+            Logger.error("SettingsViewModel.upsert failed: \(error.localizedDescription)")
+        }
     }
 
-    func saveOptimizationSetting() {
-        UserDefaults.standard.set(enableLLMOptimization, forKey: optimizationKey)
+    func delete(_ id: UUID) {
+        do {
+            try store.delete(id)
+        } catch {
+            Logger.error("SettingsViewModel.delete failed: \(error.localizedDescription)")
+        }
     }
 
-    var hasToken: Bool {
-        !llmToken.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    func setActive(_ id: UUID) {
+        do {
+            try store.setActive(id)
+        } catch {
+            Logger.error("SettingsViewModel.setActive failed: \(error.localizedDescription)")
+        }
     }
 
-    func validateLLMConfiguration() {
-        guard hasToken else {
-            validationMessage = "请先配置 API Token"
-            showValidationResult = true
+    // MARK: - Test connection (ping)
+
+    /// Sends a minimal "ping" through the active profile. Surfaces the
+    /// outcome via `pingResult`. The Settings view watches this and shows
+    /// a toast on success / failure.
+    func testActiveConnection() {
+        guard let profile = store.active else {
+            pingResult = .failure("Settings.LLM.Test.NoProfile".localized)
             return
         }
+        let apiKey = store.apiKey(for: profile.id)
 
-        isValidating = true
-        validationMessage = nil
-
+        isPinging = true
+        pingResult = nil
         Task {
             do {
-                let testText = "你好，这是一个测试。"
-                _ = try await llmService.optimize(testText, token: llmToken)
+                try await llmService.ping(profile: profile, apiKey: apiKey)
                 await MainActor.run {
-                    self.isValidating = false
-                    self.validationMessage = "验证成功！LLM 已可用"
-                    self.showValidationResult = true
-                    self.enableLLMOptimization = true
-                    self.saveOptimizationSetting()
+                    self.isPinging = false
+                    self.pingResult = .success
+                }
+            } catch let error as LLMError {
+                await MainActor.run {
+                    self.isPinging = false
+                    self.pingResult = .failure(error.errorDescription ?? "Unknown error")
                 }
             } catch {
                 await MainActor.run {
-                    self.isValidating = false
-                    self.validationMessage = "验证失败: \(error.localizedDescription)"
-                    self.showValidationResult = true
-                    self.enableLLMOptimization = false
-                }
-            }
-        }
-    }
-
-    /// On-demand connectivity test. Independent of the optimization toggle — does NOT
-    /// auto-enable/disable `enableLLMOptimization`. Calls `optimize()` (single string in/out,
-    /// exercises auth + endpoint + model, no JSON parsing) and surfaces the result via the
-    /// existing validation toast.
-    func testLLMConnection() {
-        guard hasToken else {
-            validationMessage = "请先配置 API Token"
-            showValidationResult = true
-            return
-        }
-
-        isValidating = true
-        validationMessage = nil
-
-        Task {
-            do {
-                let testText = "你好，这是一个测试。"
-                _ = try await llmService.optimize(testText, token: llmToken)
-                await MainActor.run {
-                    self.isValidating = false
-                    self.validationMessage = "测试成功！LLM API 可用"
-                    self.showValidationResult = true
-                }
-            } catch {
-                await MainActor.run {
-                    self.isValidating = false
-                    self.validationMessage = "测试失败：\(error.localizedDescription)"
-                    self.showValidationResult = true
+                    self.isPinging = false
+                    self.pingResult = .failure(error.localizedDescription)
                 }
             }
         }

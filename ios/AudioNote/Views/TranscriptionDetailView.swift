@@ -368,11 +368,22 @@ struct TranscriptionDetailView: View {
         currentLLMStatus = .processing
         Task {
             let originalText = record.optimizedContent ?? record.content
-            let token = UserDefaults.standard.string(forKey: "audioNote:llmToken") ?? ""
+
+            // Pull the active profile + key from the store. If no profile
+            // is configured, surface that as a status without throwing.
+            guard let profile = ProviderProfileStore.shared.active else {
+                Logger.warning("LLM reprocess skipped: no active profile")
+                await MainActor.run {
+                    isProcessing = false
+                    currentLLMStatus = .failed
+                }
+                return
+            }
+            let apiKey = ProviderProfileStore.shared.apiKey(for: profile.id)
             let llmService = LLMService()
 
             do {
-                let result = try await llmService.optimizeAndProcess(originalText, token: token)
+                let result = try await llmService.optimizeAndProcess(originalText, profile: profile, apiKey: apiKey)
                 let updatedRecord = TranscriptionRecord(
                     id: record.id,
                     content: result.optimizedText,

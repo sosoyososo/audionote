@@ -31,7 +31,7 @@
 |---|---|---|
 | **AudioRecorderService** | `ios/AudioNote/Services/AudioRecorderService.swift:4` | Owns audio file naming and lifecycle. Use `generateFileUrl(for:)` to derive URLs |
 | **SpeechRecognizer** | `ios/AudioNote/Services/SpeechRecognizer.swift:34` | Wraps Apple `SFSpeechRecognizer`. Two modes: live stream (`startRecording`) and file re-recognition (`recognizeFromFile`) |
-| **LLMService** | `ios/AudioNote/Services/LLMService.swift:38` | Three entry points: `process` (just call), `optimize` (text-only), `optimizeAndProcess` (single API call). **Prefer the merged variant** — see ADR-0002 (TODO) |
+| **LLMService** | `ios/AudioNote/Services/LLMService.swift` | Two entry points: `optimizeAndProcess(text, profile:, apiKey:)` (the merged variant — see ADR-0002 / 0003) and `ping(profile:, apiKey:)` (lightweight reachability check for Settings). **Caller must supply the active profile + API key** — there is no global default |
 | **NetworkMonitor** | `ios/AudioNote/Utilities/NetworkMonitor.swift:4` | Singleton `.shared`. `checkConnectivity()` is the gate before any LLM/online call |
 | **AIProcessingService** | `ios/AudioNote/Services/AIProcessingService.swift:3` | Background queue / retry helper. `processPendingRecords` runs on app launch for records left in intermediate states |
 
@@ -49,6 +49,10 @@
 | **思录 (Library)** | `ios/AudioNote/Views/LibraryListView.swift:3` | The renamed History tab (zh: 思录, en: Library). Hosts the records browser with search, tag filter, and archived banner. Previously `HistoryListView`; renamed per docs/superpowers/specs/2026-09-23-library-search-tag-archive-design.md |
 | **LibraryArchivedMatchesView** | `ios/AudioNote/Views/LibraryListView.swift` (same file) | Pushed sub-page reached from the archived-hit banner. Shows only archived records that match the parent's current search/tag filters |
 | **TaggedItem** | `ios/AudioNote/Models/TranscriptionRecord.swift` | `(name: String, score: Double)` — a tag with LLM-assigned relevance score in `[0.0, 1.0]`. LLM is prompted to return tags sorted by score desc. Legacy `[String]` records on disk auto-migrate via `decodeTags` with a descending pseudo-score ladder (1.0, 0.75, 0.5, 0.25, 0.0) |
+| **LLMProviderProfile** | `ios/AudioNote/Models/LLMProviderProfile.swift:11` | User-managed OpenAI-compatible `/chat/completions` endpoint config: `id`, `displayName`, `baseURL`, `model`, `requiresAPIKey`, `createdAt`. Locked shape — see ADR-0003 |
+| **ProviderProfileStore** | `ios/AudioNote/Services/ProviderProfileStore.swift:1` | `@MainActor ObservableObject` singleton (`.shared`). CRUD for `LLMProviderProfile`s, active-profile tracking, Keychain API-key read/write, legacy-token migration. Lives in `UserDefaults` (`audioNote:llmProfiles` / `audioNote:activeLLMProfileId` / `audioNote:llmNeedsProviderSetup`) and Keychain (`service="audioNote.llm"`, `account=<profile.id>`) |
+| **KeychainStore** | `ios/AudioNote/Services/KeychainStore.swift:1` | Thin `kSecClassGenericPassword` wrapper, `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly`. Surfaces failures as `KeychainError` rather than silently dropping writes |
+| **audioNote:llmToken** | _removed_ | **Legacy.** The single-token UserDefaults key was replaced by per-profile API keys in the Keychain. `ProviderProfileStore.runLegacyTokenMigration()` clears this on first launch of the multi-provider build |
 
 ## Anti-glossary (terms that exist but should NOT be used)
 

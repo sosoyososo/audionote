@@ -96,3 +96,33 @@
 "Library.ArchivedBanner" = "%d archived matches · tap to view";
 "Library.ArchivedSublistTitle" = "Archived matches";
 "Library.ClearFilters" = "Clear filters";
+
+/* Settings — LLM Provider (multi-profile, 2026-09-24) */
+"Settings.LLM.ProviderProfiles.Title" = "LLM Provider";
+"Settings.LLM.ProviderProfiles.Add" = "Add Provider";
+"Settings.LLM.ProviderProfiles.NoneActive" = "Not configured — add a provider to enable LLM optimization";
+"Settings.LLM.ProviderProfiles.Footer" = "Supports OpenAI, DeepSeek, Groq, Ollama and any OpenAI-compatible endpoint";
+"Settings.LLM.Optimize.Header" = "LLM Optimization";
+"Settings.LLM.Optimize.Title" = "Enable transcription optimization";
+"Settings.LLM.Optimize.Footer" = "When enabled, recordings are optimized after stop: punctuation + homophone fixes.";
+"Settings.LLM.Status.NotSet" = "Not configured";
+"Settings.LLM.Status" = "Status";
+"Settings.LLM.Migration.Toast" = "LLM settings migrated: please configure a provider";
+"Settings.LLM.Profile.New" = "Add Provider";
+"Settings.LLM.Profile.Edit" = "Edit Provider";
+"Settings.LLM.Profile.DisplayName" = "Display name";
+"Settings.LLM.Profile.Provider" = "Provider";
+"Settings.LLM.Profile.BaseURL.Hint" = "Must be an OpenAI-compatible /chat/completions endpoint";
+"Settings.LLM.Profile.Model" = "Model";
+"Settings.LLM.Profile.Auth" = "Authentication";
+"Settings.LLM.Profile.Auth.Footer" = "Local inference (Ollama / LM Studio) usually doesn't need an API key.";
+"Settings.LLM.Profile.RequiresAPIKey" = "Requires API Key";
+"Settings.LLM.Profile.APIKey" = "API Key";
+"Settings.LLM.Profile.Test" = "Test connection";
+"Settings.LLM.Profile.SetActive" = "Set active";
+"Settings.LLM.Profile.Save" = "Save";
+"Settings.LLM.Profile.Cancel" = "Cancel";
+"Settings.LLM.Test.Success" = "✓ Connection successful";
+"Settings.LLM.Test.Fail" = "Connection failed: %@";
+"Settings.LLM.Test.NoProfile" = "Please configure a provider first";
+"Settings.LLM.Profile.Error.InvalidURL" = "Invalid Base URL format";
