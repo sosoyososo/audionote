@@ -234,27 +234,23 @@ final class TranscriptionViewModel: ObservableObject {
 
     /// Phase 2: After saving, assess recognition quality and enhance if possible
     private func assessAndEnhance(record: TranscriptionRecord, originalText: String) async {
-        let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
-
         switch record.recognitionMode {
         case .online:
-            // Best case: online recognition succeeded, go straight to LLM
-            if optimizationEnabled {
-                await processWithLLM(recordId: record.id, originalText: originalText)
-            }
+            // Online recognition succeeded — go straight to LLM.
+            // Provider / network gating happens inside processWithLLM.
+            await processWithLLM(recordId: record.id, originalText: originalText)
 
         case .onDevice:
-            // On-device succeeded. LLM (if enabled and online) will improve the text;
-            // skip separate enhanceRecognition since processWithLLM overwrites content anyway.
-            if optimizationEnabled && NetworkMonitor.shared.checkConnectivity() {
+            // On-device succeeded. LLM will improve the text once we have
+            // a Provider and network; skip separate enhanceRecognition since
+            // processWithLLM overwrites content anyway.
+            if NetworkMonitor.shared.checkConnectivity() {
                 await processWithLLM(recordId: record.id, originalText: originalText)
-            } else if NetworkMonitor.shared.checkConnectivity() {
-                // No LLM enabled — upgrade recognition quality only
-                await enhanceRecognition(recordId: record.id)
             }
+            // Offline: do nothing; raw text already saved.
 
         case .failed:
-            // Recognition failed — try online if available
+            // Recognition failed — try online re-recognition if available
             if NetworkMonitor.shared.checkConnectivity() {
                 await retryRecognitionFromFile(recordId: record.id)
             }
@@ -333,10 +329,7 @@ final class TranscriptionViewModel: ObservableObject {
             await loadHistory()
 
             // Now try LLM since we have text
-            let optimizationEnabled = UserDefaults.standard.bool(forKey: "audioNote:enableLLMOptimization")
-            if optimizationEnabled {
-                await processWithLLM(recordId: record.id, originalText: text)
-            }
+            await processWithLLM(recordId: record.id, originalText: text)
         } catch {
             Logger.error("Retry recognition failed: \(error.localizedDescription)")
         }

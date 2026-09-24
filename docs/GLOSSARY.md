@@ -39,7 +39,6 @@
 
 | Term | Symbol | Note |
 |---|---|---|
-| **enableLLMOptimization** | `UserDefaults` key `audioNote:enableLLMOptimization` | Read at `assessAndEnhance:234` and elsewhere. **Boolean UserDefaults, not a Settings field** — it's an old shortcut |
 | **SettingsViewModel** | `ios/AudioNote/ViewModels/SettingsViewModel.swift:1` | Surface for user-facing toggles. The internal flag is synced from this VM |
 
 ## Domain: Navigation

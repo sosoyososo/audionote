@@ -143,9 +143,8 @@ final class ProviderProfileStore: ObservableObject {
     ) {
         if defaults.string(forKey: Keys.legacyToken) != nil {
             defaults.removeObject(forKey: Keys.legacyToken)
-            defaults.set(false, forKey: "audioNote:enableLLMOptimization")
             defaults.set(true, forKey: Keys.needsSetup)
-            Logger.info("ProviderProfileStore: legacy audioNote:llmToken cleared, optimization disabled, needsProviderSetup=true")
+            Logger.info("ProviderProfileStore: legacy audioNote:llmToken cleared, needsProviderSetup=true")
         }
         // Touch the keychain store so unused-account cleanup can be a future op.
         _ = keychain
