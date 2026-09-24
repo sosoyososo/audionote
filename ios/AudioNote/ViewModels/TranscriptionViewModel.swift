@@ -508,7 +508,11 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func updateRecord(_ record: TranscriptionRecord) async throws {
-        // Preserve the original createdAt timestamp when updating
+        // Preserve the original createdAt timestamp + audioFileName + optimizedContent +
+        // archived state when updating. The caller's input may not carry these fields
+        // (e.g. TranscriptionDetailView.reprocessRecord / saveEditing only set a subset),
+        // and dropping them was causing playback + archive state to silently disappear
+        // after the user clicked Analyze or Save in the detail view.
         let existingRecord = try await storage.get(id: record.id)
         let updatedRecord = TranscriptionRecord(
             id: record.id,
@@ -516,12 +520,16 @@ final class TranscriptionViewModel: ObservableObject {
             createdAt: existingRecord?.createdAt ?? record.createdAt,
             duration: record.duration,
             language: record.language,
+            audioFileName: record.audioFileName ?? existingRecord?.audioFileName,
             // Preserve LLM fields
             title: record.title,
             summary: record.summary,
             tags: record.tags,
             llmProcessingStatus: record.llmProcessingStatus,
-            recognitionMode: record.recognitionMode ?? existingRecord?.recognitionMode
+            optimizedContent: record.optimizedContent ?? existingRecord?.optimizedContent,
+            recognitionMode: record.recognitionMode ?? existingRecord?.recognitionMode,
+            archived: record.archived || (existingRecord?.archived ?? false),
+            archivedAt: record.archivedAt ?? existingRecord?.archivedAt
         )
         try await storage.save(updatedRecord)
         await loadHistory()

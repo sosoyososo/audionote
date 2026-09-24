@@ -338,6 +338,8 @@ struct RecordRowView: View {
                 .lineLimit(2)
                 .truncationMode(.tail)
 
+            tagsRow
+
             HStack(spacing: 8) {
                 Text(record.createdAt, style: .time)
                     .font(.caption)
@@ -358,6 +360,33 @@ struct RecordRowView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 4)
+    }
+
+    /// De-emphasized inline `#tag` row. Matches the existing caption + secondary
+    /// visual language used by time / duration / archived badge so tags don't
+    /// out-shout the title or summary. Renders nothing when there are no tags,
+    /// collapses overflow past 3 tags into `+N`.
+    @ViewBuilder
+    private var tagsRow: some View {
+        let cleaned = record.tags?.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? []
+        if !cleaned.isEmpty {
+            let shown = Array(cleaned.prefix(3))
+            let overflow = cleaned.count - shown.count
+            HStack(spacing: 6) {
+                ForEach(shown, id: \.self) { tag in
+                    Text("#\(tag)")
+                        .lineLimit(1)
+                }
+                if overflow > 0 {
+                    Text("+\(overflow)")
+                        .lineLimit(1)
+                }
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .lineLimit(1)
+            .truncationMode(.tail)
+        }
     }
 
     private var displayTitle: String {
