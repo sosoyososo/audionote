@@ -10,10 +10,10 @@ final class AudioPlayerManager: NSObject, ObservableObject, AVAudioPlayerDelegat
     @Published var currentTime: TimeInterval = 0
     @Published var duration: TimeInterval = 0
     @Published var progress: Double = 0
+    @Published private(set) var currentFileName: String?
 
     private var audioPlayer: AVAudioPlayer?
     private var timer: Timer?
-    private var currentFileName: String?
 
     private override init() {
         super.init()

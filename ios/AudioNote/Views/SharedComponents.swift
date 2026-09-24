@@ -209,26 +209,55 @@ struct PlaybackControlBar: View {
         return String(format: "%d:%02d", minutes, seconds)
     }
 
+    /// True when the global player is playing a different record's audio.
+    /// While true, the bound record's own progress / time label are hidden
+    /// (otherwise they cross-fire from another record's @Published state).
+    /// A "switch to this one" button replaces the normal controls.
+    private var isDifferentAudioPlaying: Bool {
+        guard let current = playerManager.currentFileName else { return false }
+        return current != audioFileName
+    }
+
     var body: some View {
-        HStack(spacing: 16) {
-            Button {
-                playerManager.togglePlayPause(fileName: audioFileName)
-            } label: {
-                Image(systemName: playerManager.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.title2)
-                    .foregroundColor(.accentColor)
+        Group {
+            if isDifferentAudioPlaying {
+                HStack(spacing: 12) {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .foregroundColor(.secondary)
+                    Text("正在播放另一条录音")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                    Button {
+                        playerManager.togglePlayPause(fileName: audioFileName)
+                    } label: {
+                        Image(systemName: "arrow.right.circle")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+            } else {
+                HStack(spacing: 16) {
+                    Button {
+                        playerManager.togglePlayPause(fileName: audioFileName)
+                    } label: {
+                        Image(systemName: playerManager.isPlaying ? "pause.fill" : "play.fill")
+                            .font(.title2)
+                            .foregroundColor(.accentColor)
+                    }
+
+                    Slider(value: Binding(
+                        get: { playerManager.progress },
+                        set: { playerManager.seek(to: $0) }
+                    ))
+                    .tint(.accentColor)
+
+                    Text("\(formattedCurrentTime)/\(formattedDuration)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
+                }
             }
-
-            Slider(value: Binding(
-                get: { playerManager.progress },
-                set: { playerManager.seek(to: $0) }
-            ))
-            .tint(.accentColor)
-
-            Text("\(formattedCurrentTime)/\(formattedDuration)")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .monospacedDigit()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
