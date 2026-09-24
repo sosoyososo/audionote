@@ -8,23 +8,22 @@ struct TranscriptionDetailView: View {
     @State private var isEditing = false
     @State private var editedContent: String = ""
     @State private var isProcessing = false
-    @State private var currentLLMStatus: LLMStatus?
-    @State private var currentTitle: String?
-    @State private var currentSummary: String?
-    @State private var currentTags: [TaggedItem]?
-    @State private var currentRecognitionMode: RecognitionMode?
     @State private var localArchived: Bool = false
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
         self.viewModel = viewModel
         self._editedContent = State(initialValue: record.content)
-        self._currentLLMStatus = State(initialValue: record.llmProcessingStatus)
-        self._currentTitle = State(initialValue: record.title)
-        self._currentSummary = State(initialValue: record.summary)
-        self._currentTags = State(initialValue: record.tags)
-        self._currentRecognitionMode = State(initialValue: record.recognitionMode)
         self._localArchived = State(initialValue: record.archived)
+    }
+
+    /// Latest snapshot of this record from the VM. `record` is a value-type
+    /// copy handed in by the sheet and never refreshes; background LLM
+    /// completion updates `viewModel.historyRecords` (via `loadHistory`), so
+    /// deriving from it lets the detail view reflect post-open changes
+    /// without a manual sync step.
+    private var currentRecord: TranscriptionRecord {
+        viewModel.historyRecords.first { $0.id == record.id } ?? record
     }
 
     var body: some View {
@@ -39,7 +38,7 @@ struct TranscriptionDetailView: View {
                 actionsSection
                     .padding(.top, 4)
 
-                if let audioFileName = record.audioFileName {
+                if let audioFileName = currentRecord.audioFileName {
                     PlaybackControlBar(audioFileName: audioFileName)
                         .padding(.top, 8)
                 }
@@ -71,7 +70,7 @@ struct TranscriptionDetailView: View {
                 } else {
                     HStack {
                         Button {
-                            actionsViewModel.copyText(record.content)
+                            actionsViewModel.copyText(currentRecord.content)
                         } label: {
                             Image(systemName: "doc.on.doc")
                         }
@@ -92,7 +91,7 @@ struct TranscriptionDetailView: View {
             }
         }
         .sheet(isPresented: $actionsViewModel.showShareSheet) {
-            ShareSheet(items: [record.content])
+            ShareSheet(items: [currentRecord.content])
         }
         .overlay(alignment: .bottom) {
             ToastView(message: actionsViewModel.toastMessage, isShowing: $actionsViewModel.showCopiedToast)
@@ -105,27 +104,27 @@ struct TranscriptionDetailView: View {
             HStack {
                 Image(systemName: "calendar")
                     .foregroundColor(.secondary)
-                Text(record.createdAt, style: .date)
+                Text(currentRecord.createdAt, style: .date)
                     .foregroundColor(.secondary)
             }
 
             HStack {
                 Image(systemName: "clock")
                     .foregroundColor(.secondary)
-                Text(record.createdAt, style: .time)
+                Text(currentRecord.createdAt, style: .time)
                     .foregroundColor(.secondary)
             }
 
-            if let duration = record.duration, duration > 0 {
+            if let duration = currentRecord.duration, duration > 0 {
                 HStack {
                     Image(systemName: "timer")
                         .foregroundColor(.secondary)
-                    Text(record.formattedDuration)
+                    Text(currentRecord.formattedDuration)
                         .foregroundColor(.secondary)
                 }
             }
 
-            if let mode = currentRecognitionMode {
+            if let mode = currentRecord.recognitionMode {
                 HStack {
                     Image(systemName: recognitionModeIcon(for: mode))
                         .foregroundColor(recognitionModeColor(for: mode))
@@ -139,7 +138,7 @@ struct TranscriptionDetailView: View {
 
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if record.optimizedContent != nil {
+            if currentRecord.optimizedContent != nil {
                 HStack {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
@@ -172,8 +171,8 @@ struct TranscriptionDetailView: View {
             Divider()
 
             // Show results if available
-            if currentTitle != nil || currentSummary != nil || currentTags != nil {
-                if let title = currentTitle, !title.isEmpty {
+            if currentRecord.title != nil || currentRecord.summary != nil || currentRecord.tags != nil {
+                if let title = currentRecord.title, !title.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Title".localized)
                             .font(.caption)
@@ -183,7 +182,7 @@ struct TranscriptionDetailView: View {
                     }
                 }
 
-                if let summary = currentSummary, !summary.isEmpty {
+                if let summary = currentRecord.summary, !summary.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Summary".localized)
                             .font(.caption)
@@ -193,7 +192,7 @@ struct TranscriptionDetailView: View {
                     }
                 }
 
-                if let tags = currentTags, !tags.isEmpty {
+                if let tags = currentRecord.tags, !tags.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Detail.LLM.Tags".localized)
                             .font(.caption)
@@ -211,7 +210,7 @@ struct TranscriptionDetailView: View {
 
     @ViewBuilder
     private var llmStatusView: some View {
-        if isProcessing {
+        if isProcessing || viewModel.isLLMProcessing {
             // Currently processing - show disabled button with spinner
             HStack {
                 ProgressView()
@@ -230,11 +229,12 @@ struct TranscriptionDetailView: View {
                     Text(buttonTitle)
                 }
             }
+            .disabled(viewModel.isLLMProcessing)
         }
     }
 
     private var buttonIcon: String {
-        switch currentLLMStatus {
+        switch currentRecord.llmProcessingStatus {
         case .completed: return "arrow.clockwise"
         case .failed: return "exclamationmark.triangle"
         default: return "sparkles"
@@ -242,7 +242,7 @@ struct TranscriptionDetailView: View {
     }
 
     private var buttonTitle: String {
-        switch currentLLMStatus {
+        switch currentRecord.llmProcessingStatus {
         case .completed: return "Detail.LLM.Reprocess".localized
         case .failed: return "Detail.LLM.Failed".localized
         default: return "Detail.LLM.Start".localized
@@ -284,9 +284,9 @@ struct TranscriptionDetailView: View {
     @ViewBuilder
     private var actionsSection: some View {
         HStack(spacing: 8) {
-            if let mode = currentRecognitionMode,
+            if let mode = currentRecord.recognitionMode,
                (mode == .onDevice || mode == .failed),
-               record.audioFileName != nil {
+               currentRecord.audioFileName != nil {
                 Button {
                     upgradeRecognition()
                 } label: {
@@ -351,23 +351,17 @@ struct TranscriptionDetailView: View {
     private func upgradeRecognition() {
         Task {
             await viewModel.reRecognizeOnline(recordId: record.id)
-            if let updated = await viewModel.getRecord(id: record.id) {
-                await MainActor.run {
-                    currentRecognitionMode = updated.recognitionMode
-                    editedContent = updated.content
-                    Task {
-                        await viewModel.loadHistory()
-                    }
-                }
-            }
+            // VM.reRecognizeOnline ends with loadHistory(); currentRecord
+            // will pick up the refreshed recognitionMode + content on the
+            // next render — no manual sync needed here.
         }
     }
 
     private func reprocessRecord() {
         isProcessing = true
-        currentLLMStatus = .processing
         Task {
-            let originalText = record.optimizedContent ?? record.content
+            let baseRecord = currentRecord
+            let originalText = baseRecord.optimizedContent ?? baseRecord.content
 
             // Pull the active profile + key from the store. If no profile
             // is configured, surface that as a status without throwing.
@@ -375,7 +369,6 @@ struct TranscriptionDetailView: View {
                 Logger.warning("LLM reprocess skipped: no active profile")
                 await MainActor.run {
                     isProcessing = false
-                    currentLLMStatus = .failed
                 }
                 return
             }
@@ -385,54 +378,47 @@ struct TranscriptionDetailView: View {
             do {
                 let result = try await llmService.optimizeAndProcess(originalText, profile: profile, apiKey: apiKey)
                 let updatedRecord = TranscriptionRecord(
-                    id: record.id,
+                    id: baseRecord.id,
                     content: result.optimizedText,
-                    createdAt: record.createdAt,
-                    duration: record.duration,
-                    language: record.language,
-                    audioFileName: record.audioFileName,
+                    createdAt: baseRecord.createdAt,
+                    duration: baseRecord.duration,
+                    language: baseRecord.language,
+                    audioFileName: baseRecord.audioFileName,
                     title: result.title,
                     summary: result.summary,
                     tags: result.tags,
                     llmProcessingStatus: .completed,
-                    optimizedContent: originalText != record.content ? originalText : record.optimizedContent,
-                    recognitionMode: record.recognitionMode
+                    optimizedContent: originalText != baseRecord.content ? originalText : baseRecord.optimizedContent,
+                    recognitionMode: baseRecord.recognitionMode
                 )
                 try await viewModel.updateRecord(updatedRecord)
                 await MainActor.run {
                     isProcessing = false
-                    currentLLMStatus = .completed
-                    currentTitle = result.title
-                    currentSummary = result.summary
-                    currentTags = result.tags
                     editedContent = result.optimizedText
-                    Task {
-                        await viewModel.loadHistory()
-                    }
                 }
             } catch {
                 Logger.error("LLM reprocess failed: \(error.localizedDescription)")
                 await MainActor.run {
                     isProcessing = false
-                    currentLLMStatus = .failed
                 }
             }
         }
     }
 
     private func saveEditing() {
+        let baseRecord = currentRecord
         let updatedRecord = TranscriptionRecord(
-            id: record.id,
+            id: baseRecord.id,
             content: editedContent,
-            createdAt: record.createdAt,
-            duration: record.duration,
-            language: record.language,
-            audioFileName: record.audioFileName,
-            title: record.title,
-            summary: record.summary,
-            tags: record.tags,
-            llmProcessingStatus: record.llmProcessingStatus,
-            recognitionMode: record.recognitionMode
+            createdAt: baseRecord.createdAt,
+            duration: baseRecord.duration,
+            language: baseRecord.language,
+            audioFileName: baseRecord.audioFileName,
+            title: baseRecord.title,
+            summary: baseRecord.summary,
+            tags: baseRecord.tags,
+            llmProcessingStatus: baseRecord.llmProcessingStatus,
+            recognitionMode: baseRecord.recognitionMode
         )
 
         Task {
@@ -449,12 +435,12 @@ struct TranscriptionDetailView: View {
     }
 
     private func cancelEditing() {
-        editedContent = record.content
+        editedContent = currentRecord.content
         isEditing = false
     }
 
     private func enterEditingMode() {
-        editedContent = record.content
+        editedContent = currentRecord.content
         isEditing = true
     }
 }
