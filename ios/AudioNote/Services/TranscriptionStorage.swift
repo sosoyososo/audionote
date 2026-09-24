@@ -29,8 +29,7 @@ actor TranscriptionStorage {
     private let fileName = "transcriptions.json"
     
     private var fileURL: URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return documentsPath.appendingPathComponent(fileName)
+        StorageCoordinator.shared.jsonURL
     }
     
     private init() {}
