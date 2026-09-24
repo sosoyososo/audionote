@@ -474,6 +474,9 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func loadHistory() async {
+        if !StorageCoordinator.shared.isReady {
+            await StorageCoordinator.shared.bootstrap()
+        }
         Logger.debug("Loading history")
         do {
             let records = try await storage.loadAll()
