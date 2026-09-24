@@ -71,6 +71,68 @@ public final class RecordActionsViewModel: ObservableObject {
     }
 }
 
+// MARK: - Recognition Mode Style
+//
+// Extracted from `RecordingView.modeColor/Label` and
+// `TranscriptionDetailView.recognitionModeColor/Icon/Label`, which were
+// duplicate maps for the same RecognitionMode. See
+// `design-system/components/recognition-mode-badge.md`.
+//
+// Status: `inferred` (auto-promoted from duplicated code). User review
+// pending — supersede by adding a `design-system/decisions/` record.
+
+struct RecognitionModeStyle {
+    let mode: RecognitionMode
+
+    var color: Color {
+        switch mode {
+        case .online: return .green
+        case .onDevice: return .yellow
+        case .enhanced: return .blue
+        case .failed: return .red
+        }
+    }
+
+    var icon: String {
+        switch mode {
+        case .online: return "cloud.fill"
+        case .onDevice: return "iphone.gen1"
+        case .enhanced: return "cloud.fill.badge.checkmark"
+        case .failed: return "xmark.shield.fill"
+        }
+    }
+
+    var label: String {
+        switch mode {
+        case .online: return "在线识别"
+        case .onDevice: return "离线识别"
+        case .enhanced: return "已在线升级"
+        case .failed: return "识别失败"
+        }
+    }
+}
+
+/// Compact pill (used in RecordingView header strip). One source of truth
+/// for icon + colour + label — drops the previous inline copy in
+/// `RecordingView.swift:296-302`.
+struct ModeBadge: View {
+    let mode: RecognitionMode
+
+    var body: some View {
+        let style = RecognitionModeStyle(mode: mode)
+        HStack(spacing: 4) {
+            Image(systemName: style.icon)
+            Text(style.label)
+        }
+        .font(.caption2)
+        .foregroundColor(style.color)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
+        .background(style.color.opacity(0.1))
+        .cornerRadius(4)
+    }
+}
+
 // MARK: - Playback Control Bar
 
 struct PlaybackControlBar: View {

@@ -3,12 +3,11 @@ import SwiftUI
 struct RecordingView: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @EnvironmentObject private var languageManager: LanguageManager
+    @StateObject private var actionsViewModel = RecordActionsViewModel()
     @State private var showPermissionAlert = false
     @State private var showLanguageSelector = false
     @State private var editedText = ""
     @State private var isEditing = false
-    @State private var showCopiedToast = false
-    @State private var showShareSheet = false
     @FocusState private var isEditorFocused: Bool
 
     var body: some View {
@@ -41,9 +40,16 @@ struct RecordingView: View {
                 }
             }
             .overlay(alignment: .top) {
-                toastOverlay
+                VStack {
+                    ToastView(
+                        message: actionsViewModel.toastMessage,
+                        isShowing: $actionsViewModel.showCopiedToast
+                    )
+                    Spacer()
+                }
+                .padding(.top, 60)
             }
-            .sheet(isPresented: $showShareSheet) {
+            .sheet(isPresented: $actionsViewModel.showShareSheet) {
                 ShareSheet(items: [viewModel.transcribedText])
             }
             .sheet(isPresented: $showLanguageSelector) {
@@ -160,15 +166,7 @@ struct RecordingView: View {
 
             // Recognition mode indicator
             if viewModel.isRecording {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(modeColor)
-                        .frame(width: 8, height: 8)
-                    Text(modeLabel)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.vertical, 4)
+                ModeBadge(mode: viewModel.recognitionMode)
             }
 
             // Main recording button
@@ -293,26 +291,20 @@ struct RecordingView: View {
                     Text("Recording.Result".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text(modeLabel)
-                        .font(.caption2)
-                        .foregroundColor(modeColor)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(modeColor.opacity(0.1))
-                        .cornerRadius(4)
+                    ModeBadge(mode: viewModel.recognitionMode)
                     Spacer()
 
                     if !viewModel.transcribedText.isEmpty {
                         HStack(spacing: 16) {
                             Button {
-                                copyText()
+                                actionsViewModel.copyText(viewModel.transcribedText)
                             } label: {
                                 Image(systemName: "doc.on.doc")
                                     .font(.subheadline)
                             }
 
                             Button {
-                                showShareSheet = true
+                                actionsViewModel.showShareSheet = true
                             } label: {
                                 Image(systemName: "square.and.arrow.up")
                                     .font(.subheadline)
@@ -455,27 +447,6 @@ struct RecordingView: View {
 
     // MARK: - Overlays
 
-    private var toastOverlay: some View {
-        VStack {
-            if showCopiedToast {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill")
-                    Text("Toast.Copied".localized)
-                }
-                .font(.subheadline.weight(.medium))
-                .foregroundColor(.white)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color.black.opacity(0.8))
-                .cornerRadius(20)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
-            Spacer()
-        }
-        .padding(.top, 60)
-        .animation(.easeInOut(duration: 0.2), value: showCopiedToast)
-    }
-
     private var permissionOverlay: some View {
         Color(.systemBackground)
             .opacity(0.9)
@@ -543,8 +514,7 @@ struct RecordingView: View {
                     viewModel.transcribedText = editedText
                     isEditing = false
                     isEditorFocused = false
-                    showCopiedToast = true
-                    autoHideToast()
+                    actionsViewModel.showSaveConfirmation()
                 }
             } catch {
                 Logger.error("Failed to save: \(error.localizedDescription)")
@@ -553,33 +523,7 @@ struct RecordingView: View {
     }
 
     private func copyText() {
-        UIPasteboard.general.string = viewModel.transcribedText
-        showCopiedToast = true
-        autoHideToast()
-    }
-
-    private func autoHideToast() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            showCopiedToast = false
-        }
-    }
-
-    private var modeColor: Color {
-        switch viewModel.recognitionMode {
-        case .online: return .green
-        case .onDevice: return .yellow
-        case .enhanced: return .blue
-        case .failed: return .red
-        }
-    }
-
-    private var modeLabel: String {
-        switch viewModel.recognitionMode {
-        case .online: return "在线识别"
-        case .onDevice: return "离线识别"
-        case .enhanced: return "已在线升级"
-        case .failed: return "识别失败"
-        }
+        actionsViewModel.copyText(viewModel.transcribedText)
     }
 }
 
