@@ -1,6 +1,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import UIKit
 
 enum PermissionStatus {
     case notDetermined
@@ -15,8 +16,28 @@ final class PermissionsManager: ObservableObject {
     @Published var speechAuthorizationStatus: PermissionStatus = .notDetermined
     @Published var microphoneAuthorizationStatus: PermissionStatus = .notDetermined
 
+    private var foregroundObserver: NSObjectProtocol?
+
     private init() {
         updateStatuses()
+
+        // The user can grant permissions in iOS Settings while our app is
+        // backgrounded. `recordPermission` and `SFSpeechRecognizer.authorizationStatus`
+        // are not observable properties — there's no NotificationCenter
+        // event. Re-poll on every foreground transition to pick up changes.
+        foregroundObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.updateStatuses()
+        }
+    }
+
+    deinit {
+        if let observer = foregroundObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     func updateStatuses() {

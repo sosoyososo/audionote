@@ -38,6 +38,14 @@ final class TranscriptionViewModel: ObservableObject {
     init() {
         Logger.info("TranscriptionViewModel initialized")
 
+        // Combine sinks only fire on changes, not on the current value at
+        // subscription time. If the user has already granted both
+        // permissions in a previous session, `permissionsManager.*Status`
+        // is already `.authorized` at VM construction — but no event will
+        // fire to push that into our `authorizationStatus`. Poll once
+        // synchronously to seed the right value.
+        updateAuthorizationStatus()
+
         // Observe permission changes
         permissionsManager.$speechAuthorizationStatus
             .receive(on: DispatchQueue.main)
