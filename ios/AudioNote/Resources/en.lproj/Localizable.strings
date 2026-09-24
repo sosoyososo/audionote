@@ -133,3 +133,8 @@
 /* Profile detail — data flow disclosure (create mode only) */
 "ProfileDetail.DataFlow.Title" = "Data flow";
 "ProfileDetail.DataFlow.Body" = "Once you save this Provider, transcribed text from your recordings will be sent to it for optimization (text cleanup, title, summary, tags).\n\nRaw audio continues to be processed only by Apple (on-device or Apple Cloud recognition) and is never sent to this Provider.\n\nIf you do not want text to leave the device, do not configure a Provider — recordings will still be saved with only local recognition applied.";
+
+/* Settings — Storage location (2026-09-24 files-app migration) */
+"Settings.Storage.Title" = "Storage Location";
+"Settings.Storage.Change" = "Change Storage Location";
+"Settings.Storage.Footer" = "After changing, new data is written to the new location. Existing data at the old location will not be migrated.";

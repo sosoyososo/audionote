@@ -11,6 +11,7 @@ struct SettingsView: View {
 
     @State private var editingProfile: LLMProviderProfile? = nil
     @State private var isCreatingNew: Bool = false
+    @State private var isPickerPresented: Bool = false
 
     var body: some View {
         NavigationView {
@@ -63,8 +64,26 @@ struct SettingsView: View {
                         }
                     }
                 }
+
+                // MARK: Storage location
+                Section {
+                    Button {
+                        isPickerPresented = true
+                    } label: {
+                        Label("Settings.Storage.Change".localized, systemImage: "folder")
+                    }
+                } header: {
+                    Text("Settings.Storage.Title".localized)
+                } footer: {
+                    Text("Settings.Storage.Footer".localized)
+                }
             }
             .navigationTitle("Tab.Settings".localized)
+            .sheet(isPresented: $isPickerPresented) {
+                FolderPickerSheet { url in
+                    Task { await StorageCoordinator.shared.acceptPickerResult(url: url) }
+                }
+            }
             .sheet(isPresented: $isCreatingNew) {
                 ProfileDetailView(mode: .create)
             }
