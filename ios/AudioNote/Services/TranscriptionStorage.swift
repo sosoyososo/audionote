@@ -25,9 +25,7 @@ enum StorageError: LocalizedError {
 
 actor TranscriptionStorage {
     static let shared = TranscriptionStorage()
-    
-    private let fileName = "transcriptions.json"
-    
+
     private var fileURL: URL {
         StorageCoordinator.shared.jsonURL
     }

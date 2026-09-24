@@ -90,11 +90,6 @@ final class StorageCoordinator: ObservableObject {
         }
     }
 
-    /// Trigger re-pick flow (placeholder; OnboardingView drives the actual picker UI).
-    func changeLocation() async {
-        // Filled in by OnboardingView task
-    }
-
     // MARK: - URL helpers (nonisolated so any actor can read them cheaply)
 
     nonisolated var rootURL: URL {
