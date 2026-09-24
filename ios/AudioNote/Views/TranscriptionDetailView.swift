@@ -451,10 +451,18 @@ struct TranscriptionDetailView: View {
 struct TagFlowView: View {
     let tags: [TaggedItem]
 
+    /// Tags sorted by relevance score descending. The LLM is *instructed* to
+    /// return them sorted, but doesn't reliably honor that — sorting here
+    /// guarantees the most relevant tag renders first regardless of what the
+    /// model returns.
+    private var sortedTags: [TaggedItem] {
+        tags.sorted { $0.score > $1.score }
+    }
+
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(tags, id: \.name) { tag in
+                ForEach(sortedTags, id: \.name) { tag in
                     HStack(spacing: 4) {
                         Text(tag.name)
                             .font(.caption)
