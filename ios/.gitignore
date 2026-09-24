@@ -17,6 +17,9 @@ DerivedData/
 .build/
 .swiftpm/
 
+# CodeGraph index cache (runtime tool, not source)
+.codegraph/
+
 # CocoaPods
 Pods/
 
