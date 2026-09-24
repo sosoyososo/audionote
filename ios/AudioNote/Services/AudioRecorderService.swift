@@ -46,8 +46,6 @@ final class AudioRecorderService: @unchecked Sendable {
     }
 
     static func generateFileUrl(for id: UUID) -> URL {
-        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        let recordingsDir = documentsPath.appendingPathComponent("Recordings", isDirectory: true)
-        return recordingsDir.appendingPathComponent("\(id.uuidString).m4a")
+        StorageCoordinator.shared.audioURL(for: id)
     }
 }

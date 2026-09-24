@@ -35,7 +35,7 @@ final class StorageCoordinator: ObservableObject {
         do {
             let url = try URL(
                 resolvingBookmarkData: data,
-                options: [.withSecurityScope],
+                options: [],
                 relativeTo: nil,
                 bookmarkDataIsStale: &isStale
             )
@@ -56,7 +56,7 @@ final class StorageCoordinator: ObservableObject {
             if isStale {
                 // Best-effort refresh — re-create bookmark data and re-save
                 if let fresh = try? url.bookmarkData(
-                    options: [.withSecurityScope],
+                    options: [],
                     includingResourceValuesForKeys: nil,
                     relativeTo: nil
                 ) {
@@ -79,7 +79,7 @@ final class StorageCoordinator: ObservableObject {
     func acceptPickerResult(url: URL) async {
         do {
             let data = try url.bookmarkData(
-                options: [.withSecurityScope],
+                options: [],
                 includingResourceValuesForKeys: nil,
                 relativeTo: nil
             )
