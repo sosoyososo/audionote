@@ -63,9 +63,14 @@ struct OnboardingView: View {
         .sheet(isPresented: $isPickerPresented) {
             FolderPickerSheet { url in
                 isPickerPresented = false
-                isApplyingPick = true
-                Task {
-                    await storage.acceptPickerResult(url: url)
+                // acceptPickerResult is now sync from the caller's POV:
+                // it sets isReady immediately (UI swap is instant), then
+                // persists the bookmark in the background. We just need
+                // to drop the loading flag once the SwiftUI re-render
+                // catches up — a tiny delay keeps the spinner from
+                // flashing off-then-on as the swap happens.
+                DispatchQueue.main.async {
+                    storage.acceptPickerResult(url: url)
                     isApplyingPick = false
                 }
             }
