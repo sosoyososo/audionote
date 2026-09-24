@@ -67,28 +67,66 @@ struct LLMProviderProfile: Codable, Identifiable, Hashable {
             && !baseURL.absoluteString.isEmpty
     }
 
-    /// Lightweight sanity check the Settings form runs before saving. Returns
-    /// nil if everything looks fine, otherwise a user-readable reason.
-    func validate() -> String? {
+    /// Lightweight sanity check the Settings form runs before saving.
+    /// Returns nil if everything looks fine; otherwise an enum case the
+    /// caller maps to a localized message via `.localized`.
+    func validate() -> LLMProfileValidationError? {
         if displayName.count > 40 {
-            return "Display name must be 40 characters or fewer."
+            return .displayNameTooLong
         }
         guard let scheme = baseURL.scheme?.lowercased() else {
-            return "Base URL must include a scheme (https:// or http://)."
+            return .missingScheme
         }
         guard scheme == "https" || scheme == "http" else {
-            return "Base URL scheme must be http or https."
+            return .unsupportedScheme
         }
         if scheme == "http" {
             let host = baseURL.host?.lowercased() ?? ""
             let isLocal = host == "localhost" || host == "127.0.0.1" || host.hasPrefix("192.168.") || host.hasPrefix("10.") || host.hasPrefix("172.16.") || host == "[::1]"
             if !isLocal {
-                return "Plain http is only allowed for localhost or LAN addresses."
+                return .plainHttpNotLocal
             }
         }
+        // Reject URLs that don't end in `/chat/completions`. Without the
+        // path, the server typically 301s to its docs page and iOS won't
+        // follow a POST redirect into an HTML response — surfacing as a
+        // confusing "App Transport Security" error.
+        let path = baseURL.path.lowercased()
+        if !path.hasSuffix("/chat/completions") {
+            return .missingChatCompletionsPath
+        }
         if model.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "Model name is required."
+            return .missingModel
         }
         return nil
+    }
+}
+
+/// Validation outcomes for `LLMProviderProfile.validate()`. Mapped to
+/// localized strings at the call site so the model file stays free of
+/// UI strings.
+enum LLMProfileValidationError {
+    case displayNameTooLong
+    case missingScheme
+    case unsupportedScheme
+    case plainHttpNotLocal
+    case missingChatCompletionsPath
+    case missingModel
+
+    var localizedMessage: String {
+        switch self {
+        case .displayNameTooLong:
+            return "Settings.LLM.Profile.Error.DisplayNameTooLong".localized
+        case .missingScheme:
+            return "Settings.LLM.Profile.Error.MissingScheme".localized
+        case .unsupportedScheme:
+            return "Settings.LLM.Profile.Error.UnsupportedScheme".localized
+        case .plainHttpNotLocal:
+            return "Settings.LLM.Profile.Error.PlainHttpNotLocal".localized
+        case .missingChatCompletionsPath:
+            return "Settings.LLM.Profile.Error.MustEndInChatCompletions".localized
+        case .missingModel:
+            return "Settings.LLM.Profile.Error.MissingModel".localized
+        }
     }
 }

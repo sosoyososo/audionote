@@ -126,3 +126,9 @@
 "Settings.LLM.Test.Fail" = "Connection failed: %@";
 "Settings.LLM.Test.NoProfile" = "Please configure a provider first";
 "Settings.LLM.Profile.Error.InvalidURL" = "Invalid Base URL format";
+"Settings.LLM.Profile.Error.MustEndInChatCompletions" = "Base URL must end in /chat/completions (OpenAI-compatible endpoint)";
+"Settings.LLM.Profile.Error.DisplayNameTooLong" = "Display name must be 40 characters or fewer";
+"Settings.LLM.Profile.Error.MissingScheme" = "Base URL must include a scheme (https:// or http://)";
+"Settings.LLM.Profile.Error.UnsupportedScheme" = "Base URL scheme must be http or https";
+"Settings.LLM.Profile.Error.PlainHttpNotLocal" = "Plain http is only allowed for localhost or LAN addresses";
+"Settings.LLM.Profile.Error.MissingModel" = "Model name is required";

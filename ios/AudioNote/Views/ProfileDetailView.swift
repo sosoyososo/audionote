@@ -159,7 +159,7 @@ struct ProfileDetailView: View {
             createdAt: existingId.flatMap { id in store.profiles.first(where: { $0.id == id })?.createdAt } ?? Date()
         )
         if let err = profile.validate() {
-            validationError = err
+            validationError = err.localizedMessage
             return
         }
         let keyToWrite: String? = requiresAPIKey && !apiKey.isEmpty ? apiKey : nil
@@ -185,7 +185,7 @@ struct ProfileDetailView: View {
             requiresAPIKey: requiresAPIKey
         )
         if let err = profile.validate() {
-            validationError = err
+            validationError = err.localizedMessage
             return
         }
         let keyForTest: String?
