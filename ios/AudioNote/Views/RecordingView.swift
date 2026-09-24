@@ -341,8 +341,7 @@ struct RecordingView: View {
                             .padding(.bottom)
                     }
                     .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .textCard()
                 } else if viewModel.llmProcessingFailed {
                     // Show original text with retry option
                     VStack {
@@ -355,8 +354,7 @@ struct RecordingView: View {
                             .padding(.bottom)
                     }
                     .frame(maxWidth: .infinity)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+                    .textCard()
                 } else {
                     // Final transcribed text
                     resultTextView
@@ -376,8 +374,7 @@ struct RecordingView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                 }
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .textCard()
             } else {
                 VStack {
                     ProgressView()
@@ -388,8 +385,7 @@ struct RecordingView: View {
                         .padding(.bottom)
                 }
                 .frame(maxWidth: .infinity)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .textCard()
             }
         }
     }
@@ -399,8 +395,7 @@ struct RecordingView: View {
             .font(.body)
             .focused($isEditorFocused)
             .padding(8)
-            .background(Color(.systemGray6))
-            .cornerRadius(12)
+            .textCard()
             .onAppear {
                 isEditorFocused = true
             }
@@ -427,8 +422,7 @@ struct RecordingView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding()
                 }
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .textCard()
             } else {
                 VStack(spacing: 8) {
                     Image(systemName: "text.badge.xmark")
@@ -439,8 +433,7 @@ struct RecordingView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: 120)
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
+                .textCard()
             }
         }
     }

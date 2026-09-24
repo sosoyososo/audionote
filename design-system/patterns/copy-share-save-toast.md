@@ -1,142 +1,83 @@
 # Pattern: Copy / Share / Save toast
 
-> **Status: inferred** — extracted from current `RecordingView`,
-> `LibraryListView`, `TranscriptionDetailView`, `SettingsView`.
+> **Status: inferred → confirmed in practice** — three-screen consolidation
+> landed in commit `feat/design-system-and-recording-screen` (2026-09-24).
 
-## §1. Where it appears
+## §1. Canonical pattern today
 
-| Action | File:Line | Mechanism |
-|---|---|---|
-| Copy text | `RecordingView.swift:555-559` | inline `showCopiedToast = true; autoHideToast()` |
-| Copy text | `LibraryListView.swift:308` (via `RecordActionsViewModel`) | `actionsViewModel.copyText(record.content)` |
-| Copy text | `TranscriptionDetailView.swift:73` (via `RecordActionsViewModel`) | `actionsViewModel.copyText(currentRecord.content)` |
-| Save edit | `TranscriptionDetailView.swift:429` (via `RecordActionsViewModel`) | `actionsViewModel.showSaveConfirmation()` |
-| Save edit (recording) | `RecordingView.swift:546` | inline `showCopiedToast = true` (re-uses copy toast!) |
-| Provider profile test | `SettingsView.swift:75-92` | inline `viewModel.migrationToast` / `viewModel.pingResult` |
-| Toast content migration | `SettingsView.swift:75` | inline `viewModel.migrationToast` |
-
-## §2. Three independent "toast coordinators"
-
-The codebase has **three** separate toast-management strategies today:
-
-### A — `RecordingView` ad-hoc
+All three record-bearing screens now use the same toast coordinator:
 
 ```swift
-@State private var showCopiedToast = false
-@State private var toastMessage = ""  // unused; hard-coded "Toast.Copied"
-private func copyText() {
-    UIPasteboard.general.string = viewModel.transcribedText
-    showCopiedToast = true
-    autoHideToast()
-}
-private func autoHideToast() {
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-        showCopiedToast = false
-    }
-}
-```
-
-Auto-hide is `1.5 s` and direct toggle — no `withAnimation`, no slide-in
-transition animation.
-
-### B — `RecordActionsViewModel` (SharedComponents)
-
-```swift
-@MainActor
-public final class RecordActionsViewModel: ObservableObject {
-    @Published public var showShareSheet = false
-    @Published public var showCopiedToast = false
-    @Published public var showSaveSuccess = false
-    @Published public var toastMessage = ""
-
-    public func copyText(_ text: String) {
-        UIPasteboard.general.string = text
-        toastMessage = "Toast.Copied".localized
-        withAnimation { showCopiedToast = true }
-    }
-    public func showSaveConfirmation() {
-        toastMessage = "Toast.Saved".localized
-        withAnimation { showSaveSuccess = true }
-    }
-}
-```
-
-But `RecordActionsViewModel` triggers the flag but does **not** auto-hide it
-— the auto-hide is inside `ToastView` itself (good — DRY for the auto-hide).
-
-### C — `SettingsViewModel`
-
-Two separate `@Published` flags for two different toasts, with manual binding
-construction:
-
-```swift
-ToastView(message: toast, isShowing: Binding(
-    get: { viewModel.migrationToast != nil },
-    set: { newValue in if !newValue { viewModel.migrationToast = nil } }
-))
-```
-
-This is the most verbose of the three.
-
-## §3. Proposed canonical pattern
-
-```swift
-// Single coordinator per screen (or shared if no other concerns).
-final class ToastCoordinator: ObservableObject {
-    @Published var message: String?
-    @Published var isShowing = false
-
-    func show(_ message: String) {
-        self.message = message
-        withAnimation { isShowing = true }
-    }
-
-    func dismiss() {
-        withAnimation { isShowing = false }
-    }
-}
-```
-
-Then every screen renders the same overlay:
-
-```swift
+@StateObject private var actionsViewModel = RecordActionsViewModel()
+// …
 .overlay(alignment: .top) {
-    if let message = toastCoordinator.message {
-        ToastView(message: message, isShowing: $toastCoordinator.isShowing)
-            .padding(.top, 60)
-    }
+    ToastView(
+        message: actionsViewModel.toastMessage,
+        isShowing: $actionsViewModel.showCopiedToast
+    )
 }
+.sheet(isPresented: $actionsViewModel.showShareSheet) { ShareSheet(items: …) }
 ```
 
-`ToastView` already auto-hides after 1.5 s — so the coordinator only has to
-*trigger* `isShowing = true`, not manage its lifecycle.
+Consumers (as of 2026-09-24):
+
+| Screen | File:Line |
+|---|---|
+| Recording | `ios/AudioNote/Views/RecordingView.swift:6, :44-49, :52` |
+| Library | `ios/AudioNote/Views/LibraryListView.swift:10, :46` |
+| Detail | `ios/AudioNote/Views/TranscriptionDetailView.swift:7, :79, :93, :97` |
+
+Trigger API on `RecordActionsViewModel` (in `SharedComponents.swift:50-72`):
+
+```swift
+func copyText(_ text: String)              // sets toastMessage = "Toast.Copied", shows
+func showSaveConfirmation()                 // sets toastMessage = "Toast.Saved", shows
+```
+
+Auto-hide lives inside `ToastView` (`SharedComponents.swift:17-45`) — 1.5 s,
+slide-in transition `.move(edge: .top).combined(with: .opacity)`.
+
+## §2. Pre-consolidation history (was 3 → now 1)
+
+This pattern started as **three independent coordinators**:
+- A — `RecordingView` inline `@State` flags + manual `asyncAfter` (no animation)
+- B — `RecordActionsViewModel` in `SharedComponents` (the canonical one)
+- C — `SettingsViewModel` with two `@Published` flags + manual binding
+
+Recording was the last holdout of A. The Recording refactor in this commit
+moved it to B, collapsing A.
+
+## §3. SettingsView (the remaining outlier)
+
+`SettingsView.swift` still uses the C pattern (two `@Published` flags with
+manual binding construction in `SettingsViewModel`). It is intentionally
+left alone because:
+
+- Its two toasts are **different** from copy/save (provider-test result,
+  migration notice), so they can't share `RecordActionsViewModel.toastMessage`.
+- Consolidating would require either:
+  - Generalising `RecordActionsViewModel` into a "toast of arbitrary string"
+    pattern (loses typing)
+  - Or introducing a global `ToastCenter` singleton (risky — concurrent
+    toasts collide across screens)
+
+Both options are bigger than the win. See §5 for a possible future
+extraction.
 
 ## §4. Self-review
 
 - [x] Did I check `design-system/`? — bootstrap
 - [x] Rationale? — three duplicates + inconsistent timing/animation
 - [x] States covered? — shown / hidden / auto-hide
-- [x] Provenance? — **inferred**
+- [x] Provenance? — **inferred → confirmed in practice** (Recording moved to
+       `RecordActionsViewModel` in commit `feat/design-system-and-recording-screen`)
 
-## §5. Why this matters for the Recording Screen
+## §5. Open questions
 
-`RecordingView` is the only screen that does not use `RecordActionsViewModel`
-or `ToastView`. Switching it over:
-
-- Removes ~25 lines of inline toast logic (`showCopiedToast`, `toastMessage`,
-  `autoHideToast`, the inline `toastOverlay`).
-- Replaces its hard-coded `showCopiedToast` flag with a single
-  `coordinator.show("Toast.Copied".localized)` call.
-- Aligns auto-hide timing (1.5 s) and animation (`.move(.top) + .opacity`)
-  with the rest of the app — currently the recording page's hide transition
-  is missing.
-
-## §6. Open questions
-
-1. Should we introduce `ToastCoordinator` (one per screen) or a global
-   `ToastCenter` (one for the whole app)? Global is risky (concurrent
-   toasts collide). Per-screen is conservative and matches existing
-   per-screen VMs (`RecordActionsViewModel`, `SettingsViewModel`'s toast
-   fields).
-2. Should `Toast.Copied` and `Toast.Saved` strings live in the
-   `Localizable.strings` table today? Yes (see `i18n/`).
+1. Should `SettingsView`'s toast fields be lifted into a generic
+   `ToastCenter` so all four screens use one pattern? Deferred — current
+   working set has zero divergence in user-visible behaviour; cost of
+   extraction > benefit until a fifth toast type appears.
+2. `RecordActionsViewModel.showSaveSuccess` is a published flag that's
+   never read (only `showCopiedToast` is bound to `ToastView`). Dead
+   state — candidate for deletion in a future cleanup.

@@ -175,39 +175,23 @@ struct LibraryListView: View {
     }
 
     private var emptyLibraryState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "list.bullet.clipboard")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-
-            Text("History.Empty".localized)
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-            Text("History.Empty.Hint".localized)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        EmptyState(
+            systemImage: "list.bullet.clipboard",
+            title: "History.Empty".localized,
+            subtitle: "History.Empty.Hint".localized
+        )
     }
 
     private var noResultsState: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-
-            Text("Library.NoResults".localized)
-                .font(.headline)
-                .foregroundColor(.secondary)
-
-            Button("Library.ClearFilters".localized) {
+        EmptyState(
+            systemImage: "magnifyingglass",
+            title: "Library.NoResults".localized,
+            actionTitle: "Library.ClearFilters".localized,
+            action: {
                 searchInput = ""
                 viewModel.clearFilters()
             }
-            .buttonStyle(.bordered)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
     }
 
     private var recordsListView: some View {
@@ -427,15 +411,10 @@ struct LibraryArchivedMatchesView: View {
     var body: some View {
         Group {
             if archivedMatches.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "archivebox")
-                        .font(.system(size: 60))
-                        .foregroundColor(.secondary)
-                    Text("Library.NoResults".localized)
-                        .font(.headline)
-                        .foregroundColor(.secondary)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                EmptyState(
+                    systemImage: "archivebox",
+                    title: "Library.NoResults".localized
+                )
             } else {
                 List {
                     ForEach(archivedMatches) { record in

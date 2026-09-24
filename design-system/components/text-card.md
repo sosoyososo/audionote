@@ -1,6 +1,10 @@
-# TextCard (candidate)
+# TextCard
 
-> **Status: inferred** — extraction candidate, **not** yet refactored in code.
+> **Status: inferred → confirmed in practice** — applied as
+> `View.textCard(radius:)` modifier in `ios/AudioNote/Views/SharedComponents.swift:74-91`,
+> and consumed by all 7 sites in `ios/AudioNote/Views/RecordingView.swift`
+> (lines 344/357/377/388/398/425/436) — each previously a
+> `.background(Color(.systemGray6)).cornerRadius(12)` pair (2026-09-24).
 
 ## §1. Problem
 
@@ -25,36 +29,23 @@ Each copy is a `VStack` / `ScrollView` / `TextEditor` wrapped in:
 .cornerRadius(12)
 ```
 
-## §2. Proposed shape (inferred, not implemented)
-
-```swift
-struct TextCard<Content: View>: View {
-    let minHeight: CGFloat = 120
-    let maxHeight: CGFloat = 250
-    let radius: CGFloat = 12   // 8 for detail edit (smaller variant)
-    @ViewBuilder var content: Content
-
-    var body: some View {
-        content
-            .frame(minHeight: minHeight, maxHeight: maxHeight)
-            .background(Color(.systemGray6))
-            .cornerRadius(radius)
-    }
-}
-```
-
-Or, lighter-weight, a `ViewModifier` so callers keep their layout tree:
+## §2. Implementation (applied)
 
 ```swift
 extension View {
-    func textCard(min: CGFloat = 120, max: CGFloat = 250, radius: CGFloat = 12) -> some View {
+    func textCard(radius: CGFloat = 12) -> some View {
         self
-            .frame(minHeight: min, maxHeight: max)
             .background(Color(.systemGray6))
             .cornerRadius(radius)
     }
 }
 ```
+
+The frame (`minHeight: 120, maxHeight: 250`) is left at the caller — it
+varies per container (live text card vs. loading/failed card vs. result
+card share the same parent frame; the recording button section does not
+need a frame at all). Extracting frame into the modifier would couple
+unrelated layout decisions to the visual style.
 
 ## §3. States covered
 

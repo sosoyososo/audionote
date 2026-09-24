@@ -43,16 +43,17 @@ Self-review checklist (per asset, see `~/.claude/design-system-engine.md` §6):
 
 | Component | Current source | Status |
 |---|---|---|
-| `TextCard` (gray6 bg + radius 12, padded text container) | `RecordingView.swift:352/366/387/410/438/450`, `TranscriptionDetailView.swift:158` | inferred — **candidate for extraction**, see `components/text-card.md` |
-| `EmptyStateView` (large SF Symbol + headline + sub) | `LibraryListView.swift:178-191/194-209/430-437` | inferred — candidate for extraction |
-| `StatusHeaderStrip` (mode label + caption + trailing actions) | `RecordingView.swift:237-331` | inferred — internal to RecordingView |
-| `RecognitionModeBadge` (color + label + opacity bg) | `RecordingView.swift:298-302`, plus icon helpers in `TranscriptionDetailView.swift:254-282` | inferred — **duplicated**, see `components/recognition-mode-badge.md` |
-| `ToastView` | `SharedComponents.swift:17-45` | confirmed (already used by Library + Detail) — but `RecordingView` re-implements it inline at `:458-477` (smell) |
+| `TextCard` (gray6 bg + radius 12, padded text container) | `RecordingView.swift:344/357/377/388/398/425/436` (mod sites) | **applied (2026-09-24)** — `View.textCard(radius:)` in `SharedComponents.swift:74-91`; see `components/text-card.md` |
+| `EmptyState` (large SF Symbol + headline + optional subtitle + optional action) | `LibraryListView.swift:177/185/429` | **applied (2026-09-24)** — `EmptyState` struct in `SharedComponents.swift:93-126`; see `components/empty-state.md` |
+| `RecognitionModeStyle` + `ModeBadge` (color + icon + label, one source of truth) | `RecordingView.swift:169, :294`; `TranscriptionDetailView.swift:127-134` (still has its own helpers — candidate for follow-up) | **applied for Recording (2026-09-24)** — `SharedComponents.swift`; `TranscriptionDetailView` not yet migrated (separate decision) |
+| `ToastView` | `SharedComponents.swift:17-45` | **applied across Recording + Library + Detail** — Recording now routes through `RecordActionsViewModel`; see `components/toast-view.md` |
+| `ToastCoordinator` (canonical pattern: `RecordActionsViewModel`) | `SharedComponents.swift:50-72` | **applied across Recording + Library + Detail** — see `patterns/copy-share-save-toast.md` |
 | `ShareSheet` | `SharedComponents.swift:5-13` | confirmed |
-| `PlaybackControlBar` | `SharedComponents.swift:76-120` | confirmed |
-| `PulsingModifier` (recording pulse animation) | `RecordingView.swift:588-613` | inferred — single use |
+| `PlaybackControlBar` | `SharedComponents.swift:136-180` (was :76-120 pre-2026-09-24) | confirmed |
+| `PulsingModifier` (recording pulse animation) | `RecordingView.swift:566-591` | inferred — single use |
 | `TagFlowView` | `TranscriptionDetailView.swift:448-479` | inferred |
-| `LanguageChipButton` | `RecordingView.swift:116-141` | inferred — language-tag chip with capsule bg |
+| `LanguageChipButton` | `RecordingView.swift:118-143` | inferred — language-tag chip with capsule bg |
+| `StatusHeaderStrip` (mode label + caption + trailing actions) | `RecordingView.swift` (text-section header) | inferred — internal to RecordingView |
 
 ## §5. Reuse First verdict
 

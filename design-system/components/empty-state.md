@@ -1,6 +1,10 @@
-# EmptyState (candidate)
+# EmptyState
 
-> **Status: inferred** — extraction candidate, **not** yet refactored in code.
+> **Status: inferred → confirmed in practice** — applied as
+> `EmptyState` struct in `ios/AudioNote/Views/SharedComponents.swift:93-126`,
+> consumed by all 3 sites in `ios/AudioNote/Views/LibraryListView.swift`
+> (`:177-183` empty library, `:185-194` no-results, `:429-432` archived
+> empty) (2026-09-24).
 
 ## §1. Problem
 
@@ -56,15 +60,15 @@ VStack(spacing: 16) {
 `RecordingView.swift:441-451` is a fourth (smaller) variant of the same
 pattern but constrained to the text-card frame.
 
-## §2. Proposed extraction
+## §2. Implementation (applied)
 
 ```swift
 struct EmptyState: View {
     let systemImage: String
-    let title: LocalizedStringKey
-    let subtitle: LocalizedStringKey?
-    let actionTitle: LocalizedStringKey?
-    let action: (() -> Void)?
+    let title: String
+    var subtitle: String? = nil
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 16) {
@@ -88,6 +92,11 @@ struct EmptyState: View {
     }
 }
 ```
+
+> **Type note:** `String` (not `LocalizedStringKey`) was chosen because the
+> codebase routes through `"<key>".localized` which returns a pre-translated
+> `String` via `LanguageManager`. `LocalizedStringKey` would force every
+> call site to bypass `.localized`.
 
 ## §3. States covered
 

@@ -133,6 +133,62 @@ struct ModeBadge: View {
     }
 }
 
+// MARK: - Text Card Style
+//
+// Reusable modifier for the gray6-bg + rounded-corner container that
+// appears 7× in `RecordingView` and 1× in `TranscriptionDetailView`.
+// See `design-system/components/text-card.md`.
+
+extension View {
+    /// Apply the canonical gray6 background + rounded-corner container
+    /// used for the recording screen's text cards.
+    /// - Parameter radius: corner radius. Default `12` matches the dominant
+    ///   recording-screen pattern; pass `8` for the detail-page edit card.
+    func textCard(radius: CGFloat = 12) -> some View {
+        self
+            .background(Color(.systemGray6))
+            .cornerRadius(radius)
+    }
+}
+
+// MARK: - Empty State
+//
+// Used by `LibraryListView` (3 sites: empty, no-results, archived-empty)
+// and reusable for any future screen that needs an empty / no-results
+// placeholder. See `design-system/components/empty-state.md`.
+
+struct EmptyState: View {
+    let systemImage: String
+    let title: String
+    var subtitle: String? = nil
+    var actionTitle: String? = nil
+    var action: (() -> Void)? = nil
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: systemImage)
+                .font(.system(size: 60))
+                .foregroundColor(.secondary)
+
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.secondary)
+
+            if let subtitle {
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.bordered)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
 // MARK: - Playback Control Bar
 
 struct PlaybackControlBar: View {
