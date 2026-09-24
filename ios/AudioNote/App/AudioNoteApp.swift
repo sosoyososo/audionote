@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct AudioNoteApp: App {
     @StateObject private var languageManager = LanguageManager.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         NetworkMonitor.shared.startMonitoring()
@@ -19,6 +20,13 @@ struct AudioNoteApp: App {
                     // Force view refresh by posting notification
                     NotificationCenter.default.post(name: .languageChanged, object: nil)
                 }
+        }
+        .onChange(of: scenePhase) { phase in
+            // Files-app storage requires releasing/re-acquiring the
+            // security-scoped bookmark on every phase change. Must live on
+            // the WindowGroup so it fires regardless of whether the root
+            // view is ContentView (isReady) or OnboardingView.
+            StorageCoordinator.shared.handleScenePhase(phase)
         }
     }
 }

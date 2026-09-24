@@ -6,6 +6,26 @@ struct ContentView: View {
     @State private var refreshId = UUID()
 
     var body: some View {
+        Group {
+            if StorageCoordinator.shared.isReady {
+                mainTabContentView
+            } else {
+                OnboardingView()
+            }
+        }
+        .id(refreshId)
+        .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { _ in
+            refreshId = UUID()
+        }
+        .onAppear {
+            // Resolve the Files-app bookmark the first time we land on the
+            // root view. Sets `isReady`; the gate above swaps to the main UI
+            // (or stays on OnboardingView if no bookmark exists yet).
+            Task { await StorageCoordinator.shared.bootstrap() }
+        }
+    }
+
+    private var mainTabContentView: some View {
         ZStack {
             TabView {
                 RecordingView(viewModel: viewModel)
@@ -24,10 +44,6 @@ struct ContentView: View {
                     }
             }
             .environmentObject(viewModel)
-        }
-        .id(refreshId)
-        .onReceive(NotificationCenter.default.publisher(for: .languageChanged)) { _ in
-            refreshId = UUID()
         }
     }
 }
