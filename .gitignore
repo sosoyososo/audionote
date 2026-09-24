@@ -4,3 +4,7 @@
 # Xcode user data
 *.xcuserstate
 xcuserdata/
+
+# Agent caches (codegraph / deepseek / similar tooling)
+.codegraph/
+.deepseek/
