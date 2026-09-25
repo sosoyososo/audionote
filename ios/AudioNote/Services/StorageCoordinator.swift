@@ -36,6 +36,12 @@ final class StorageCoordinator: ObservableObject {
     @MainActor
     func setReady(url: URL) {
         resolvedRoot = url
+        // Real security-scope acquisition. The previous version only set
+        // `didStartAccess = true` without calling `startAccessingSecurityScopedResource`,
+        // so AVAudioFile writes to the Files-app folder failed with OSError -54
+        // ("unable to make sandbox extension") on real devices (sim doesn't enforce).
+        // On picker URLs (non-security-scoped) this returns false — no-op.
+        _ = url.startAccessingSecurityScopedResource()
         didStartAccess = true
         errorMessage = nil
         isReady = true
@@ -78,6 +84,24 @@ final class StorageCoordinator: ObservableObject {
             UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
             return nil
         }
+        // Probe: if this bookmark is NOT security-scoped (e.g. was created
+        // by an older build that deferred bookmark creation past the picker
+        // session, when the URL was no longer security-scoped), the
+        // resolved URL won't admit `startAccessingSecurityScopedResource()`
+        // and AVAudioFile writes will fail with OSError -54. Detect that
+        // here and discard the stale bookmark so the user gets a clean
+        // re-pick prompt (and the picker-session fix in acceptPickerResult
+        // produces a usable bookmark this time).
+        if !url.startAccessingSecurityScopedResource() {
+            url.stopAccessingSecurityScopedResource()
+            UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootBookmark)
+            Logger.warning("Discarded non-security-scoped bookmark — forcing re-pick")
+            return nil
+        }
+        // We started access for the probe. Caller (bootstrap/setReady)
+        // will startAccessing again — that call is idempotent per Apple
+        // docs. Balance this probe with a stop.
+        url.stopAccessingSecurityScopedResource()
         if isStale {
             if let fresh = try? url.bookmarkData(
                 options: [],
@@ -113,6 +137,8 @@ final class StorageCoordinator: ObservableObject {
     func bootstrap() async {
         if let url = resolveSync() {
             resolvedRoot = url
+            // Real security-scope acquisition (see setReady for context).
+            _ = url.startAccessingSecurityScopedResource()
             didStartAccess = true
             errorMessage = nil
             isReady = true
@@ -138,28 +164,52 @@ final class StorageCoordinator: ObservableObject {
     ///    before we could read), fall back to a path-string UserDefaults
     ///    entry so we at least know the user's last intent.
     func acceptPickerResult(url: URL) {
-        // Phase 1 — sync UI swap.
+        // The picker URL is ONLY security-scoped while the picker sheet is
+        // alive. Two things must happen synchronously here, on the picker
+        // session's behalf, BEFORE the sheet is dismissed:
+        //
+        // 1. `startAccessingSecurityScopedResource()` — acquire the sandbox
+        //    extension so subsequent writes in this session are permitted.
+        //    Without this, AVAudioFile writes fail with OSError -54
+        //    ("unable to make sandbox extension") immediately.
+        //
+        // 2. `bookmarkData(options: [])` — persist the access as a
+        //    security-scoped bookmark. iOS does NOT need (and does NOT
+        //    support) `.withSecurityScope` — security scope is implied
+        //    automatically when the source URL is security-scoped. The
+        //    previous design deferred bookmark creation to a background
+        //    `Task.detached`, but by the time that Task runs the picker
+        //    sheet has already been dismissed, the URL is no longer
+        //    security-scoped, and `bookmarkData(options: [])` produces a
+        //    NON-security-scoped bookmark. On the next cold start, that
+        //    bookmark resolves to a URL where
+        //    `startAccessingSecurityScopedResource()` returns false — so
+        //    every write fails. That's the bug we hit.
+        //
+        // The picker sheet is still up while this synchronous block runs
+        // (the caller is the picker's didPick handler), so the user doesn't
+        // see the bookmarkData() latency — they're looking at the picker.
+        // We trade aa51ef6's "instant UI swap" for "instant access" because
+        // the previous trade-off silently broke security-scoped persistence.
+        _ = url.startAccessingSecurityScopedResource()
+
+        do {
+            let data = try url.bookmarkData(
+                options: [],
+                includingResourceValuesForKeys: nil,
+                relativeTo: nil
+            )
+            UserDefaults.standard.set(data, forKey: StorageBookmarkKey.rootBookmark)
+            UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootPathFallback)
+        } catch {
+            // Sync bookmark creation failed — save the path string as last-resort.
+            UserDefaults.standard.set(url.path, forKey: StorageBookmarkKey.rootPathFallback)
+        }
+
         resolvedRoot = url
         didStartAccess = true
         errorMessage = nil
         isReady = true
-
-        // Phase 2 — background persistence.
-        Task.detached(priority: .utility) {
-            do {
-                let data = try url.bookmarkData(
-                    options: [],
-                    includingResourceValuesForKeys: nil,
-                    relativeTo: nil
-                )
-                UserDefaults.standard.set(data, forKey: StorageBookmarkKey.rootBookmark)
-                // Clear any stale path fallback — bookmark succeeded.
-                UserDefaults.standard.removeObject(forKey: StorageBookmarkKey.rootPathFallback)
-            } catch {
-                // Bookmark failed — save the path string as last-resort.
-                UserDefaults.standard.set(url.path, forKey: StorageBookmarkKey.rootPathFallback)
-            }
-        }
     }
 
     // MARK: - URL helpers (nonisolated so any actor can read them cheaply)

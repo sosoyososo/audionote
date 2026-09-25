@@ -3,11 +3,12 @@
 struct ContentView: View {
     @StateObject private var viewModel = TranscriptionViewModel()
     @EnvironmentObject private var languageManager: LanguageManager
+    @ObservedObject private var storage = StorageCoordinator.shared
     @State private var refreshId = UUID()
 
     var body: some View {
         Group {
-            if StorageCoordinator.shared.isReady {
+            if storage.isReady {
                 mainTabContentView
             } else {
                 OnboardingView()
