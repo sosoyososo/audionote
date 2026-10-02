@@ -54,6 +54,31 @@ struct LLMOptimizeAndProcessResult: Decodable {
     let tags: [TaggedItem]
 }
 
+/// One candidate offered to the model by the `findRelated` call. Encodable
+/// but not actually put on the wire as JSON — it is rendered into the
+/// candidate block of `findRelatedPrompt` — so the conformance is there for
+/// callers (and future prompts) that want to send the list structurally.
+struct RelatedNoteCandidate: Encodable {
+    let id: UUID
+    let title: String
+    let summary: String
+}
+
+/// One "this candidate is related to the current note" verdict from the model.
+/// `score` is the model's own 0.0-1.0 rating, independent of how the candidate
+/// was prescreened — the two numbers are not comparable (see spec §3).
+struct RelatedNoteMatch: Decodable {
+    let id: UUID
+    let score: Double
+}
+
+/// Envelope of the `findRelated` response. `related` is optional so a model
+/// that answers `{}` instead of `{"related": []}` is treated as "nothing
+/// related" rather than a decode failure.
+private struct RelatedPayload: Decodable {
+    let related: [RelatedNoteMatch]?
+}
+
 /// Single LLM service. Talks to whichever `LLMProviderProfile` the caller
 /// passes in — no global state, no defaults. The caller is responsible for
 /// reading the active profile from `ProviderProfileStore` and the API key
@@ -126,6 +151,27 @@ actor LLMService {
     {"optimizedText": "...", "title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
     """
 
+    private static let findRelatedPrompt = """
+    你是一个笔记关联助手。下面是一条笔记，以及候选笔记的列表。
+
+    【当前笔记】
+    标题：{title}
+    摘要：{summary}
+
+    【候选笔记】
+    {candidates}
+
+    请选出与【当前笔记】在主题或内容上真正相关的候选，最多 5 条，不足则少给。
+    只返回你确实认为相关的；如果没有任何一条相关，返回空数组。
+    不要返回格式错误的 id，不要编造候选列表中不存在的 id。
+    id 字段必须是上面给定的完整 uuid 字符串。
+    score 是这一对笔记的相关程度，0.0-1.0，与候选列表的规模无关：
+    即使只有一条候选也要如实给分。
+
+    严格返回 JSON，不要任何解释或 markdown 标记：
+    {"related": [{"id": "<uuid>", "score": 0.85}]}
+    """
+
     private static let pingPrompt = "ping"
 
     // MARK: - Public API
@@ -155,6 +201,54 @@ actor LLMService {
             sendAndParse: { urlRequest, profile in
                 let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
                 return try Self.parseOptimizeAndProcess(content: content)
+            }
+        )
+    }
+
+    /// Second, independent LLM call: which of the given candidates are
+    /// actually related to the current note. Kept separate from
+    /// `optimizeAndProcess` because that call's user message is the raw
+    /// transcript and its prompt asks the model to rewrite it — injecting
+    /// 20 other notes' summaries into the same message invites the model to
+    /// import them into the "optimized" output (spec §4.2).
+    ///
+    /// Runs the same three gates and the same retry policy as
+    /// `optimizeAndProcess`. The returned ids are unvalidated: the caller
+    /// must intersect them with the candidate set before persisting, which
+    /// is what `RelatedNotesService.sanitize` does.
+    func findRelated(
+        currentTitle: String,
+        currentSummary: String,
+        candidates: [RelatedNoteCandidate],
+        profile: LLMProviderProfile,
+        apiKey: String?
+    ) async throws -> [RelatedNoteMatch] {
+        try validateProfile(profile, apiKey: apiKey)
+
+        let candidateBlock = candidates
+            .map { "\($0.id.uuidString). 标题：\($0.title) 摘要：\($0.summary)" }
+            .joined(separator: "\n")
+
+        let systemPrompt = Self.findRelatedPrompt
+            .replacingOccurrences(of: "{title}", with: currentTitle)
+            .replacingOccurrences(of: "{summary}", with: currentSummary)
+            .replacingOccurrences(of: "{candidates}", with: candidateBlock)
+
+        return try await retryingRequest(
+            profile: profile,
+            apiKey: apiKey,
+            buildRequest: {
+                APIRequest(
+                    model: profile.model,
+                    messages: [
+                        APIRequest.Message(role: "system", content: systemPrompt),
+                        APIRequest.Message(role: "user", content: "请找出相关笔记。"),
+                    ]
+                )
+            },
+            sendAndParse: { urlRequest, profile in
+                let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
+                return try Self.parseRelated(content: content)
             }
         )
     }
@@ -367,6 +461,31 @@ actor LLMService {
         }
 
         Logger.error("LLM optimizeAndProcess: extraction failed. Full content: \(content)")
+        throw LLMError.decodingError
+    }
+
+    /// Parse the `findRelated` response. Direct JSON first, then the same
+    /// balanced-brace extraction used by `parseOptimizeAndProcess` (models in
+    /// the M2.7 lineage wrap JSON in prose). An empty `related` array is a
+    /// valid answer, not an error — "none of these are related" is a real
+    /// outcome the caller must be able to persist as zero edges.
+    static func parseRelated(content: String) throws -> [RelatedNoteMatch] {
+        let decode: (Data) -> [RelatedNoteMatch]? = { data in
+            guard let payload = try? JSONDecoder().decode(RelatedPayload.self, from: data) else { return nil }
+            return payload.related ?? []
+        }
+
+        if let directData = content.data(using: .utf8), let parsed = decode(directData) {
+            return parsed
+        }
+
+        if let extracted = extractFirstJSONObject(from: content),
+           let extractedData = extracted.data(using: .utf8),
+           let parsed = decode(extractedData) {
+            return parsed
+        }
+
+        Logger.error("LLM findRelated: could not parse content: \(content)")
         throw LLMError.decodingError
     }
 

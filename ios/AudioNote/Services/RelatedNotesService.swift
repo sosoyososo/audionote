@@ -91,4 +91,62 @@ struct RelatedNotesService {
             .prefix(Self.maxCandidates)
             .map(\.record)
     }
+
+    // MARK: - Sanitize (pure)
+
+    /// Drop anything the model shouldn't have returned: ids that weren't
+    /// offered as candidates (hallucinations), the current note itself, and
+    /// duplicates. Keeps the strongest score per surviving id and caps the
+    /// result at 5, ordered strongest first.
+    ///
+    /// Pure — no network, no storage, no ViewModel. Task 5 owns the wiring;
+    /// this is only the filter the LLM's answer must pass through before
+    /// anything is persisted.
+    ///
+    /// Order of operations matters, and it is not the order the spec's data
+    /// flow diagram lists them in prose. The candidate-set intersection and
+    /// the self-drop happen in the *filter*, so they cost nothing; dedupe
+    /// happens next, into a dictionary, because a duplicate must not be able
+    /// to consume one of the 5 display slots — capping first would let two
+    /// copies of the same note take two slots and leave a genuinely related
+    /// note off the list. The cap is therefore last.
+    ///
+    /// The self-drop is not redundant with the candidate-set intersection:
+    /// the model can be handed — or invent — the current note's own id, and
+    /// the storage layer does **not** guard self-edges (`NoteRelation.init`
+    /// has no `a != b` check, and `otherID(from:)` on `{X, X}` returns `X`),
+    /// so an unguarded self-match would persist and render as a note linked
+    /// to itself.
+    static func sanitize(
+        _ matches: [RelatedNoteMatch],
+        candidateIDs: Set<UUID>,
+        currentID: UUID
+    ) -> [RelatedNoteMatch] {
+        // Dedupe, keeping the highest score the model gave each id — a model
+        // that rates the same note twice is reporting uncertainty about the
+        // score, not a second opinion, and the higher rating is the one it
+        // stands behind.
+        var best: [UUID: Double] = [:]
+        for match in matches where candidateIDs.contains(match.id) && match.id != currentID {
+            best[match.id] = max(best[match.id] ?? 0, match.score)
+        }
+
+        // Dictionary iteration order is seeded per process, so a tie on score
+        // would otherwise make the same input render in a different order
+        // on every launch. Break ties on first appearance in the model's own
+        // list, which keeps the output deterministic for a given input.
+        var firstSeen: [UUID: Int] = [:]
+        for (index, match) in matches.enumerated() where firstSeen[match.id] == nil {
+            firstSeen[match.id] = index
+        }
+
+        return best
+            .map { RelatedNoteMatch(id: $0.key, score: $0.value) }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score > rhs.score }
+                return (firstSeen[lhs.id] ?? 0) < (firstSeen[rhs.id] ?? 0)
+            }
+            .prefix(5)
+            .map { $0 }
+    }
 }
