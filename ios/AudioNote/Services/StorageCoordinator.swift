@@ -229,6 +229,10 @@ final class StorageCoordinator: ObservableObject {
         rootURL.appendingPathComponent("transcriptions.json")
     }
 
+    nonisolated var relatedNotesURL: URL {
+        rootURL.appendingPathComponent("relatedNotes.json")
+    }
+
     // MARK: - Scene phase
 
     /// Release/re-acquire security-scoped resource based on scene phase.
