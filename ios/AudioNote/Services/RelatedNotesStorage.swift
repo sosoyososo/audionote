@@ -64,21 +64,30 @@ final class RelatedNotesStorage {
 
     /// Merge `relations` into the stored set. An existing undirected pair has
     /// its score replaced rather than duplicated.
+    ///
+    /// A read failure propagates rather than defaulting to an empty merge set:
+    /// overwriting an undecodable file would destroy relations that, per §4.4,
+    /// are never recomputed. Callers (`link(for:)`, the delete path) swallow.
     func upsert(_ relations: [NoteRelation]) async throws {
         guard !relations.isEmpty else { return }
         // `uniquingKeysWith:` rather than `Dictionary(uniqueKeysWithValues:)`:
         // a hand-edited or partially-merged file can hold a duplicate pair,
         // and that must degrade, never trap.
-        let existing = (try? await loadAll()) ?? []
+        let existing = try await loadAll()
         var merged = Dictionary(existing.map { ($0.key, $0) },
-                                uniquingKeysWith: { existing, _ in existing })
+                                uniquingKeysWith: { first, _ in first })
         for relation in relations {
             merged[relation.key] = relation
         }
         try await saveAll(Array(merged.values))
     }
 
-    /// Drop every edge touching `id`. Called when a note is deleted or archived.
+    /// Drop every edge touching `id`. Called when a note is **deleted**.
+    ///
+    /// Archive deliberately does not call this — an archived note keeps its
+    /// edges and is filtered at render time, so unarchiving restores its
+    /// relations for free. Cleaning up here would destroy relations that,
+    /// per §4.4, are never recomputed.
     func removeAll(involving id: UUID) async throws {
         let all = try await loadAll()
         let kept = all.filter { !$0.involves(id) }

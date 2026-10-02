@@ -88,4 +88,46 @@ final class RelatedNotesStorageTests: XCTestCase {
         let after = try Data(contentsOf: url)
         XCTAssertEqual(String(decoding: after, as: UTF8.self), "{ this is not json")
     }
+
+    func testUpsertOnCorruptFileThrowsAndLeavesFileIntact() async throws {
+        let url = tmpDir.appendingPathComponent("relatedNotes.json")
+        try Data("{ this is not json".utf8).write(to: url)
+        do {
+            try await store.upsert([NoteRelation(a: a, b: b, score: 0.9)])
+            XCTFail("expected upsert to propagate the decode failure")
+        } catch {
+            // Expected. The swallow belongs in the caller (`link(for:)`), not
+            // here — a store that merged into an empty set would silently
+            // overwrite relations that are never recomputed.
+        }
+        // No write may have happened: the file is still byte-for-byte intact.
+        let after = try Data(contentsOf: url)
+        XCTAssertEqual(String(decoding: after, as: UTF8.self), "{ this is not json")
+    }
+
+    func testUpsertWithDuplicatePairsInExistingFileDoesNotTrap() async throws {
+        let url = tmpDir.appendingPathComponent("relatedNotes.json")
+        // Raw JSON, not encoded NoteRelations: the normalizing `init` would
+        // order both rows identically, so encoding could never produce the
+        // duplicate key. §4.3 makes {a,b} and {b,a} one edge, so a hand-edited
+        // file can legitimately hold both spellings.
+        let aString = a.uuidString
+        let bString = b.uuidString
+        let json = """
+        [
+          {"a": "\(aString)", "b": "\(bString)", "score": 0.2},
+          {"a": "\(bString)", "b": "\(aString)", "score": 0.5}
+        ]
+        """
+        try Data(json.utf8).write(to: url)
+
+        // Must not trap on the duplicate key.
+        try await store.upsert([NoteRelation(a: a, b: c, score: 0.7)])
+
+        // The duplicate pair collapses to one edge; the new pair is added.
+        let all = try await store.loadAll()
+        XCTAssertEqual(all.count, 2, "duplicate pair must collapse, new pair added")
+        XCTAssertTrue(all.contains { $0.key == NoteRelation(a: a, b: c, score: 0).key })
+        XCTAssertTrue(all.contains { $0.key == NoteRelation(a: a, b: b, score: 0).key })
+    }
 }
