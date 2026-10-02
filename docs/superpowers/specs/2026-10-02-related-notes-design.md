@@ -239,9 +239,11 @@ Each row: title, created-at, one-line preview, and the tags the two notes **shar
 
 Tapping a row is a `NavigationLink` push. Stacking is allowed, since following a chain of related notes is the point.
 
-### 5.8 `Services/TranscriptionStorage.swift` (modified)
+### 5.8 Delete-path cleanup
 
-`delete(id:)` gains a call to `relatedNotesStorage.removeAll(involving: id)` so a deleted note's edges do not linger. Failures here are swallowed — the note is already gone and the render-time skip handles a dangling edge.
+Deleting a note drops every edge touching its UUID via `relatedNotesStorage.removeAll(involving:)`. Failures are swallowed — the note is already gone, and the render-time skip handles a dangling edge.
+
+**Implementation note (settled while planning):** the call lives in `TranscriptionViewModel`'s delete path rather than inside `TranscriptionStorage.delete(id:)`. `TranscriptionStorage` is a pure file service with no handle on the relations file, and testing it requires a bootstrapped folder; calling from the view model gives identical observable behavior with a testable seam. Archive deliberately does **not** clean up — an archived note keeps its edges and is filtered at render time, so unarchiving restores its relations for free.
 
 ## 6. Failure and edge-case behavior
 
