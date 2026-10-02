@@ -32,9 +32,15 @@ struct RelatedNotesService {
     /// zero-overlap notes would make exactly that unreachable.
     ///
     /// The tag-count term dominates; the recency term only breaks ties among
-    /// equal-overlap notes. Ordering is fully deterministic (ties fall back to
-    /// `createdAt` descending, then `id`) so the candidate set handed to the
-    /// LLM never reshuffles between runs over identical input.
+    /// equal-overlap notes. Ordering is deterministic for a given `now` (ties
+    /// fall back to `createdAt` descending, then `id`), and it is also stable
+    /// across calls despite `now` moving: a one-tag difference is worth 2.0,
+    /// while the tag-score and recency terms together span at most
+    /// 0.5 × log2(2) + 0.3 = 0.8, so a moving `now` can never reorder a pair
+    /// the tag count did not already order.
+    ///
+    /// Does not enforce `minimumCandidates` — the caller must check that before
+    /// spending an LLM call.
     static func prescreen(current: TranscriptionRecord, among: [TranscriptionRecord]) -> [TranscriptionRecord] {
         // First tag wins on a duplicated name, matching the LLM's descending-score order.
         var currentTags: [String: Double] = [:]
@@ -58,6 +64,12 @@ struct RelatedNotesService {
             }
             let sharedNames = candidateNames.intersection(currentNames)
 
+            // "Mean shared-tag score" is the per-shared-tag `min` of the two
+            // notes' scores for that tag, averaged. `min` (rather than the mean
+            // of the current note's scores, or the max) keeps the pair
+            // symmetric — swapping current and candidate gives the same number —
+            // and conservative: a tag one side scores poorly cannot pull the
+            // pair up.
             let sharedScores = sharedNames.map { name -> Double in
                 min(currentTags[name] ?? 0, candidate.score(forTagName: name) ?? 0)
             }

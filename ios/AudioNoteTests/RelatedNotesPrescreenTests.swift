@@ -9,7 +9,7 @@ final class RelatedNotesPrescreenTests: XCTestCase {
         id: UUID,
         tags: [TaggedItem]? = [],
         archived: Bool = false,
-        status: LLMStatus = .completed,
+        status: LLMStatus? = .completed,
         createdAt: Date = Date(timeIntervalSince1970: 1_000_000)
     ) -> TranscriptionRecord {
         var r = TranscriptionRecord(id: id, content: "x", createdAt: createdAt)
@@ -66,30 +66,71 @@ final class RelatedNotesPrescreenTests: XCTestCase {
         let current = record(id: currentID, tags: [tA])
         let archived = record(id: UUID(), tags: [tA], archived: true)
         let pending = record(id: UUID(), tags: [tA], status: .pending)
-        let noStatus = record(id: UUID(), tags: [tA], status: .failed)
+        let failed = record(id: UUID(), tags: [tA], status: .failed)
+        // A record that has never been through the LLM has no status at all —
+        // `Optional<LLMStatus> == LLMStatus.completed` must reject it, not trap.
+        let nilStatus = record(id: UUID(), tags: [tA], status: nil)
         let ok = record(id: UUID(), tags: [tA])
 
-        let ranked = RelatedNotesService.prescreen(current: current, among: [archived, pending, noStatus, ok])
-        XCTAssertEqual(ranked.map(\.id), [ok.id])
+        let ranked = RelatedNotesService.prescreen(current: current, among: [archived, pending, failed, nilStatus, ok])
+        XCTAssertEqual(ranked.map(\.id), [ok.id], "only the completed record survives")
     }
 
-    func testTiesBreakOnCreatedAtDescendingAndAreDeterministic() {
-        let current = record(id: currentID, tags: [tA])
-        let older = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                           tags: [tA], createdAt: Date(timeIntervalSince1970: 100))
-        let newer = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
-                           tags: [tA], createdAt: Date(timeIntervalSince1970: 900))
+    /// One case per comparator tier, each fed to `prescreen` in the order the
+    /// *tie-break itself* has to reverse. Deleting any one tier therefore leaves
+    /// the input order untouched and flips the expectation.
+    func testEachComparatorTierDecidesInTurn() {
+        let current = record(id: currentID, tags: [tA, tB])
+        let date = Date(timeIntervalSince1970: 1_000_000)
 
-        let first = RelatedNotesService.prescreen(current: current, among: [older, newer])
-        let second = RelatedNotesService.prescreen(current: current, among: [newer, older])
-        XCTAssertEqual(first.map(\.id), [newer.id, older.id])
-        XCTAssertEqual(first.map(\.id), second.map(\.id), "input order must not change the result")
+        // Tier 1 — score. Identical `createdAt` keeps the recency term equal, so
+        // the shared-tag count is the only thing that can separate these.
+        let oneTag = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000011")!,
+                            tags: [tA], createdAt: date)
+        let twoTags = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000012")!,
+                             tags: [tA, tB], createdAt: date)
+        XCTAssertEqual(
+            RelatedNotesService.prescreen(current: current, among: [oneTag, twoTags]).map(\.id),
+            [twoTags.id, oneTag.id], "tier 1: higher score first"
+        )
+
+        // Tier 2 — `createdAt` descending. `ageDays` is clamped at 0, so future
+        // dates all get recency 1.0: the score ties exactly even though the dates
+        // differ, and only `createdAt` can order them.
+        let futureOlder = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000021")!,
+                                 tags: [tA], createdAt: Date(timeIntervalSince1970: 2_000_000_000))
+        let futureNewer = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!,
+                                 tags: [tA], createdAt: Date(timeIntervalSince1970: 3_000_000_000))
+        XCTAssertEqual(
+            RelatedNotesService.prescreen(current: current, among: [futureOlder, futureNewer]).map(\.id),
+            [futureNewer.id, futureOlder.id], "tier 2: newer `createdAt` first on a genuine score tie"
+        )
+
+        // Tier 3 — `id` ascending. Same score and same `createdAt`; only the id is
+        // left, and it is the same in every run, so the result is reproducible.
+        let idLow = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000031")!,
+                           tags: [tA], createdAt: date)
+        let idHigh = record(id: UUID(uuidString: "00000000-0000-0000-0000-000000000032")!,
+                            tags: [tA], createdAt: date)
+        XCTAssertEqual(
+            RelatedNotesService.prescreen(current: current, among: [idHigh, idLow]).map(\.id),
+            [idLow.id, idHigh.id], "tier 3: id ascending on a full tie"
+        )
     }
 
-    func testCapsAtMaxCandidates() {
-        let current = record(id: currentID, tags: [tA])
-        let many = (0..<50).map { _ in record(id: UUID(), tags: [tA]) }
-        let ranked = RelatedNotesService.prescreen(current: current, among: many)
+    func testCapKeepsTheHighestScoringCandidates() {
+        let shared = (1...50).map { TaggedItem(name: "标签\($0)", score: 0.9) }
+        let current = record(id: currentID, tags: shared)
+        // Candidate i shares exactly i tags, so the score rises strictly with i.
+        // "Some 20" and "the top 20" coincide only for the latter.
+        let candidates = (1...50).map { i in
+            record(id: UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", i))!,
+                   tags: Array(shared.prefix(i)))
+        }
+
+        let ranked = RelatedNotesService.prescreen(current: current, among: candidates)
         XCTAssertEqual(ranked.count, RelatedNotesService.maxCandidates)
+        XCTAssertEqual(ranked.map(\.id), (31...50).reversed().map { candidates[$0 - 1].id },
+                       "the cap must keep the highest-scoring candidates, best rank first")
     }
 }
