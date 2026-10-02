@@ -1,8 +1,13 @@
 # Related Notes(相关思考)— Backlog Stub
 
-> **状态:Backlog / 暂缓**
+> **状态:✅ SUPERSEDED — 已被 `2026-10-02-related-notes-design.md` 取代**
 > **创建日期**:2026-09-24
-> **决策延后**:核心计算策略未敲定,本文档只描述意图与待决项,不进入实现阶段。
+> **取代日期**:2026-10-02
+>
+> 本文保留作为决策演进的记录。§3.1 的核心决策已定:**方案 A(写入时 LLM 计算)**,
+> 且相关度数据**独立存储**为无向边数组(`relatedNotes.json`),不修改
+> `TranscriptionRecord`。全部已锁定决策见
+> [`2026-10-02-related-notes-design.md`](./2026-10-02-related-notes-design.md)。
 
 ---
 

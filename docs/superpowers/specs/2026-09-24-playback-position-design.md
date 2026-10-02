@@ -1,8 +1,14 @@
 # Playback Position Per Record — Backlog Stub
 
-**Status:** 🟡 Backlog (user-deferred, do NOT implement yet)
+**Status:** ✅ RESOLVED — implemented 2026-09-24 in `be428dc` (shipped to `origin/main`)
 **Created:** 2026-09-24
 **Branch at filing:** `feat/llm-test-connection`
+
+> **Resolution (see "What actually shipped" below).** The user chose **§3.1 = C
+> (no resume at all)** and **§3.2 = A (auto-stop A, start B)**. The cross-detail
+> progress bleed is fixed without a schema change to `TranscriptionRecord`.
+> This stub is kept for the root-cause analysis (§2) and the decision record;
+> it is no longer a work item.
 
 ---
 
@@ -62,4 +68,33 @@ No tests currently cover `AudioPlayerManager` or `PlaybackControlBar` (`codegrap
 
 ## 7. Next Step
 
-User must answer §3.1 and §3.2. Then this stub is upgraded to a real spec, `superpowers:writing-plans` produces the implementation plan, and only then does code change.
+~~User must answer §3.1 and §3.2.~~ **Done 2026-09-24 — see "What actually shipped" below.**
+
+## 8. What actually shipped (`be428dc`)
+
+| Stub question | Decision | Implementation |
+|---|---|---|
+| §3.1 持久化范围 | **C. No resume at all** | No `playbackPosition` field on `TranscriptionRecord`; each `play(fileName:)` starts at 0. |
+| §3.2 跨详情行为 | **A. Auto-stop A, start B** (single active player) | `AudioPlayerManager.shared` stays a singleton; `play()` keeps the existing `guard fileName != currentFileName` stop-then-start path. |
+
+Concrete change:
+
+1. `AudioPlayerManager.currentFileName` → `@Published private(set)` so views can
+   observe which file the global player is bound to.
+2. `PlaybackControlBar` gained a private `isDifferentAudioPlaying` computed
+   property: true when the bound `audioFileName` differs from
+   `playerManager.currentFileName` and audio is live.
+3. When true, the bar renders `"正在播放另一条录音"` + a "切到这条" button
+   instead of the slider/time row — the other record's progress can no longer
+   leak into this record's controls.
+4. Tapping that button calls `togglePlayPause`, which stops A and starts B
+   from 0.
+
+User-stated rules encoded: closing the playing detail keeps audio alive;
+navigating to another detail keeps audio alive but shows the switch hint;
+tapping play on B stops A and starts B from 0; re-entering the playing page
+resumes that same playback (it's the same `currentFileName`, so the progress
+still belongs to it).
+
+Verification: `xcodebuild` iphonesimulator + iphoneos BUILD SUCCEEDED, then
+installed and launched on the iPhone Air.

@@ -1,8 +1,10 @@
 # Files App Storage — Design Spec
 
 **Date**: 2026-09-24
-**Status**: Backlog spec — locked decision, no implementation yet
+**Status**: ✅ ACCEPTED & IMPLEMENTED (2026-09-24 → 2026-10-02)
 **Author**: brainstorming session
+**Implementation**: `3276903`..`3c31041` — 10 feature commits + 5 follow-up storage fixes, shipped to `origin/main`
+**Resolved decisions**: §3.1/§3.2 = "A. Persist per record" was NOT taken; user chose **"完全不续播"** — `be428dc` ships a single global player with an `isDifferentAudioPlaying` guard in `PlaybackControlBar` instead of per-record resume
 
 ## Why
 
