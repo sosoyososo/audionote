@@ -72,11 +72,55 @@ struct RelatedNoteMatch: Decodable {
     let score: Double
 }
 
-/// Envelope of the `findRelated` response. `related` is optional so a model
-/// that answers `{}` instead of `{"related": []}` is treated as "nothing
-/// related" rather than a decode failure.
-private struct RelatedPayload: Decodable {
-    let related: [RelatedNoteMatch]?
+/// Envelope of the `findRelated` response.
+///
+/// Decoded through `JSONSerialization` rather than `JSONDecoder`, **on
+/// purpose**. A standard array decode is all-or-nothing, so a model that
+/// returns three good pairs plus one truncated uuid would throw all four
+/// away — and the reply is adversarial input, where that shape is ordinary.
+/// `JSONSerialization` hands the array back as plain values, so each element
+/// can be judged on its own and only the unreadable ones dropped. (The
+/// `Decodable` cursor offers no way to *skip* an element it cannot decode:
+/// after a failure it does not reliably advance, so a lenient `try?` loop
+/// silently swallows every element that follows.)
+///
+/// The envelope itself is still all-or-nothing: `nil` means "not a reply we
+/// can read at all", which is what sends `parseRelated` on to the
+/// balanced-brace extraction and then to `decodingError`.
+private enum RelatedPayload {
+
+    /// Returns nil only when the envelope is unusable. A `related` key that
+    /// is simply absent yields `[]` — a model answering `{}` means "nothing
+    /// related", not "malformed".
+    static func parse(_ data: Data) -> [RelatedNoteMatch]? {
+        guard let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        guard let raw = envelope["related"] else { return [] }
+        guard let elements = raw as? [Any] else { return nil }
+        return elements.compactMap(element)
+    }
+
+    /// **The strictness boundary. An element survives only if `id` is a JSON
+    /// string that parses as a `UUID` *and* `score` is a JSON number.**
+    /// Everything else is dropped, explicitly including the near-misses a
+    /// lenient reader might rescue:
+    ///
+    /// - `"id": "1111-11"` — a truncated uuid, the single most common model
+    ///   slip. Dropped here rather than carried forward for `sanitize` to
+    ///   reject, because `sanitize`'s whitelist can only compare a real
+    ///   `UUID`.
+    /// - `"score": "0.9"` — score as a JSON *string*. Dropped: the prompt
+    ///   specifies a number, and silently coercing tells us nothing about how
+    ///   much of the rest of the reply to trust.
+    /// - a missing `id` or a missing `score` — dropped.
+    /// - a non-object element (a bare string or number) — dropped.
+    private static func element(_ raw: Any) -> RelatedNoteMatch? {
+        guard let fields = raw as? [String: Any],
+              let id = fields["id"] as? String,
+              let score = fields["score"] as? Double,
+              let uuid = UUID(uuidString: id)
+        else { return nil }
+        return RelatedNoteMatch(id: uuid, score: score)
+    }
 }
 
 /// Single LLM service. Talks to whichever `LLMProviderProfile` the caller
@@ -151,7 +195,10 @@ actor LLMService {
     {"optimizedText": "...", "title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
     """
 
-    private static let findRelatedPrompt = """
+    /// Internal rather than private so a test can pin the interpolated
+    /// prompt against this exact text. ADR-0003 freezes the wording, not the
+    /// access level.
+    static let findRelatedPrompt = """
     你是一个笔记关联助手。下面是一条笔记，以及候选笔记的列表。
 
     【当前笔记】
@@ -172,7 +219,75 @@ actor LLMService {
     {"related": [{"id": "<uuid>", "score": 0.85}]}
     """
 
+    /// The three placeholders, in the order they appear in `findRelatedPrompt`.
+    private static let findRelatedPlaceholders = ["{title}", "{summary}", "{candidates}"]
+
+    /// `findRelatedPrompt` already cut at its three placeholders, so
+    /// interpolation is one forward join over `findRelatedPlaceholders.count`
+    /// literal segments.
+    ///
+    /// This is the whole point of splitting once, at load time. Chained
+    /// `replacingOccurrences(of:with:)` passes each re-scan the *output* of the
+    /// previous one, so a note title that literally reads `{candidates}` would
+    /// be picked up by a later pass and land in the candidate slot — the
+    /// candidate block displaced, the title position showing the whole list.
+    /// The input is model-generated, so the probability is low, not zero.
+    /// Here a field is copied in verbatim and never rescanned.
+    ///
+    /// Invariant: 4 parts, because each placeholder occurs exactly once and in
+    /// `findRelatedPlaceholders` order. `makeSystemPrompt` falls back to the
+    /// un-interpolated prompt if that ever stops holding, and a test pins it.
+    private static let findRelatedPromptParts: [String] = {
+        var parts: [String] = []
+        var remainder = Substring(findRelatedPrompt)
+        for placeholder in findRelatedPlaceholders {
+            guard let range = remainder.range(of: placeholder) else {
+                parts.append(String(remainder))
+                return parts
+            }
+            parts.append(String(remainder[..<range.lowerBound]))
+            remainder = remainder[range.upperBound...]
+        }
+        parts.append(String(remainder))
+        return parts
+    }()
+
     private static let pingPrompt = "ping"
+
+    /// Builds the `findRelated` system prompt. Extracted from `findRelated` so
+    /// the network-free half of that call is testable without a stub server.
+    ///
+    /// The candidate block is one line per candidate: `<uuid>. 标题：… 摘要：…`
+    /// Filtering the model's *reply* is `RelatedNotesService.sanitize`'s job;
+    /// this is only the outbound text.
+    ///
+    /// NOTE: the prose above says `最多 5 条`. That is a model instruction and
+    /// is deliberately a literal, but it must stay in sync with
+    /// `RelatedNotesService.maxRelated` — the cap the reply is trimmed to.
+    static func makeSystemPrompt(
+        currentTitle: String,
+        currentSummary: String,
+        candidates: [RelatedNoteCandidate]
+    ) -> String {
+        let candidateBlock = candidates
+            .map { "\($0.id.uuidString). 标题：\($0.title) 摘要：\($0.summary)" }
+            .joined(separator: "\n")
+
+        let fields = [currentTitle, currentSummary, candidateBlock]
+        let parts = findRelatedPromptParts
+        guard parts.count == fields.count + 1 else {
+            // Template and placeholders drifted apart. Shipping the literal
+            // prompt beats shipping a prompt with an empty title slot.
+            Logger.error("LLM findRelated: prompt template invariant broken (\(parts.count) parts)")
+            return findRelatedPrompt
+        }
+
+        var prompt = parts[0]
+        for (index, part) in parts.dropFirst().enumerated() {
+            prompt += fields[index] + part
+        }
+        return prompt
+    }
 
     // MARK: - Public API
 
@@ -225,14 +340,11 @@ actor LLMService {
     ) async throws -> [RelatedNoteMatch] {
         try validateProfile(profile, apiKey: apiKey)
 
-        let candidateBlock = candidates
-            .map { "\($0.id.uuidString). 标题：\($0.title) 摘要：\($0.summary)" }
-            .joined(separator: "\n")
-
-        let systemPrompt = Self.findRelatedPrompt
-            .replacingOccurrences(of: "{title}", with: currentTitle)
-            .replacingOccurrences(of: "{summary}", with: currentSummary)
-            .replacingOccurrences(of: "{candidates}", with: candidateBlock)
+        let systemPrompt = Self.makeSystemPrompt(
+            currentTitle: currentTitle,
+            currentSummary: currentSummary,
+            candidates: candidates
+        )
 
         return try await retryingRequest(
             profile: profile,
@@ -469,19 +581,19 @@ actor LLMService {
     /// the M2.7 lineage wrap JSON in prose). An empty `related` array is a
     /// valid answer, not an error — "none of these are related" is a real
     /// outcome the caller must be able to persist as zero edges.
+    ///
+    /// Only the *envelope* is all-or-nothing. A malformed element inside a
+    /// well-formed `related` array is dropped by `RelatedPayload` and the
+    /// surviving elements are returned, so a reply carrying one truncated
+    /// uuid still contributes the pairs that were complete.
     static func parseRelated(content: String) throws -> [RelatedNoteMatch] {
-        let decode: (Data) -> [RelatedNoteMatch]? = { data in
-            guard let payload = try? JSONDecoder().decode(RelatedPayload.self, from: data) else { return nil }
-            return payload.related ?? []
-        }
-
-        if let directData = content.data(using: .utf8), let parsed = decode(directData) {
+        if let directData = content.data(using: .utf8), let parsed = RelatedPayload.parse(directData) {
             return parsed
         }
 
         if let extracted = extractFirstJSONObject(from: content),
            let extractedData = extracted.data(using: .utf8),
-           let parsed = decode(extractedData) {
+           let parsed = RelatedPayload.parse(extractedData) {
             return parsed
         }
 

@@ -13,6 +13,11 @@ struct RelatedNotesService {
     /// (spec §6): the caller must bail out before spending a call.
     static let minimumCandidates = 3
 
+    /// How many related notes a detail page shows. The `findRelated` prompt
+    /// says `最多 5 条` in prose; that literal is a model instruction and
+    /// stays a literal, but the two must not drift apart.
+    static let maxRelated = 5
+
     // MARK: - Prescreen (pure, local, free)
 
     /// Rank existing notes by how likely they are to be related, locally.
@@ -97,7 +102,7 @@ struct RelatedNotesService {
     /// Drop anything the model shouldn't have returned: ids that weren't
     /// offered as candidates (hallucinations), the current note itself, and
     /// duplicates. Keeps the strongest score per surviving id and caps the
-    /// result at 5, ordered strongest first.
+    /// result at `maxRelated`, ordered strongest first.
     ///
     /// Pure — no network, no storage, no ViewModel. Task 5 owns the wiring;
     /// this is only the filter the LLM's answer must pass through before
@@ -126,9 +131,21 @@ struct RelatedNotesService {
         // that rates the same note twice is reporting uncertainty about the
         // score, not a second opinion, and the higher rating is the one it
         // stands behind.
+        //
+        // Non-positive scores are dropped outright rather than clamped. Both
+        // 0.0 and a negative are far below `minimumScore`, so neither can
+        // reach a display slot, but clamping would persist a number the model
+        // never said: `max(nil ?? 0, -0.5)` writes 0.0 and the stored edge
+        // then disagrees with the reply it came from. Dropping keeps the
+        // persisted value equal to something the model actually wrote.
         var best: [UUID: Double] = [:]
-        for match in matches where candidateIDs.contains(match.id) && match.id != currentID {
-            best[match.id] = max(best[match.id] ?? 0, match.score)
+        for match in matches
+        where candidateIDs.contains(match.id) && match.id != currentID && match.score > 0 {
+            if let existing = best[match.id] {
+                best[match.id] = max(existing, match.score)
+            } else {
+                best[match.id] = match.score
+            }
         }
 
         // Dictionary iteration order is seeded per process, so a tie on score
@@ -146,7 +163,7 @@ struct RelatedNotesService {
                 if lhs.score != rhs.score { return lhs.score > rhs.score }
                 return (firstSeen[lhs.id] ?? 0) < (firstSeen[rhs.id] ?? 0)
             }
-            .prefix(5)
+            .prefix(Self.maxRelated)
             .map { $0 }
     }
 }
