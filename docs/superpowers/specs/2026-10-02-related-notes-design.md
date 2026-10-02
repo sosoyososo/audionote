@@ -97,7 +97,7 @@ Four reasons this beats `relatedIDs: [UUID]?` on the record:
 
 1. **An edge is stored once.** With per-record lists, every relation is written twice (into A and into B) and the two copies can drift. Here, both detail pages read the same row — cross-page score consistency is structural, not something to maintain.
 2. **`TranscriptionRecord` is left alone.** That type already carries a legacy-shape migration for `tags` (`[String]` → `[TaggedItem]`) and `decodeIfPresent` fallbacks for `archived`/`archivedAt`. Not touching it means this feature cannot break existing installs.
-3. **Cleanup is one place.** Deleting or archiving a note removes every edge touching its UUID from a single array, rather than relying on render-time filtering scattered through the view.
+3. **Cleanup is one place.** Deleting a note removes every edge touching its UUID from a single array, rather than relying on render-time filtering scattered through the view. (Archiving deliberately does *not* clean up — see §5.8.)
 4. **Ordering is free.** A set of edges can be re-sorted at read time; an append-only per-record array could not.
 
 Cost: one more file path to manage, one more read per detail view, and a possible dangling edge if a note is deleted out from under its edges. All three are addressed in §6.
