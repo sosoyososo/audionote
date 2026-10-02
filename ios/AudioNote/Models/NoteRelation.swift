@@ -3,7 +3,7 @@ import Foundation
 /// One undirected "these two notes are related" edge.
 ///
 /// `a` and `b` carry no directional meaning. The writer normalizes them so
-/// that `a.uuidString < b.uuidString`, which makes `(A,B)` and `(B,A)` the
+/// that `a.uuidString <= b.uuidString`, which makes `(A,B)` and `(B,A)` the
 /// same edge by construction — see `key`.
 struct NoteRelation: Codable, Hashable {
     let a: UUID

@@ -10,6 +10,12 @@ final class NoteRelationTests: XCTestCase {
     func testKeyIsIdenticalRegardlessOfArgumentOrder() {
         XCTAssertEqual(NoteRelation(a: a, b: b, score: 0.9).key,
                        NoteRelation(a: b, b: a, score: 0.4).key)
+        // The normalizing init must actually run: reversed arguments are
+        // stored swapped, so the edge compares equal to the forward-built one.
+        XCTAssertEqual(NoteRelation(a: b, b: a, score: 0.4).a, a)
+        XCTAssertEqual(NoteRelation(a: b, b: a, score: 0.4).b, b)
+        XCTAssertEqual(NoteRelation(a: a, b: b, score: 0.9),
+                       NoteRelation(a: b, b: a, score: 0.9))
     }
 
     func testInvolvesMatchesEitherEndpoint() {
