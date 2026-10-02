@@ -32,6 +32,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: NO
         SWIFT_EMIT_LOC_STRINGS: YES
+        DEVELOPMENT_TEAM: 8V95JS2XCZ
+        CODE_SIGN_IDENTITY: "Apple Development"
     info:
       path: AudioNote/Resources/Info.plist
       properties:
