@@ -64,3 +64,36 @@ enum PendingRecognitionPolicy {
         return hasRecognitionError ? .save(.pending) : .discard
     }
 }
+
+extension PendingRecognitionPolicy {
+
+    /// Records that `networkDidRecover` should send to the LLM — covers
+    /// step 1 (never LLM-processed) and step 4 (LLM failed while offline).
+    ///
+    /// `.pending` is excluded, and that exclusion is the reason this
+    /// function exists. The pre-existing filters were
+    /// `llmProcessingStatus == nil` and `== .failed`; a freshly saved
+    /// pending record satisfies the first one while carrying an empty
+    /// `content`, so it would reach `optimizeAndProcess("")` and come
+    /// back with an invented summary — the precise failure the
+    /// 2026-04-09 skip-empty-transcription spec was written to prevent
+    /// (spec §4.5).
+    static func llmQueue(from records: [TranscriptionRecord]) -> [TranscriptionRecord] {
+        records.filter { $0.recognitionMode != .pending }
+    }
+
+    /// Records that `networkDidRecover` should re-recognize from audio —
+    /// step 3. Covers `.pending` (never transcribed) and `.failed` (a
+    /// retry already came back empty). Retries are unlimited: a short
+    /// accidental recording being retried repeatedly is a far smaller
+    /// cost than a real three-minute recording being abandoned after a
+    /// retry cap (spec D4).
+    static func recognitionRetryQueue(
+        from records: [TranscriptionRecord]
+    ) -> [TranscriptionRecord] {
+        records.filter {
+            ($0.recognitionMode == .pending || $0.recognitionMode == .failed)
+                && $0.audioFileName != nil
+        }
+    }
+}

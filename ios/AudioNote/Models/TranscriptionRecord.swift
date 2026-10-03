@@ -10,12 +10,12 @@ enum RecognitionMode: String, Codable {
     /// which means a retry already happened and also came back empty.
     /// Spec §4.3.
     ///
-    /// Enqueued by `PendingRecognitionPolicy.recoveryQueue` and drained by
-    /// `networkDidRecover` step 3. It is deliberately NOT enqueued by
-    /// `PendingRecognitionPolicy.llmQueue` — a pending record has empty
-    /// `content`, and feeding "" to the LLM produces a hallucinated
-    /// summary. That exclusion is the whole reason this case exists
-    /// separately from nil.
+    /// Enqueued by `PendingRecognitionPolicy.recognitionRetryQueue` and
+    /// drained by `networkDidRecover` step 3. It is deliberately NOT
+    /// enqueued by `PendingRecognitionPolicy.llmQueue` — a pending record
+    /// has empty `content`, and feeding "" to the LLM produces a
+    /// hallucinated summary. That exclusion is the whole reason this case
+    /// exists separately from nil.
     case pending
 }
 

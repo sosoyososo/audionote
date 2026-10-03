@@ -58,6 +58,11 @@ final class PendingRecognitionTests: XCTestCase {
         XCTAssertEqual(decoded.recognitionMode, .pending)
         XCTAssertEqual(decoded.content, "")
         XCTAssertEqual(decoded.duration, 42)
+        // `audioFileName` is the field `recognitionRetryQueue` filters on, so
+        // losing it through the encode/decode cycle would silently turn a
+        // recoverable pending record into one that can never be retried.
+        XCTAssertEqual(decoded.audioFileName,
+                       "22222222-2222-2222-2222-222222222222.m4a")
     }
 
     // MARK: - classify()
@@ -138,5 +143,76 @@ final class PendingRecognitionTests: XCTestCase {
                 recognizerMode: .onDevice),
             .save(.onDevice)
         )
+    }
+
+    // MARK: - llmQueue()
+
+    private func makeRecord(mode: RecognitionMode?,
+                            content: String,
+                            llmStatus: LLMStatus? = nil,
+                            audioFileName: String? = "some-uuid.m4a") -> TranscriptionRecord {
+        TranscriptionRecord(
+            id: UUID(),
+            content: content,
+            createdAt: Date(timeIntervalSince1970: 1700000000),
+            duration: 30,
+            audioFileName: audioFileName,
+            llmProcessingStatus: llmStatus,
+            recognitionMode: mode
+        )
+    }
+
+    func testLlmQueueExcludesPendingRecords() {
+        // Review focus #4 — the load-bearing exclusion of the whole
+        // feature. A pending record has llmProcessingStatus == nil and an
+        // empty content, so the pre-existing filter swept it up and fed
+        // "" to the LLM, which answers with a confident hallucination.
+        let pending = makeRecord(mode: .pending, content: "")
+        let normal = makeRecord(mode: .onDevice, content: "真正的转写文本")
+
+        let queue = PendingRecognitionPolicy.llmQueue(from: [pending, normal])
+
+        XCTAssertEqual(queue.map(\.id), [normal.id])
+        XCTAssertFalse(queue.contains { $0.recognitionMode == .pending })
+    }
+
+    func testLlmQueueStillIncludesFailedStatusRecordsWithText() {
+        // The exclusion must be narrow. A record that has real text and an
+        // LLM failure still needs retrying — that is step 4's job.
+        let failed = makeRecord(mode: .onDevice, content: "有文本", llmStatus: .failed)
+        let queue = PendingRecognitionPolicy.llmQueue(from: [failed])
+        XCTAssertEqual(queue.map(\.id), [failed.id])
+    }
+
+    func testLlmQueueIncludesLegacyRecordWithNilMode() {
+        // Review focus #3, second half: a pre-upgrade record has
+        // recognitionMode == nil. Excluding only `.pending` (and not
+        // "anything not online") keeps it eligible.
+        let legacy = makeRecord(mode: nil, content: "旧记录")
+        let queue = PendingRecognitionPolicy.llmQueue(from: [legacy])
+        XCTAssertEqual(queue.map(\.id), [legacy.id])
+    }
+
+    // MARK: - recognitionRetryQueue()
+
+    func testRecognitionRetryQueueIncludesPendingAndFailed() {
+        // Both states mean "transcript missing, audio on disk", and both
+        // are worth re-running. Unlimited retries by design (spec D4).
+        let pending = makeRecord(mode: .pending, content: "")
+        let failed = makeRecord(mode: .failed, content: "")
+        let healthy = makeRecord(mode: .online, content: "已经好了")
+
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(
+            from: [pending, failed, healthy])
+
+        XCTAssertEqual(Set(queue.map(\.id)), Set([pending.id, failed.id]))
+    }
+
+    func testRecognitionRetryQueueRequiresAudioOnDisk() {
+        // Without an .m4a there is nothing to re-recognize; retrying would
+        // just spin. This guard already exists in the VM and is preserved.
+        let noAudio = makeRecord(mode: .pending, content: "", audioFileName: nil)
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(from: [noAudio])
+        XCTAssertTrue(queue.isEmpty)
     }
 }

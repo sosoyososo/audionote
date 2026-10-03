@@ -280,6 +280,15 @@ final class TranscriptionViewModel: ObservableObject {
                 await retryRecognitionFromFile(recordId: record.id)
             }
 
+        case .pending:
+            // Audio exists, transcript does not. Offline: wait for
+            // `networkDidRecover` step 3. Online: recover immediately.
+            // Never call `processWithLLM` here — `content` is empty, and
+            // that is the hallucination path `llmQueue` also guards.
+            if NetworkMonitor.shared.checkConnectivity() {
+                await retryRecognitionFromFile(recordId: record.id)
+            }
+
         default:
             break
         }
@@ -467,8 +476,8 @@ final class TranscriptionViewModel: ObservableObject {
         let records = (try? await storage.loadAll()) ?? []
 
         // 1. Process records never LLM-processed
-        let pendingLLM = records.filter { $0.llmProcessingStatus == nil }
-        for record in pendingLLM {
+        for record in PendingRecognitionPolicy.llmQueue(from: records)
+        where record.llmProcessingStatus == nil {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             let text = record.optimizedContent ?? record.content
             await processWithLLM(recordId: record.id, originalText: text)
@@ -483,18 +492,15 @@ final class TranscriptionViewModel: ObservableObject {
             await enhanceRecognition(recordId: record.id)
         }
 
-        // 3. Retry failed recognitions
-        let failedRecords = records.filter {
-            $0.recognitionMode == .failed && $0.audioFileName != nil
-        }
-        for record in failedRecords {
+        // 3. Retry failed and never-completed recognitions
+        for record in PendingRecognitionPolicy.recognitionRetryQueue(from: records) {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             await retryRecognitionFromFile(recordId: record.id)
         }
 
         // 4. Retry failed LLM (that failed due to offline)
-        let failedLLM = records.filter { $0.llmProcessingStatus == .failed }
-        for record in failedLLM {
+        for record in PendingRecognitionPolicy.llmQueue(from: records)
+        where record.llmProcessingStatus == .failed {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             let text = record.optimizedContent ?? record.content
             await processWithLLM(recordId: record.id, originalText: text)
