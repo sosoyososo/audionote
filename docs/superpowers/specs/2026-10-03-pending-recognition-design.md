@@ -189,7 +189,7 @@ let failedLLM = records.filter {
 | `RecordRowView.displayTitle`（`:379-385`） | `title` 为 nil/空且 `content` 为空时，回落为 `RecognitionModeStyle(.pending).label`（否则返回空串） |
 | `RecordRowView.displaySummary`（`:387-396`） | `content` 为空时回落到 `History.PendingSummary`。**注意它现有末尾已回落到 `record.preview`**，而 `preview`（`:383` 同源）同样基于 `content` 切片 → 对空 `content` 返回空串，所以必须显式加回落 |
 | `TranscriptionDetailView` actionsSection（`:281-283`） | `(mode == .onDevice \|\| mode == .failed)` 扩到含 `.pending` → 「在线升级识别」按钮 → `upgradeRecognition()`（`:345`）→ `reRecognizeOnline` → `retryRecognitionFromFile`，正是 §4.6 的重试路径，**无需新写触发逻辑** |
-| `TranscriptionDetailView`（`:258, :266`） | `.failed` 的图标/文案 arm 加 `.pending` |
+| `TranscriptionDetailView` contentSection | `.pending` 时把 `currentRecord.content` 的空白正文换成一个占位块（提示文案 + 播放按钮） |
 
 **详情页内容区**对 `.pending` 渲染一个占位块（提示「此录音尚未识别，联网后会自动补识别」+ 播放按钮），而不是空白的 `contentSection`。
 
@@ -214,7 +214,7 @@ let failedLLM = records.filter {
 | 离线 + 支持，识别仍失败 | record 存为 `.pending` |
 | `.pending` 重试成功 | → `.enhanced` + content + LLM + 相关度 |
 | `.pending` 重试失败 | 留 `.pending`，下次网络恢复再试（无上限） |
-| 音频文件被用户从 Files 删了 | `retryRecognitionFromFile` `guard` 挡住（`:316-320`），留 `.pending`，不再重试（record 的 `audioFileName` 仍非 nil 但文件不存在 → 每��重试都静默返回） |
+| 音频文件被用户从 Files 删了 | `retryRecognitionFromFile` `guard` 挡住（`:316-320`），留 `.pending`，不再重试。**已知瑕疵**：record 的 `audioFileName` 仍非 nil 但文件不存在 → 每次重试都静默返回，用户界面上永远看不到解释。本设计接受该行为（UI 提示「音频缺失」是另一个改动） |
 | 存储写入失败 | 沿用 `:238-240` 现有 `errorMessage` 路径 |
 
 ## 6. 测试
