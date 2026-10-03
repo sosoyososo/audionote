@@ -74,15 +74,11 @@ targets:
     dependencies:
       - target: AudioNote
 
-  AudioNoteUITests:
-    type: bundle.ui-testing
-    platform: iOS
-    deploymentTarget: "15.0"
-    sources:
-      - path: AudioNoteUITests
-    settings:
-      base:
-        GENERATE_INFOPLIST_FILE: YES
-        PRODUCT_BUNDLE_IDENTIFIER: info.karsa.app.ios.audionote.uitests
-    dependencies:
-      - target: AudioNote
+  # An `AudioNoteUITests` target used to be declared here with
+  # `sources: - path: AudioNoteUITests`, but that directory does not exist.
+  # xcodegen validates a `sources` path eagerly and exits 1 WITHOUT writing
+  # project.pbxproj, so `xcodegen generate` appeared to succeed while silently
+  # leaving a stale project behind — and every `xcodebuild test` then had to be
+  # scoped with `-only-testing:AudioNoteTests` to work around it. There are no
+  # UI tests in this project, so the target was removed rather than stubbed.
+  # Add it back (plus the directory) when there is a UI test to put in it.

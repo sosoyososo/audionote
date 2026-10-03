@@ -54,13 +54,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4EBAA0A671432CC36E10CEE1 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = FA0A9CC29F031E522F87016D /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D0EE74616E156E4C9C1D118;
-			remoteInfo = AudioNote;
-		};
 		595C429235D9EB80005687B0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = FA0A9CC29F031E522F87016D /* Project object */;
@@ -111,7 +104,6 @@
 		CEA41FDA8C62FA426A166513 /* RelatedNotesLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesLinkTests.swift; sourceTree = "<group>"; };
 		CF858C446B93248AD38C924E /* RecognitionLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecognitionLanguage.swift; sourceTree = "<group>"; };
 		D1877658282B3F1EDD4634CA /* RelatedNotesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesService.swift; sourceTree = "<group>"; };
-		D4057F868CEC5B158A661901 /* AudioNoteUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AudioNoteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9EEC9316C25B0B5D8233415 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		E6E9C4F7F7D7281FEAAD7BCD /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
@@ -185,13 +177,6 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
-		5BDEFA1685A48755D3A11453 /* AudioNoteUITests */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = AudioNoteUITests;
-			sourceTree = "<group>";
-		};
 		6B65700CA39402B242C43161 /* Models */ = {
 			isa = PBXGroup;
 			children = (
@@ -216,7 +201,6 @@
 			children = (
 				B4A659AA1854B4BFB211912D /* AudioNote.app */,
 				144A777BB064CB5BDBB285DE /* AudioNoteTests.xctest */,
-				D4057F868CEC5B158A661901 /* AudioNoteUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -235,7 +219,6 @@
 			children = (
 				159BA64DF15A821FBA1ECBC0 /* AudioNote */,
 				050E2774A9009EA458429B67 /* AudioNoteTests */,
-				5BDEFA1685A48755D3A11453 /* AudioNoteUITests */,
 				92D5FB0B6F1300F483D4CA51 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -287,24 +270,6 @@
 			productReference = 144A777BB064CB5BDBB285DE /* AudioNoteTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		8707A0768E370CC5E75DF3F4 /* AudioNoteUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = D198B84E02234AC6F9688CB5 /* Build configuration list for PBXNativeTarget "AudioNoteUITests" */;
-			buildPhases = (
-				8C55401F898473A8CDE7DB90 /* Sources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C691EC26A71D467FFF5FB790 /* PBXTargetDependency */,
-			);
-			name = AudioNoteUITests;
-			packageProductDependencies = (
-			);
-			productName = AudioNoteUITests;
-			productReference = D4057F868CEC5B158A661901 /* AudioNoteUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		8D0EE74616E156E4C9C1D118 /* AudioNote */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 7690A474F31F1BB4016BD161 /* Build configuration list for PBXNativeTarget "AudioNote" */;
@@ -336,11 +301,6 @@
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
 					};
-					8707A0768E370CC5E75DF3F4 = {
-						DevelopmentTeam = "";
-						ProvisioningStyle = Automatic;
-						TestTargetID = 8D0EE74616E156E4C9C1D118;
-					};
 					8D0EE74616E156E4C9C1D118 = {
 						DevelopmentTeam = 8V95JS2XCZ;
 						ProvisioningStyle = Automatic;
@@ -364,7 +324,6 @@
 			targets = (
 				8D0EE74616E156E4C9C1D118 /* AudioNote */,
 				3DDE7892BE61104CCA7660CD /* AudioNoteTests */,
-				8707A0768E370CC5E75DF3F4 /* AudioNoteUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -397,13 +356,6 @@
 				E86B03FAFF210D553B0F55D8 /* RelatedNotesSanitizeTests.swift in Sources */,
 				81B4CA46B6A7F109096EEE31 /* RelatedNotesStorageTests.swift in Sources */,
 				544911B8FB0AD817E9C860A2 /* SmokeTests.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		8C55401F898473A8CDE7DB90 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -452,11 +404,6 @@
 			isa = PBXTargetDependency;
 			target = 8D0EE74616E156E4C9C1D118 /* AudioNote */;
 			targetProxy = 595C429235D9EB80005687B0 /* PBXContainerItemProxy */;
-		};
-		C691EC26A71D467FFF5FB790 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D0EE74616E156E4C9C1D118 /* AudioNote */;
-			targetProxy = 4EBAA0A671432CC36E10CEE1 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -609,24 +556,6 @@
 			};
 			name = Debug;
 		};
-		A96644A5B7C766D50D4199E3 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = info.karsa.app.ios.audionote.uitests;
-				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = AudioNote;
-			};
-			name = Release;
-		};
 		C7977752557C8B50E8AAE241 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -707,24 +636,6 @@
 			};
 			name = Release;
 		};
-		FEDAE166348DB8C2B86CFB5E /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@loader_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = info.karsa.app.ios.audionote.uitests;
-				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = AudioNote;
-			};
-			name = Debug;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -751,15 +662,6 @@
 			buildConfigurations = (
 				47728F14045FB430C3EDAC15 /* Debug */,
 				278D0388B4B96A344E153A07 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		D198B84E02234AC6F9688CB5 /* Build configuration list for PBXNativeTarget "AudioNoteUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FEDAE166348DB8C2B86CFB5E /* Debug */,
-				A96644A5B7C766D50D4199E3 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
