@@ -215,4 +215,45 @@ final class PendingRecognitionTests: XCTestCase {
         let queue = PendingRecognitionPolicy.recognitionRetryQueue(from: [noAudio])
         XCTAssertTrue(queue.isEmpty)
     }
+
+    // MARK: - isLLMEligible()
+
+    func testLlmEligibilityRejectsEmptyText() {
+        // Guard (b). `processWithLLM` is the one function every LLM route
+        // passes through, and it refuses text that carries no information.
+        // `""` is not a safe no-op input: the model answers it with a
+        // confident invented title, summary and tags, which the VM then
+        // writes over the record.
+        XCTAssertFalse(PendingRecognitionPolicy.isLLMEligible(text: ""))
+    }
+
+    func testLlmEligibilityRejectsWhitespaceOnlyText() {
+        // Same rule as `classify`: whitespace is not a transcript. A
+        // transcript of nothing but spaces would otherwise sail past a bare
+        // `isEmpty` check and buy the same hallucination.
+        XCTAssertFalse(PendingRecognitionPolicy.isLLMEligible(text: "   "))
+        XCTAssertFalse(PendingRecognitionPolicy.isLLMEligible(text: "\n\t \r\n"))
+    }
+
+    func testLlmEligibilityAcceptsRealText() {
+        // The guard must not be a de-facto offline switch: a real transcript
+        // is still eligible, including one that is only *padded* with
+        // whitespace.
+        XCTAssertTrue(PendingRecognitionPolicy.isLLMEligible(text: "今天讨论了三个方案"))
+        XCTAssertTrue(PendingRecognitionPolicy.isLLMEligible(text: "  hello  "))
+        XCTAssertTrue(PendingRecognitionPolicy.isLLMEligible(text: "."))
+    }
+
+    func testLlmEligibilityRejectsTheEmptyTextAPendingRetryCanProduce() {
+        // The exact value the hole would have sent. A retry that came back
+        // empty must be rejected here, and — via the same predicate in
+        // `retryRecognitionFromFile` — must not advance the record's mode
+        // either, so it stays in `recognitionRetryQueue` for a later attempt.
+        // Only the decision is asserted here; that wiring is covered by Task
+        // 8 device verification.
+        XCTAssertFalse(
+            PendingRecognitionPolicy.isLLMEligible(
+                text: makeRecord(mode: .pending, content: "").content)
+        )
+    }
 }

@@ -352,24 +352,62 @@ final class TranscriptionViewModel: ObservableObject {
         let audioURL = AudioRecorderService.generateFileUrl(for: uuid)
 
         do {
-            let text = try await speechRecognizer.recognizeFromFile(url: audioURL)
+            let rawText = try await speechRecognizer.recognizeFromFile(url: audioURL)
+
+            // `recognizeFromFile` resumes on any *final* result, and SFSpeech
+            // happily produces a final result with an empty transcription for
+            // silence, noise, or a truncated .m4a — without throwing. So a
+            // non-throwing call is not a successful retry.
+            //
+            // Returning here without touching the record is the load-bearing
+            // part: the mode stays `.pending` (or `.failed`), so the record
+            // stays in `recognitionRetryQueue` and the next network recovery
+            // tries again — the unlimited-retry behaviour spec D4 specifies.
+            // Advancing the mode to `.enhanced` on an empty transcript would
+            // both hand `""` to the LLM and drop the record out of the retry
+            // queue for good, leaving a genuinely recoverable recording stuck
+            // with no way back.
+            guard PendingRecognitionPolicy.isLLMEligible(text: rawText) else {
+                Logger.warning(
+                    "Retry recognition returned empty text for \(record.id); "
+                    + "leaving mode as-is for a later retry"
+                )
+                return
+            }
+
             var updated = record
-            updated.content = text
+            updated.content = rawText
             updated.recognitionMode = .enhanced
             try await storage.save(updated)
 
-            transcribedText = text
+            transcribedText = rawText
             recognitionMode = .enhanced
             await loadHistory()
 
             // Now try LLM since we have text
-            await processWithLLM(recordId: record.id, originalText: text)
+            await processWithLLM(recordId: record.id, originalText: rawText)
         } catch {
             Logger.error("Retry recognition failed: \(error.localizedDescription)")
         }
     }
 
     func processWithLLM(recordId: UUID, originalText: String) async {
+        // The single choke point every LLM route passes through, so this is
+        // the one guard that actually holds: `assessAndEnhance`,
+        // `networkDidRecover` steps 1 and 4, and `retryLLM` all land here, and
+        // `retryRecognitionFromFile` too. It is deliberately independent of
+        // the `.pending` exclusion in `llmQueue`, which is a record-level
+        // filter and cannot see text — nor can it help `retryLLM`, which has
+        // no mode filter at all.
+        //
+        // Empty in, hallucination out: the model does not answer `""`, it
+        // answers a confident title, summary and tag list, which are then
+        // written over the record.
+        guard PendingRecognitionPolicy.isLLMEligible(text: originalText) else {
+            Logger.warning("Skipping LLM: empty text for record \(recordId)")
+            return
+        }
+
         isLLMProcessing = true
         llmProcessingFailed = false
 

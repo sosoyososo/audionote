@@ -97,3 +97,32 @@ extension PendingRecognitionPolicy {
         }
     }
 }
+
+extension PendingRecognitionPolicy {
+
+    /// Whether `text` is worth sending to the LLM at all.
+    ///
+    /// Extracted as a pure static for the same reason as `classify`:
+    /// `TranscriptionViewModel.processWithLLM` reaches `ProviderProfileStore`,
+    /// `NetworkMonitor` and `LLMService` through `private let` singletons, so
+    /// that function cannot be constructed in a unit test. The *decision* is
+    /// what matters, so the decision is what gets tested.
+    ///
+    /// `llmQueue` filters records, not text, and cannot cover
+    /// `processWithLLM`: that is the choke point for four callers, not all of
+    /// which route through a queue. `assessAndEnhance` calls it directly,
+    /// `retryRecognitionFromFile` calls it directly *after* re-stamping the
+    /// record `.enhanced` — a mode `llmQueue` deliberately admits — and
+    /// `retryLLM` calls it directly with no mode filter at all. An empty
+    /// string sent to the LLM does not come back empty: it comes back a
+    /// confident invented title, summary and tags, which are written over
+    /// the record.
+    ///
+    /// The same predicate is also what decides whether a *retry* succeeded.
+    /// A recognizer can return a final result with an empty transcription —
+    /// silence, noise, a truncated .m4a — without throwing, so "did not
+    /// throw" is not "succeeded".
+    static func isLLMEligible(text: String) -> Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
