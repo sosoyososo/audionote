@@ -36,6 +36,7 @@
 		91F278355F016CFBE0929432 /* GradientView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 551552E4A80CD8483BC5E3C6 /* GradientView.swift */; };
 		97FDCFA4144BA7177913920B /* NoteRelation.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCC3B4E5C79B289B15AE8213 /* NoteRelation.swift */; };
 		991A8C1D4989C1D69B5E8421 /* RelatedNotesPrescreenTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */; };
+		A12D893D5AAA72B81D0D951D /* RelatedNotesCleanupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D25135B89AC4C7D9B447CCD /* RelatedNotesCleanupTests.swift */; };
 		A132FDD494904F02D6959028 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F9C6851265C12C1D964A808F /* Assets.xcassets */; };
 		BED61F70E21A3664F3F2EDD0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B979954BF5DD75B200033DC /* KeychainStore.swift */; };
 		CA3A46E6D4A7E387090B978E /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */; };
@@ -91,6 +92,7 @@
 		5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Logger.swift; sourceTree = "<group>"; };
 		622AE300EABFA77A61F3357F /* LLMProviderProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMProviderProfile.swift; sourceTree = "<group>"; };
 		6473D7687F02B939447720BB /* ProfileDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDetailView.swift; sourceTree = "<group>"; };
+		6D25135B89AC4C7D9B447CCD /* RelatedNotesCleanupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesCleanupTests.swift; sourceTree = "<group>"; };
 		70063F7D2FAB4A9AB8B647E2 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		735C55B04244C142BD1F8263 /* AudioNoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNoteApp.swift; sourceTree = "<group>"; };
 		78BA671DCA8B93226BA5AB87 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -143,6 +145,7 @@
 				4D8AAE5FD7146C620FA23B52 /* FindRelatedParsingTests.swift */,
 				F23BD0E39D8D879554C972A2 /* FindRelatedPromptTests.swift */,
 				E9C65AFC2AAE556702D23321 /* NoteRelationTests.swift */,
+				6D25135B89AC4C7D9B447CCD /* RelatedNotesCleanupTests.swift */,
 				CEA41FDA8C62FA426A166513 /* RelatedNotesLinkTests.swift */,
 				A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */,
 				49606B977B90E3AF57807808 /* RelatedNotesSanitizeTests.swift */,
@@ -384,6 +387,7 @@
 				F8DA3504993398F2D8893FC1 /* FindRelatedParsingTests.swift in Sources */,
 				FA1AD37D7F926F0CF299E896 /* FindRelatedPromptTests.swift in Sources */,
 				31E42652E417FE04CE3A7C2F /* NoteRelationTests.swift in Sources */,
+				A12D893D5AAA72B81D0D951D /* RelatedNotesCleanupTests.swift in Sources */,
 				214D9CCE33CA72DD2B938F53 /* RelatedNotesLinkTests.swift in Sources */,
 				991A8C1D4989C1D69B5E8421 /* RelatedNotesPrescreenTests.swift in Sources */,
 				E86B03FAFF210D553B0F55D8 /* RelatedNotesSanitizeTests.swift in Sources */,

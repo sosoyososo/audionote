@@ -335,4 +335,40 @@ struct RelatedNotesService {
             }
         }
     }
+
+    // MARK: - Unlink (cleanup)
+
+    /// Drop every edge touching one **deleted** note. Never throws.
+    ///
+    /// **Caller's contract:** the note's own file must already be gone (or be
+    /// about to be) before this is awaited, and the caller must not treat a
+    /// failure as anything the user needs to see — per spec §6 the whole
+    /// feature is best-effort and "never blocks, never errors, never
+    /// surfaces", and a note deleted while relations are still on screen is
+    /// not a user-visible problem even if this fails.
+    ///
+    /// **Archive deliberately does not come through here.** An archived note
+    /// keeps its edges and is filtered at render time, so unarchiving restores
+    /// its relations for free (spec §5.8). Cleaning up on archive would
+    /// destroy relations that §4.4 says are never recomputed.
+    ///
+    /// Serialized through the same `gate` as `link(for:)`, and that is the
+    /// point of putting cleanup on the service rather than inlining
+    /// `RelatedNotesStorage.removeAll` at the call site: both are
+    /// read-modify-write on one file, and an interleaved pair loses an edge
+    /// permanently because §4.4 never recomputes relations. The gate makes
+    /// "a delete cannot race a link" true by construction instead of by the
+    /// caller's discipline.
+    func unlink(recordId: UUID) async {
+        await gate.withLock {
+            do {
+                // `removeAll` propagates a read failure rather than defaulting
+                // to an empty set — same reason `upsert` does, and for the same
+                // price. The swallow belongs here, at the caller, and only here.
+                try await storage.removeAll(involving: recordId)
+            } catch {
+                Logger.warning("Related notes cleanup failed for \(recordId): \(error.localizedDescription)")
+            }
+        }
+    }
 }

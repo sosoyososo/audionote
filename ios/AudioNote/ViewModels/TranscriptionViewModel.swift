@@ -530,6 +530,22 @@ final class TranscriptionViewModel: ObservableObject {
         Task {
             do {
                 try await storage.delete(id: id)
+                // Related edges go with the note. Inside the `do`, not after
+                // it: a delete that failed leaves the note in place, and
+                // dropping its edges then would lose relations spec §4.4 says
+                // are never recomputed. `unlink` never throws and never
+                // surfaces, so a failure inside it only leaves edges the render
+                // path filters out.
+                //
+                // It runs on the service (not a direct
+                // `RelatedNotesStorage.shared` call) so it shares the service's
+                // gate with `link(for:)` and a delete concurrent with a link
+                // cannot lose an edge permanently.
+                //
+                // Archive deliberately does NOT do this — an archived note
+                // keeps its edges and is filtered at render time, so
+                // unarchiving restores its relations for free (spec §5.8).
+                await relatedNotesService.unlink(recordId: id)
             } catch {
                 Logger.error("Failed to delete record: \(error.localizedDescription)")
             }
