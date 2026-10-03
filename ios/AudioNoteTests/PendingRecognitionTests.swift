@@ -219,11 +219,13 @@ final class PendingRecognitionTests: XCTestCase {
     // MARK: - isLLMEligible()
 
     func testLlmEligibilityRejectsEmptyText() {
-        // Guard (b). `processWithLLM` is the one function every LLM route
-        // passes through, and it refuses text that carries no information.
-        // `""` is not a safe no-op input: the model answers it with a
-        // confident invented title, summary and tags, which the VM then
-        // writes over the record.
+        // Guard (b). There are two LLM routes and both refuse text that
+        // carries no information: `processWithLLM` in the VM, and
+        // `TranscriptionDetailView.reprocessRecord`, which calls
+        // `optimizeAndProcess` directly and so carries its own copy of
+        // the guard. `""` is not a safe no-op input for either one: the
+        // model answers it with a confident invented title, summary and
+        // tags, which are then written over the record.
         XCTAssertFalse(PendingRecognitionPolicy.isLLMEligible(text: ""))
     }
 

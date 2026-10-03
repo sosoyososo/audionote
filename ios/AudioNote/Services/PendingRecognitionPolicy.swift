@@ -76,8 +76,10 @@ extension PendingRecognitionPolicy {
     /// pending record satisfies the first one while carrying an empty
     /// `content`, so it would reach `optimizeAndProcess("")` and come
     /// back with an invented summary — the precise failure the
-    /// 2026-04-09 skip-empty-transcription spec was written to prevent
-    /// (spec §4.5).
+    /// 2026-04-09 skip-empty-transcription spec names as its second
+    /// problem, verbatim: "大模型收到空文本，可能返回幻觉信息"
+    /// (that spec's `问题` section; the doc is written in Chinese and
+    /// has no numbered subsections).
     static func llmQueue(from records: [TranscriptionRecord]) -> [TranscriptionRecord] {
         records.filter { $0.recognitionMode != .pending }
     }
