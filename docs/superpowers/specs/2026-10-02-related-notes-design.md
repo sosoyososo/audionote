@@ -59,6 +59,12 @@ stopRecording()
                  │                  + 0.3×recency decay
                  │     tie-break: createdAt descending (deterministic)
                  │     self excluded
+                 ├─ 1b. drop candidates that already have an edge with this
+                 │      note (§4.4: a pair is measured exactly once, so a
+                 │      re-link may add new edges but never re-rate an old
+                 │      one). Applied to the candidate list, which is also
+                 │      sanitize's whitelist below, so the exclusion covers
+                 │      every path to the write.
                  ├─ 2. if candidates.count < 3 → return (no edge written)
                  ├─ 3. LLMService.findRelated(...)     ← call 2, NEW
                  │     input:  this note's title + summary
@@ -262,7 +268,7 @@ Deleting a note drops every edge touching its UUID via `relatedNotesStorage.remo
 | A note is deleted | `removeAll(involving:)` drops its edges |
 | A note is edited | Nothing recomputed (§4.5) |
 | A re-analysis re-links a note that already has edges | New edges may still be created for notes it has never been compared against; existing edges are never re-rated or replaced (§4.4) |
-| The note being linked has no tags | **Deliberate deviation from §4.1**, which defines candidates as `llmProcessingStatus == .completed && !archived` with no tag condition. `prescreen` returns `[]` when the *current* note has no tags, so such a note never **initiates** a relation pass. The deviation is one-directional: a tagless note is still a perfectly good **candidate** in any other note's pass (zero-overlap candidates are kept — that is where the serendipity comes from), so it accumulates edges normally and shows up in other notes' 相关思考 sections. Only the initiating direction is lost. Kept because without tags, prescreen degenerates to pure recency, and the guard is what stops a 1.5–2.5K-token call being spent on an arbitrary pool |
+| The note being linked has no tags | **Deliberate deviation from §4.1**, which defines candidates as `llmProcessingStatus == .completed && !archived` with no tag condition. `prescreen` returns `[]` when the *current* note has no tags, so such a note never **initiates** a relation pass. The deviation is one-directional: a tagless note is still a legal **candidate** in any other note's pass (zero-overlap candidates are kept — that is where the serendipity comes from), so it can accumulate edges and show up in other notes' 相关思考 sections. Only the initiating direction is lost. The candidate direction is not free, though: a zero-overlap note scores `0 + 0.5×log2(1+0) + 0.3×recency ≤ 0.3`, while any candidate sharing one tag scores ≥ 2.0, so it ranks strictly last and is cut by the 20-candidate cap in any corpus of more than ~20 overlapping notes. Small libraries are unaffected. Kept because without tags, prescreen degenerates to pure recency, and the guard is what stops a 1.5–2.5K-token call being spent on an arbitrary pool |
 | `relatedNotes.json` is corrupt | Decode failure → treated as no relations, section hidden. Never blocks the app's other features. |
 
 The uniform principle: **relations are best-effort and never block, never error, never surface.** A note is fully usable whether or not it has related notes.
