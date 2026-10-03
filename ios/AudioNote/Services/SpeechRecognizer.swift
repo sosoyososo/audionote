@@ -218,12 +218,31 @@ final class SpeechRecognizer: @unchecked Sendable {
                 if let error = error as NSError? {
                     Logger.error("Recognition error: \(error.localizedDescription), code: \(error.code)")
                     selfStrong.recognitionError = .recognitionFailed(error)
-                    // End the stream. Leaving it open means the consumer's
-                    // `for await` never returns and `partialText` freezes at
-                    // whatever last arrived, so any partial results the
-                    // framework did produce are unreachable (spec §4.1).
-                    // `stopRecording` cancels the task regardless, so
-                    // finishing here is safe either way.
+                    // Terminate the stream so the consumer's `for await`
+                    // ends and `textStreamTask` completes instead of
+                    // hanging for the rest of the recording. This is a
+                    // hygiene fix, nothing more.
+                    //
+                    // It does not lose the partials already produced.
+                    // Every result — final or partial — has been handed to
+                    // `continuation.yield` already, and `AsyncStream`
+                    // buffers `.unbounded`, so the values buffered before
+                    // this point are delivered to the consumer regardless
+                    // of whether the stream terminates; the consumer
+                    // assigns `partialText` in its own loop body
+                    // (`TranscriptionViewModel.startRecording`).
+                    //
+                    // What spec §4.1 additionally promised — that the
+                    // error path would rescue `partialText` by yielding
+                    // `allRecognizedText` before finishing, and so cut
+                    // down on recordings entering `.pending` — did NOT
+                    // happen. Unlike the success path above, which joins
+                    // the accumulated text first, this branch finishes
+                    // without yielding it. That promise is unfulfilled;
+                    // it is also no longer load-bearing, because a failed
+                    // recording now persists as `.pending` rather than
+                    // being discarded, and `.pending` is exactly what
+                    // `recognitionRetryQueue` re-recognizes later.
                     continuation.finish()
                 } else if error != nil {
                     Logger.warning("Unknown non-NSError in recognition task")

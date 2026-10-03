@@ -1,13 +1,22 @@
 import Foundation
 
-/// The decision that governs whether a flight-mode recording is
-/// thrown away or kept for later. Spec §4.2 and §4.6.
+/// The decisions that stand between a recording and its transcript, each
+/// extracted as a pure static so it can be unit-tested. Four of them:
 ///
-/// `classify` is a pure static function on purpose.
+/// - `classify` — whether a finished recording is discarded, saved as
+///   `.pending`, or saved with the recognizer's own mode (spec §4.2).
+/// - `llmQueue` / `recognitionRetryQueue` — the two recovery queues
+///   `networkDidRecover` drains (spec §4.6).
+/// - `shouldRefuseToRecord` — whether a recording may start at all when
+///   the device is offline (spec §4.1).
+/// - `isLLMEligible` — the empty-text guard; pre-dates this work, see the
+///   2026-04-09 skip-empty-transcription design.
+///
+/// Every one of them is a pure static on purpose.
 /// `TranscriptionViewModel` wires its collaborators as `private let`
 /// singletons and `SpeechRecognizer` constructs `SFSpeechRecognizer`
 /// directly, so neither can be instantiated in a unit test with a
-/// controlled environment. Extracting the decision here gets it under
+/// controlled environment. Extracting the decisions here gets them under
 /// test without a dependency-injection refactor of the whole view model.
 enum PendingRecognitionPolicy {
 
