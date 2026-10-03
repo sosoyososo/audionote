@@ -357,6 +357,29 @@ struct TranscriptionDetailView: View {
             let baseRecord = currentRecord
             let originalText = baseRecord.optimizedContent ?? baseRecord.content
 
+            // This view is NOT a route through `processWithLLM` — it calls
+            // `optimizeAndProcess` itself, so it carries its own copy of the
+            // empty-text guard. A `.pending` record reaches this screen
+            // (`displayedRecords` filters on archived / search / tags only)
+            // with `content == ""` and `llmProcessingStatus == nil`, which
+            // is exactly the state that gets `llmStatusView` to render a
+            // tappable button. Without this guard the model would answer
+            // `""` with an invented title, summary and tags, and those would
+            // be written over the record and stamped `.completed`, while the
+            // later recognition retry would fix only `content`.
+            //
+            // Deliberately before the profile lookup: a record with no text
+            // does not need a provider configured in order to be rejected.
+            // Resets `isProcessing` the same way the missing-profile path
+            // below does, because it is set at the top of this function.
+            guard PendingRecognitionPolicy.isLLMEligible(text: originalText) else {
+                Logger.warning("LLM reprocess skipped: empty text for record \(baseRecord.id)")
+                await MainActor.run {
+                    isProcessing = false
+                }
+                return
+            }
+
             // Pull the active profile + key from the store. If no profile
             // is configured, surface that as a status without throwing.
             guard let profile = ProviderProfileStore.shared.active else {

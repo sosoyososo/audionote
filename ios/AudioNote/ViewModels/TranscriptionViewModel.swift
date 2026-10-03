@@ -414,13 +414,21 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func processWithLLM(recordId: UUID, originalText: String) async {
-        // The single choke point every LLM route passes through, so this is
-        // the one guard that actually holds: `assessAndEnhance`,
-        // `networkDidRecover` steps 1 and 4, and `retryLLM` all land here, and
-        // `retryRecognitionFromFile` too. It is deliberately independent of
-        // the `.pending` exclusion in `llmQueue`, which is a record-level
-        // filter and cannot see text — nor can it help `retryLLM`, which has
-        // no mode filter at all.
+        // The choke point for the view model's own LLM routes, which are:
+        // `assessAndEnhance` (.online and .onDevice arms),
+        // `retryRecognitionFromFile`, `networkDidRecover` steps 1 and 4,
+        // `retryLLM`, and the retry button at `RecordingView.swift:282`.
+        //
+        // It is NOT the choke point for the whole app.
+        // `TranscriptionDetailView.reprocessRecord` is a separate route that
+        // calls `LLMService.optimizeAndProcess` directly and carries its own
+        // copy of this guard — a new call site must add one too. The durable
+        // fix, a guard inside `optimizeAndProcess` itself, is tracked as a
+        // follow-up; it is deliberately not done here.
+        //
+        // This guard is deliberately independent of the `.pending` exclusion
+        // in `llmQueue`, which is a record-level filter and cannot see text —
+        // nor can it help `retryLLM`, which has no mode filter at all.
         //
         // Empty in, hallucination out: the model does not answer `""`, it
         // answers a confident title, summary and tag list, which are then

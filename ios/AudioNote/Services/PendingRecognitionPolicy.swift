@@ -109,14 +109,23 @@ extension PendingRecognitionPolicy {
     /// what matters, so the decision is what gets tested.
     ///
     /// `llmQueue` filters records, not text, and cannot cover
-    /// `processWithLLM`: that is the choke point for four callers, not all of
-    /// which route through a queue. `assessAndEnhance` calls it directly,
-    /// `retryRecognitionFromFile` calls it directly *after* re-stamping the
-    /// record `.enhanced` — a mode `llmQueue` deliberately admits — and
-    /// `retryLLM` calls it directly with no mode filter at all. An empty
-    /// string sent to the LLM does not come back empty: it comes back a
-    /// confident invented title, summary and tags, which are written over
-    /// the record.
+    /// `processWithLLM`: that is the choke point for the view model's own LLM
+    /// routes — `assessAndEnhance`, `retryRecognitionFromFile`,
+    /// `networkDidRecover` steps 1 and 4, `retryLLM`, and the retry button in
+    /// `RecordingView` — not all of which route through a queue.
+    /// `assessAndEnhance` calls it directly, `retryRecognitionFromFile` calls
+    /// it directly *after* re-stamping the record `.enhanced` — a mode
+    /// `llmQueue` deliberately admits — and `retryLLM` calls it directly with
+    /// no mode filter at all. An empty string sent to the LLM does not come
+    /// back empty: it comes back a confident invented title, summary and
+    /// tags, which are written over the record.
+    ///
+    /// It is not, however, the choke point for the whole app:
+    /// `TranscriptionDetailView.reprocessRecord` is a second route into
+    /// `LLMService.optimizeAndProcess` that bypasses `processWithLLM` entirely
+    /// and therefore has to call this predicate itself. Two call sites, two
+    /// copies of the guard — an audit of "where is empty text kept out of the
+    /// LLM?" has to find both, not just the view model.
     ///
     /// The same predicate is also what decides whether a *re-recognition*
     /// produced anything worth keeping. A recognizer can return a final result
