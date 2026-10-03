@@ -377,19 +377,44 @@ struct RecordRowView: View {
     }
 
     private var displayTitle: String {
+        Self.rowTitle(for: record)
+    }
+
+    private var displaySummary: String {
+        Self.rowSummary(for: record)
+    }
+
+    /// The bold first line. Extracted as a static so it can be tested
+    /// without a view: a pending record has neither `title` nor `content`,
+    /// and without the fallback below this returns "" — N pending rows
+    /// rendering as N identical blank lines.
+    static func rowTitle(for record: TranscriptionRecord) -> String {
         if let title = record.title, !title.isEmpty {
             return title
+        }
+        if record.content.isEmpty {
+            return record.recognitionMode.map { RecognitionModeStyle(mode: $0).label }
+                ?? "History.Untitled".localized
         }
         let prefix = String(record.content.prefix(30))
         return prefix + (record.content.count > 30 ? "…" : "")
     }
 
-    private var displaySummary: String {
+    /// The de-emphasized second line. `record.preview` already falls back
+    /// to a `content` slice, which is also empty for a pending record, so
+    /// the empty case is handled explicitly.
+    static func rowSummary(for record: TranscriptionRecord) -> String {
         if let summary = record.summary, !summary.isEmpty {
             return summary
         }
+        if record.content.isEmpty {
+            return record.recognitionMode == .pending
+                ? "History.PendingSummary".localized
+                : ""
+        }
         let skip = record.title?.isEmpty == false ? min(record.title!.count, 30) : 30
-        let start = record.content.index(record.content.startIndex, offsetBy: min(skip, record.content.count))
+        let start = record.content.index(record.content.startIndex,
+                                         offsetBy: min(skip, record.content.count))
         let remaining = String(record.content[start...])
         let slice = String(remaining.prefix(50))
         return slice.isEmpty ? record.preview : slice + (remaining.count > 50 ? "…" : "")

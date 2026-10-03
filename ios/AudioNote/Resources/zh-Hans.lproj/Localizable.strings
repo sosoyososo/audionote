@@ -145,3 +145,8 @@
 
 /* Offline gate (2026-10-03 pending-recognition, spec §4.1) */
 "Error.OnDeviceUnsupported" = "当前语言（%@）不支持离线识别，请在联网状态下录音";
+
+/* Pending recognition (2026-10-03 pending-recognition, spec §4.7/§4.8) */
+"History.PendingSummary" = "录音待联网识别";
+"History.Untitled" = "无标题";
+"Detail.Pending.Hint" = "此录音尚未识别，联网后会自动补识别";

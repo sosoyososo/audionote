@@ -318,4 +318,53 @@ final class PendingRecognitionTests: XCTestCase {
             )
         )
     }
+
+    // MARK: - Presentation data
+
+    func testPendingStyleHasDistinctLabelIconAndColor() {
+        // `.pending` is not a failure the user should worry about — the
+        // audio is safe and will be transcribed. It must not reuse
+        // `.failed`'s red "识别失败" treatment, which is what told the
+        // original bug reporter their recording was lost.
+        let pending = RecognitionModeStyle(mode: .pending)
+        let failed = RecognitionModeStyle(mode: .failed)
+
+        XCTAssertNotEqual(pending.label, failed.label)
+        XCTAssertNotEqual(pending.icon, failed.icon)
+        XCTAssertNotEqual(pending.color, failed.color)
+        XCTAssertFalse(pending.label.isEmpty)
+        XCTAssertFalse(pending.icon.isEmpty)
+    }
+
+    func testRowTitleFallsBackToPendingLabelForEmptyContent() {
+        // A pending record has no title and no content. Without a
+        // fallback, displayTitle returns "" and N pending rows render as
+        // N blank lines that are indistinguishable from each other.
+        let record = TranscriptionRecord(
+            id: UUID(),
+            content: "",
+            createdAt: Date(timeIntervalSince1970: 1700000000),
+            duration: 42,
+            audioFileName: "some-uuid.m4a",
+            recognitionMode: .pending
+        )
+
+        XCTAssertEqual(RecordRowView.rowTitle(for: record),
+                       RecognitionModeStyle(mode: .pending).label)
+        XCTAssertEqual(RecordRowView.rowSummary(for: record),
+                       "History.PendingSummary".localized)
+    }
+
+    func testRowTitleUnaffectedForNormalRecords() {
+        // The fallback must not fire for records that have real text.
+        let withTitle = TranscriptionRecord(
+            id: UUID(), content: "raw text", createdAt: Date(),
+            title: "会议纪要", recognitionMode: .online)
+        XCTAssertEqual(RecordRowView.rowTitle(for: withTitle), "会议纪要")
+
+        let contentOnly = TranscriptionRecord(
+            id: UUID(), content: "just the transcript", createdAt: Date(),
+            recognitionMode: .onDevice)
+        XCTAssertEqual(RecordRowView.rowTitle(for: contentOnly), "just the transcript")
+    }
 }

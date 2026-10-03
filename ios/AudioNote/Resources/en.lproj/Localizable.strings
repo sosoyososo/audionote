@@ -145,3 +145,8 @@
 
 /* Offline gate (2026-10-03 pending-recognition, spec §4.1) */
 "Error.OnDeviceUnsupported" = "Offline recognition isn't available for %@. Please record while online.";
+
+/* Pending recognition (2026-10-03 pending-recognition, spec §4.7/§4.8) */
+"History.PendingSummary" = "Recording awaiting recognition";
+"History.Untitled" = "Untitled";
+"Detail.Pending.Hint" = "This recording hasn't been transcribed yet. It will be processed automatically once you're back online.";

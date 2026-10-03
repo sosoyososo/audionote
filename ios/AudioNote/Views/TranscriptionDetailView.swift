@@ -116,6 +116,19 @@ struct TranscriptionDetailView: View {
             // nothing would re-read the file afterward.
             relatedNotes = await RelatedNotesStorage.shared.related(to: currentRecord.id)
         }
+        .onChange(of: currentRecord.content) { newContent in
+            // `editedContent` is seeded from `record.content` in `init` and
+            // `record` is a stale value-type copy, so without this a pending
+            // record that recovers while its sheet is open would flip the
+            // badge to "已在线升级" and then render `Text("")` — the same
+            // blank body the pending placeholder exists to prevent.
+            //
+            // Skipped while editing: that buffer is the user's, and
+            // `enterEditingMode` / `cancelEditing` own resyncing it.
+            if !isEditing {
+                editedContent = newContent
+            }
+        }
     }
 
     private var metadataSection: some View {
@@ -176,6 +189,24 @@ struct TranscriptionDetailView: View {
                         .padding(8)
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
+                } else if currentRecord.recognitionMode == .pending {
+                    // No transcript yet — the recovery sweep fills this in
+                    // later. Rendering `Text("")` here would leave a blank
+                    // body with no explanation of why (spec §4.7). The
+                    // playback bar below already covers the "listen to the
+                    // audio" affordance, so this stays a status block.
+                    VStack(spacing: 12) {
+                        let style = RecognitionModeStyle(mode: .pending)
+                        Image(systemName: style.icon)
+                            .font(.largeTitle)
+                            .foregroundColor(style.color)
+                        Text("Detail.Pending.Hint".localized)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
                 } else {
                     Text(editedContent)
                         .font(.body)
@@ -279,7 +310,7 @@ struct TranscriptionDetailView: View {
     private var actionsSection: some View {
         HStack(spacing: 8) {
             if let mode = currentRecord.recognitionMode,
-               (mode == .onDevice || mode == .failed),
+               (mode == .onDevice || mode == .failed || mode == .pending),
                currentRecord.audioFileName != nil {
                 Button {
                     upgradeRecognition()
