@@ -202,10 +202,19 @@ struct TranscriptionDetailView: View {
                     // user typed into keeps `.pending` while carrying real
                     // text — testing the mode alone hid the text they had
                     // just saved, which the pre-placeholder `else` branch
-                    // (`Text(editedContent)`) had always shown. Same
-                    // predicate as the LLM block below, so a record with
-                    // nothing to show never shows the "nothing to show"
-                    // placeholder plus a dead button side by side.
+                    // (`Text(editedContent)`) had always shown. Shares
+                    // `isLLMEligible` with the LLM block below, but feeds
+                    // it a different argument — this branch reads
+                    // `currentRecord.content`, the button reads
+                    // `optimizedContent ?? content` — so sharing the
+                    // predicate does not make the two gates agree. They
+                    // happen to agree for every record reachable today:
+                    // `retryLLM` is the only LLM route with no mode filter
+                    // and it has no UI caller yet, so nothing can fill
+                    // `optimizedContent` first. Give one a caller, or let a
+                    // record gain `optimizedContent` while `content` is
+                    // still empty, and this placeholder can sit beside a
+                    // button that does have text to send.
                     VStack(spacing: 12) {
                         let style = RecognitionModeStyle(mode: .pending)
                         Image(systemName: style.icon)
@@ -302,9 +311,13 @@ struct TranscriptionDetailView: View {
     }
 
     /// The text `reprocessRecord` would send. Same `optimizedContent ?? content`
-    /// resolution the function uses, so the button's visibility and its guard
-    /// can never disagree — and read off the record rather than the
+    /// resolution the function uses, and read off the record rather than the
     /// `editedContent` buffer, so it does not flicker while the user types.
+    ///
+    /// Same source, but not the same instant: the button is built from this
+    /// render-time value while `reprocessRecord`'s guard re-reads the record
+    /// when the tap lands. The two therefore agree only until the record
+    /// changes in between — which is the case the guard exists for.
     private var llmCandidateText: String {
         currentRecord.optimizedContent ?? currentRecord.content
     }
@@ -424,15 +437,19 @@ struct TranscriptionDetailView: View {
             // and stamped `.completed`, while the later recognition retry
             // would fix only `content`.
             //
-            // `llmStatusView` already hides the button for a textless
-            // record, so this is the second layer, not the first: the button
-            // is built from the *render-time* `currentRecord` and this
-            // re-reads `currentRecord` when the tap lands. A recovery sweep
-            // writing content between those two moments — or the record
-            // being handed to `reprocessRecord` from anywhere else later —
-            // would otherwise slip past a UI-only check. Both sides call the
-            // same predicate, so they can only ever disagree by the record
-            // having changed, which is precisely the case this covers.
+            // Why the guard is load-bearing even though the UI already
+            // prevents the obvious bad input: `LLMService.optimizeAndProcess`
+            // has no empty-text check of its own, so every route into it has
+            // to vet its own input. This function is a network call, and it
+            // is the one place between `originalText` and the model. Relying
+            // on the button's own gate to keep the value non-empty would
+            // make that guarantee a property of the *current* call graph
+            // rather than of this function — and the gate is a render-time
+            // decision, not an invariant. (`llmStatusView` hides the button
+            // for a textless record today and this is its only caller, so no
+            // tap currently reaches the guard; a recovery sweep writing
+            // content between render and tap only moves the two in the safe
+            // direction, since the added text satisfies the predicate.)
             //
             // Deliberately before the profile lookup: a record with no text
             // does not need a provider configured in order to be rejected.
