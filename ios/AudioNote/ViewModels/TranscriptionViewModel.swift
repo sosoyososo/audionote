@@ -190,28 +190,38 @@ final class TranscriptionViewModel: ObservableObject {
         let contentToSave = finalText.isEmpty ? partialText : finalText
         let trimmedContent = contentToSave.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // Determine final recognition mode
+        // Decide whether this recording is worth persisting. A recognizer
+        // failure with no text still is: the audio is already on disk, and
+        // before this the record was simply dropped, stranding the .m4a
+        // with nothing referencing it (spec §4.2).
+        let outcome = PendingRecognitionPolicy.classify(
+            hasRecognitionError: speechRecognizer.hasRecognitionError,
+            trimmedContent: trimmedContent
+        )
+
         let mode: RecognitionMode
-        if speechRecognizer.hasRecognitionError && trimmedContent.isEmpty {
-            mode = .failed
-        } else if speechRecognizer.hasRecognitionError && !trimmedContent.isEmpty {
-            // Framework fell back to on-device or returned partial results
-            mode = .onDevice
-        } else {
-            mode = speechRecognizer.recognitionMode
-        }
-        recognitionMode = mode
-
-        speechRecognizer.stopRecording()
-        isRecording = false
-        stopDurationTimer()
-
-        // Handle empty content
-        if trimmedContent.isEmpty {
+        switch outcome {
+        case .discard:
             Logger.info("No valid content detected, skipping save and LLM processing")
             transcribedText = ""
             return
+        case .save(let resolved):
+            mode = resolved
         }
+        recognitionMode = mode
+
+        // NOTE: `stopRecording()` is deliberately *below* the discard check
+        // rather than above it. It used to run before, and moving it here
+        // looks like an accident — it is not. The discard path returns
+        // without touching the recognizer, and every caller reaches
+        // `stopRecording` from the same recording session, so nothing is
+        // left dangling. Reading `hasRecognitionError` while the session is
+        // still open is what lets `classify` see the finished session's
+        // state; calling `stopRecording` first would race that teardown.
+        // Keep the call in this position.
+        speechRecognizer.stopRecording()
+        isRecording = false
+        stopDurationTimer()
 
         let duration = recordingStartTime.map { Date().timeIntervalSince($0) } ?? recordingDuration
         let audioFileName = speechRecognizer.getAudioFileName()

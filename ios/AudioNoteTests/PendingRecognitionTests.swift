@@ -59,4 +59,67 @@ final class PendingRecognitionTests: XCTestCase {
         XCTAssertEqual(decoded.content, "")
         XCTAssertEqual(decoded.duration, 42)
     }
+
+    // MARK: - classify()
+
+    func testClassifyDiscardsWhenUserWasActuallySilent() {
+        // Review focus #1. No error and no text = the user said nothing.
+        // Saving this would put a "待识别" row in their list for a
+        // recording with no content, and the 2026-04-09 skip-empty spec
+        // exists precisely to avoid feeding meaningless records onward.
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: false, trimmedContent: ""),
+            .discard
+        )
+    }
+
+    func testClassifyTreatsWhitespaceOnlyContentAsNoText() {
+        // A string of spaces is not a transcript, so it must fall through
+        // the "no text" branch exactly like `""` does — which with a
+        // recognizer error means `.pending`, not `.discard` (spec §4.2: the
+        // predicate is `trimmedContent.isEmpty` *after* trimming, and
+        // error + no text is the case worth keeping because the audio is
+        // already on disk). The caller always passes a trimmed string, so
+        // this is a guard on the invariant rather than a live path.
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: true, trimmedContent: "   \n\t "),
+            .save(.pending)
+        )
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: false, trimmedContent: "   \n\t "),
+            .discard
+        )
+    }
+
+    func testClassifySavesPendingWhenRecognizerFailedButUserSpoke() {
+        // The bug being fixed. `hasRecognitionError == true` with no text
+        // means the recognizer died — the user may well have spoken, and
+        // the audio is on disk. Discarding it is what stranded the .m4a
+        // with no record pointing at it.
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: true, trimmedContent: ""),
+            .save(.pending)
+        )
+    }
+
+    func testClassifySavesRecognizerModeWhenThereIsText() {
+        // A record with a transcript is a normal record. The error flag
+        // must not change that — the framework can fail *after* producing
+        // usable text, and the VM already handles that by treating it as
+        // on-device.
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: true, trimmedContent: "今天讨论了三个方案"),
+            .save(.onDevice)
+        )
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: false, trimmedContent: "hello"),
+            .save(.online)
+        )
+    }
 }
