@@ -142,3 +142,6 @@
 
 /* Related Notes (2026-10-02) */
 "Related.Section.Title" = "相关思考";
+
+/* Offline gate (2026-10-03 pending-recognition, spec §4.1) */
+"Error.OnDeviceUnsupported" = "当前语言（%@）不支持离线识别，请在联网状态下录音";

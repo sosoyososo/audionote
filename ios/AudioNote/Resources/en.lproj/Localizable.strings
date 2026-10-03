@@ -142,3 +142,6 @@
 
 /* Related Notes (2026-10-02) */
 "Related.Section.Title" = "Related Notes";
+
+/* Offline gate (2026-10-03 pending-recognition, spec §4.1) */
+"Error.OnDeviceUnsupported" = "Offline recognition isn't available for %@. Please record while online.";

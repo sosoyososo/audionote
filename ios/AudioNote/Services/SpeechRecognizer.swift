@@ -10,6 +10,11 @@ enum SpeechRecognitionError: LocalizedError {
     case recognitionFailed(Error?)
     case cancelled
     case noSpeechDetected
+    /// T004: the device is offline and the current language has no
+    /// downloaded on-device model, so there is no way to transcribe what
+    /// the user is about to say. `RecognitionLanguage` is carried so the
+    /// message can name it.
+    case onDeviceUnsupported(RecognitionLanguage)
 
     var errorDescription: String? {
         switch self {
@@ -25,6 +30,11 @@ enum SpeechRecognitionError: LocalizedError {
             return "识别已取消"
         case .noSpeechDetected:
             return "未检测到语音"
+        case .onDeviceUnsupported(let language):
+            return String(
+                format: "Error.OnDeviceUnsupported".localized,
+                language.displayName
+            )
         }
     }
 }
@@ -116,6 +126,25 @@ final class SpeechRecognizer: @unchecked Sendable {
 
         // T003, T004: Check network and set recognition mode
         let useOnDeviceRecognition = !NetworkMonitor.shared.checkConnectivity()
+
+        // Offline, but this locale has no downloaded on-device model —
+        // `zh-CN` is the common case. Requesting on-device recognition
+        // anyway makes the request fail immediately, which previously
+        // produced a recording whose audio was saved but whose record
+        // was thrown away. Refuse before the user records anything
+        // (spec §4.1). This throws before the audio engine starts and
+        // before `AudioRecorderService` is created, so no file is written.
+        if PendingRecognitionPolicy.shouldRefuseToRecord(
+            isOffline: useOnDeviceRecognition,
+            supportsOnDeviceRecognition: speechRecognizer.supportsOnDeviceRecognition
+        ) {
+            recognitionError = .onDeviceUnsupported(currentLanguage)
+            Logger.error(
+                "Offline but on-device recognition unsupported for \(currentLanguage.rawValue)"
+            )
+            throw SpeechRecognitionError.onDeviceUnsupported(currentLanguage)
+        }
+
         recognitionMode = useOnDeviceRecognition ? .onDevice : .online
         recognitionError = nil
         recognitionRequest.shouldReportPartialResults = true
@@ -189,10 +218,17 @@ final class SpeechRecognizer: @unchecked Sendable {
                 if let error = error as NSError? {
                     Logger.error("Recognition error: \(error.localizedDescription), code: \(error.code)")
                     selfStrong.recognitionError = .recognitionFailed(error)
-                    // Don't cancel — let recording continue, audio is saved
+                    // End the stream. Leaving it open means the consumer's
+                    // `for await` never returns and `partialText` freezes at
+                    // whatever last arrived, so any partial results the
+                    // framework did produce are unreachable (spec §4.1).
+                    // `stopRecording` cancels the task regardless, so
+                    // finishing here is safe either way.
+                    continuation.finish()
                 } else if error != nil {
                     Logger.warning("Unknown non-NSError in recognition task")
                     selfStrong.recognitionError = .recognitionFailed(nil)
+                    continuation.finish()
                 }
             }
 

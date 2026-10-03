@@ -141,3 +141,34 @@ extension PendingRecognitionPolicy {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 }
+
+extension PendingRecognitionPolicy {
+
+    /// Whether `SpeechRecognizer.startRecording` should refuse to start.
+    /// Spec §4.1, Task 4.
+    ///
+    /// Extracted as a pure static for the same reason as `classify`:
+    /// the check reads `SFSpeechRecognizer.supportsOnDeviceRecognition`,
+    /// a property of a framework object built from the device's currently
+    /// installed models, and `startRecording` is reached through
+    /// `TranscriptionViewModel`'s `private let` singleton. There is no
+    /// way to hand the test a recognizer that reports "offline, zh-CN has
+    /// no model", so the decision itself is what gets tested.
+    ///
+    /// The pre-existing code set
+    /// `recognitionRequest.requiresOnDeviceRecognition = true` whenever
+    /// the network was down and never consulted this property. For a
+    /// locale with no downloaded model — `zh-CN` being the common case —
+    /// the request then failed immediately, and the user was told about it
+    /// only after three minutes of talking, by which time the audio was on
+    /// disk with nothing referencing it.
+    ///
+    /// Online recognition never consults `supportsOnDeviceRecognition`, so
+    /// that property being false must not block a recording when there is a
+    /// network. It is a property of the *on-device* path, not a global
+    /// "recognition is broken" flag.
+    static func shouldRefuseToRecord(isOffline: Bool,
+                                     supportsOnDeviceRecognition: Bool) -> Bool {
+        isOffline && !supportsOnDeviceRecognition
+    }
+}

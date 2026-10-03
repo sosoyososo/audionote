@@ -258,4 +258,64 @@ final class PendingRecognitionTests: XCTestCase {
                 text: makeRecord(mode: .pending, content: "").content)
         )
     }
+
+    // MARK: - Offline gate
+
+    func testOnDeviceUnsupportedErrorCarriesLanguageInItsMessage() {
+        // The user is offline and their language has no on-device model.
+        // Telling them which language is the problem is the difference
+        // between an actionable message and a shrug.
+        let error = SpeechRecognitionError.onDeviceUnsupported(.chinese)
+        let message = error.errorDescription ?? ""
+
+        XCTAssertFalse(message.isEmpty)
+        XCTAssertTrue(
+            message.contains("中文"),
+            "Expected the language name in the error, got: \(message)"
+        )
+    }
+
+    func testOfflineWithoutOnDeviceSupportRefusesToRecord() {
+        // The flight-mode failure this gate exists for: no network, no
+        // downloaded model. Refusing is the whole point — let the user talk
+        // for three minutes and you have a stranded .m4a.
+        XCTAssertTrue(
+            PendingRecognitionPolicy.shouldRefuseToRecord(
+                isOffline: true,
+                supportsOnDeviceRecognition: false
+            )
+        )
+    }
+
+    func testOfflineWithOnDeviceSupportProceeds() {
+        // The gate must not be a de-facto "you may not record in airplane
+        // mode" switch. A locale that has its model downloaded — the
+        // English recognizer on a device that has used it before — records
+        // exactly as it did before this change.
+        XCTAssertFalse(
+            PendingRecognitionPolicy.shouldRefuseToRecord(
+                isOffline: true,
+                supportsOnDeviceRecognition: true
+            )
+        )
+    }
+
+    func testOnlineIsNeverRefusedEvenWithoutOnDeviceSupport() {
+        // Online recognition does not consult
+        // `supportsOnDeviceRecognition` at all, so that property being
+        // false is irrelevant when there is a network. Reading it as a
+        // global capability is the mistake this row exists to rule out.
+        XCTAssertFalse(
+            PendingRecognitionPolicy.shouldRefuseToRecord(
+                isOffline: false,
+                supportsOnDeviceRecognition: false
+            )
+        )
+        XCTAssertFalse(
+            PendingRecognitionPolicy.shouldRefuseToRecord(
+                isOffline: false,
+                supportsOnDeviceRecognition: true
+            )
+        )
+    }
 }
