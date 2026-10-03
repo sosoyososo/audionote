@@ -99,13 +99,43 @@ extension PendingRecognitionPolicy {
     /// accidental recording being retried repeatedly is a far smaller
     /// cost than a real three-minute recording being abandoned after a
     /// retry cap (spec D4).
+    ///
+    /// Hand-edited records are excluded. `updateRecord` stamps the
+    /// pre-edit content into `optimizedContent` when the user changes the
+    /// text, which is what `isHandEdited` reads; a record in that state has
+    /// text a human wrote, and re-recognizing from audio would overwrite it
+    /// on every reconnect, silently and forever. Excluding it here rather
+    /// than inside `retryRecognitionFromFile` keeps the manual route —
+    /// `reRecognizeOnline`, the "在线重新识别" button in
+    /// `TranscriptionDetailView` — working: the user asking for an
+    /// overwrite is exactly the case where an overwrite is what they want.
     static func recognitionRetryQueue(
         from records: [TranscriptionRecord]
     ) -> [TranscriptionRecord] {
         records.filter {
             ($0.recognitionMode == .pending || $0.recognitionMode == .failed)
                 && $0.audioFileName != nil
+                && !isHandEdited($0)
         }
+    }
+
+    /// Whether the record's text was written by the user rather than by a
+    /// recognizer.
+    ///
+    /// `optimizedContent` is this codebase's only "the user edited this"
+    /// marker, and `optimizedContent != content` is a locked project
+    /// decision (see CLAUDE.md). The two halves are both load-bearing:
+    /// `optimizedContent != nil` rules out a record that has never been
+    /// marked, and `content != optimizedContent` rules out the ordinary
+    /// case where the LLM legitimately cleaned the text and the two are
+    /// equal by construction.
+    ///
+    /// It lives here, as one definition shared with `enhanceRecognition`,
+    /// so the two guards cannot drift apart. If they did, a record could be
+    /// protected from auto-enhance and clobbered by the recovery sweep,
+    /// which is the failure this predicate exists to prevent.
+    static func isHandEdited(_ record: TranscriptionRecord) -> Bool {
+        record.optimizedContent != nil && record.content != record.optimizedContent
     }
 }
 

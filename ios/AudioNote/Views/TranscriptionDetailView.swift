@@ -509,7 +509,7 @@ struct TranscriptionDetailView: View {
         let baseRecord = currentRecord
         let updatedRecord = TranscriptionRecord(
             id: baseRecord.id,
-            content: editedContent,
+            content: editedContent.trimmingCharacters(in: .whitespacesAndNewlines),
             createdAt: baseRecord.createdAt,
             duration: baseRecord.duration,
             language: baseRecord.language,

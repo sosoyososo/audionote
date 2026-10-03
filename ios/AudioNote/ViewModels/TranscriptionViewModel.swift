@@ -310,7 +310,7 @@ final class TranscriptionViewModel: ObservableObject {
         let audioURL = AudioRecorderService.generateFileUrl(for: uuid)
 
         // Check if user has edited the text — if so, don't overwrite
-        if record.optimizedContent != nil && record.content != record.optimizedContent {
+        if PendingRecognitionPolicy.isHandEdited(record) {
             Logger.info("Skipping auto-enhance: user has edited content")
             return
         }
@@ -653,6 +653,26 @@ final class TranscriptionViewModel: ObservableObject {
         // and dropping them was causing playback + archive state to silently disappear
         // after the user clicked Analyze or Save in the detail view.
         let existingRecord = try await storage.get(id: record.id)
+
+        // A record the user has hand-typed into has to stay that way. This
+        // function is the only write path for a pending record's text, and
+        // it used to carry `optimizedContent` forward only — a pending
+        // record has empty `content` and `nil optimizedContent`, so after
+        // the user typed into the detail page both were still nil, the
+        // `optimizedContent != content` rule could not fire, and the next
+        // network recovery overwrote what they wrote. Stashing the
+        // *pre-edit* content as the marker is what makes the rule fire.
+        //
+        // `contentChanged` is why the marker is conditional: `updateRecord`
+        // is also reached from `reprocessRecord` and from saves that touch
+        // only `title`, and without the check a re-save of an untouched
+        // record would mark itself hand-edited and freeze it out of both
+        // auto-enhance and auto-recovery forever.
+        let previousContent = existingRecord?.content ?? record.content
+        let contentChanged = record.content != previousContent
+        let marker = record.optimizedContent
+            ?? (contentChanged ? previousContent : existingRecord?.optimizedContent)
+
         let updatedRecord = TranscriptionRecord(
             id: record.id,
             content: record.content,
@@ -665,7 +685,7 @@ final class TranscriptionViewModel: ObservableObject {
             summary: record.summary,
             tags: record.tags,
             llmProcessingStatus: record.llmProcessingStatus,
-            optimizedContent: record.optimizedContent ?? existingRecord?.optimizedContent,
+            optimizedContent: marker,
             recognitionMode: record.recognitionMode ?? existingRecord?.recognitionMode,
             archived: record.archived || (existingRecord?.archived ?? false),
             archivedAt: record.archivedAt ?? existingRecord?.archivedAt

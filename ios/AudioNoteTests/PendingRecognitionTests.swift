@@ -150,6 +150,7 @@ final class PendingRecognitionTests: XCTestCase {
     private func makeRecord(mode: RecognitionMode?,
                             content: String,
                             llmStatus: LLMStatus? = nil,
+                            optimizedContent: String? = nil,
                             audioFileName: String? = "some-uuid.m4a") -> TranscriptionRecord {
         TranscriptionRecord(
             id: UUID(),
@@ -158,6 +159,7 @@ final class PendingRecognitionTests: XCTestCase {
             duration: 30,
             audioFileName: audioFileName,
             llmProcessingStatus: llmStatus,
+            optimizedContent: optimizedContent,
             recognitionMode: mode
         )
     }
@@ -399,5 +401,100 @@ final class PendingRecognitionTests: XCTestCase {
             id: UUID(), content: "just the transcript", createdAt: Date(),
             recognitionMode: .onDevice)
         XCTAssertEqual(RecordRowView.rowTitle(for: contentOnly), "just the transcript")
+    }
+
+    // MARK: - isHandEdited() + the retry-queue hand-edit filter
+
+    func testHandEditedPendingRecordIsRecognisedAsEdited() {
+        // The marker contract. `updateRecord` stashes the *pre-edit* content
+        // into `optimizedContent`, so the two fields must end up different —
+        // if they were equal, `isHandEdited` would return false and the
+        // skip rule could not fire at all. This is a contract test on the
+        // shape of the state, not a regression test.
+        let record = makeRecord(mode: .pending,
+                                content: "航班改到明天下午三点",
+                                optimizedContent: "")
+        XCTAssertTrue(PendingRecognitionPolicy.isHandEdited(record))
+        XCTAssertNotEqual(record.content, record.optimizedContent)
+    }
+
+    func testRecognitionRetryQueueExcludesHandEditedPendingRecord() {
+        // The load-bearing exclusion of this task. A pending record the user
+        // typed into has audio and a transcript, so every other condition in
+        // the filter admits it — only `isHandEdited` keeps the recovery
+        // sweep from overwriting human text on every reconnect.
+        let handTyped = makeRecord(mode: .pending,
+                                   content: "航班改到明天下午三点",
+                                   optimizedContent: "")
+        let untouched = makeRecord(mode: .pending, content: "")
+
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(
+            from: [handTyped, untouched])
+
+        XCTAssertFalse(queue.contains { $0.id == handTyped.id })
+        XCTAssertTrue(queue.contains { $0.id == untouched.id })
+    }
+
+    func testRecognitionRetryQueueStillIncludesPendingWithNilOptimizedContent() {
+        // The marker is written on edit, so a record nobody has touched has
+        // `optimizedContent == nil`. A filter of `optimizedContent != nil`
+        // rather than `isHandEdited` would pass this case by accident but
+        // freeze every untouched record out of recovery.
+        let untouched = makeRecord(mode: .pending, content: "")
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(from: [untouched])
+        XCTAssertEqual(queue.map(\.id), [untouched.id])
+    }
+
+    func testRecognitionRetryQueueStillIncludesPendingWithEqualOptimizedContent() {
+        // The `!= nil` half of the predicate is load-bearing. A record whose
+        // `optimizedContent` legitimately equals its `content` is not
+        // hand-edited — it is the shape the LLM-cleaned record has — and a
+        // naive `optimizedContent != nil` filter would wrongly drop it.
+        let clean = makeRecord(mode: .pending,
+                               content: "同一次增强的文本",
+                               optimizedContent: "同一次增强的文本")
+        XCTAssertFalse(PendingRecognitionPolicy.isHandEdited(clean))
+
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(from: [clean])
+        XCTAssertEqual(queue.map(\.id), [clean.id])
+    }
+
+    func testIsHandEditedTruthTable() {
+        // nil / nil — never marked. A record the user has not edited.
+        XCTAssertFalse(PendingRecognitionPolicy.isHandEdited(
+            makeRecord(mode: .pending, content: "文本", optimizedContent: nil)))
+
+        // Non-nil but equal — marked, and equal, so not an edit.
+        XCTAssertFalse(PendingRecognitionPolicy.isHandEdited(
+            makeRecord(mode: .pending, content: "文本", optimizedContent: "文本")))
+
+        // Non-nil and different — the edit.
+        XCTAssertTrue(PendingRecognitionPolicy.isHandEdited(
+            makeRecord(mode: .pending, content: "新文本", optimizedContent: "旧文本")))
+
+        // The empty-string case: a pending record the user typed into and
+        // then cleared back to "". The marker is the pre-edit text, so the
+        // two differ and the record is still protected — clearing the text
+        // is not consent to have the recognizer write over it.
+        let cleared = makeRecord(mode: .pending,
+                                 content: "",
+                                 optimizedContent: "写了一点又删掉")
+        XCTAssertTrue(PendingRecognitionPolicy.isHandEdited(cleared))
+    }
+
+    func testRecognitionRetryQueueExcludesHandEditedFailedRecord() {
+        // The queue takes both modes, so a filter that only guarded
+        // `.pending` would leave `.failed` wide open — a failed record the
+        // user later typed into is the same loss of text, one mode over.
+        let failed = makeRecord(mode: .failed,
+                                content: "手写的失败记录内容",
+                                optimizedContent: "")
+        let untouchedFailed = makeRecord(mode: .failed, content: "")
+
+        let queue = PendingRecognitionPolicy.recognitionRetryQueue(
+            from: [failed, untouchedFailed])
+
+        XCTAssertFalse(queue.contains { $0.id == failed.id })
+        XCTAssertTrue(queue.contains { $0.id == untouchedFailed.id })
     }
 }
