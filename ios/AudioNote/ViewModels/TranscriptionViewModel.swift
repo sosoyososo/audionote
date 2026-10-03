@@ -194,11 +194,25 @@ final class TranscriptionViewModel: ObservableObject {
         // failure with no text still is: the audio is already on disk, and
         // before this the record was simply dropped, stranding the .m4a
         // with nothing referencing it (spec §4.2).
+        //
+        // Both reads happen before the teardown below on purpose:
+        // `SpeechRecognizer.stopRecording()` rewrites `recognitionMode` to
+        // `.failed` when it ends on an error with no text — the one branch
+        // where `classify` ignores `recognizerMode` and returns `.pending`,
+        // so the pre-teardown value is the one that is used.
         let outcome = PendingRecognitionPolicy.classify(
             hasRecognitionError: speechRecognizer.hasRecognitionError,
             trimmedContent: trimmedContent,
             recognizerMode: speechRecognizer.recognitionMode
         )
+
+        // Teardown runs on *every* path out of this method, discard
+        // included: `isRecording` is only cleared here and in `startRecording`,
+        // so returning early without it leaves the UI calling `stopRecording`
+        // on every subsequent tap and the user unable to record again.
+        speechRecognizer.stopRecording()
+        isRecording = false
+        stopDurationTimer()
 
         let mode: RecognitionMode
         switch outcome {
@@ -211,25 +225,16 @@ final class TranscriptionViewModel: ObservableObject {
         }
         recognitionMode = mode
 
-        // NOTE: `stopRecording()` is deliberately *below* the discard check
-        // rather than above it. It used to run before, and moving it here
-        // looks like an accident — it is not. The discard path returns
-        // without touching the recognizer, and every caller reaches
-        // `stopRecording` from the same recording session, so nothing is
-        // left dangling. Reading `hasRecognitionError` while the session is
-        // still open is what lets `classify` see the finished session's
-        // state; calling `stopRecording` first would race that teardown.
-        // Keep the call in this position.
-        speechRecognizer.stopRecording()
-        isRecording = false
-        stopDurationTimer()
-
         let duration = recordingStartTime.map { Date().timeIntervalSince($0) } ?? recordingDuration
         let audioFileName = speechRecognizer.getAudioFileName()
 
         let record = TranscriptionRecord(
             id: currentRecordId ?? UUID(),
-            content: contentToSave,
+            // `trimmedContent`, not `contentToSave`: on the `.pending` path
+            // `contentToSave` is whitespace-only, and spec §4.2 persists
+            // `content = ""`. Downstream emptiness checks must not have to
+            // trim first. `assessAndEnhance` still gets `contentToSave`.
+            content: trimmedContent,
             createdAt: recordingStartTime ?? Date(),
             duration: duration,
             language: selectedLanguage.rawValue,

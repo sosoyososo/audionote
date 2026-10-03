@@ -1,14 +1,14 @@
 import Foundation
 
-/// The two decisions that decide whether a flight-mode recording is
+/// The decision that governs whether a flight-mode recording is
 /// thrown away or kept for later. Spec §4.2 and §4.6.
 ///
-/// Both are pure static functions on purpose. `TranscriptionViewModel`
-/// wires its collaborators as `private let` singletons and
-/// `SpeechRecognizer` constructs `SFSpeechRecognizer` directly, so
-/// neither can be instantiated in a unit test with a controlled
-/// environment. Extracting the decisions here gets them under test
-/// without a dependency-injection refactor of the whole view model.
+/// `classify` is a pure static function on purpose.
+/// `TranscriptionViewModel` wires its collaborators as `private let`
+/// singletons and `SpeechRecognizer` constructs `SFSpeechRecognizer`
+/// directly, so neither can be instantiated in a unit test with a
+/// controlled environment. Extracting the decision here gets it under
+/// test without a dependency-injection refactor of the whole view model.
 enum PendingRecognitionPolicy {
 
     /// What `TranscriptionViewModel.stopRecording` should do once
