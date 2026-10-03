@@ -385,12 +385,6 @@ final class TranscriptionViewModel: ObservableObject {
                 record.llmProcessingStatus = .completed
                 try await storage.save(record)
 
-                // Relations are best-effort: this never throws and never
-                // surfaces an error. It runs after the record is persisted so
-                // a slow or failing relation call cannot lose the note — the
-                // LLM work it depends on is already on disk.
-                await relatedNotesService.link(for: record.id)
-
                 transcribedText = result.optimizedText
                 isTextOptimized = true
                 await loadHistory()
@@ -398,6 +392,26 @@ final class TranscriptionViewModel: ObservableObject {
 
             isLLMProcessing = false
             llmProcessingFailed = false
+
+            // Relations are best-effort: `link(for:)` never throws and never
+            // surfaces an error.
+            //
+            // Deliberately last, after the UI updates. While `isLLMProcessing`
+            // is true `RecordingView` replaces the whole transcript card with
+            // a `ProgressView` and the detail view disables its re-process
+            // button, so awaiting any earlier would hide call 1's
+            // already-produced text for the length of a second LLM round trip
+            // (1–3s, with retries) — on exactly the screen this feature exists
+            // to serve, and against spec §8's promise that the user never sees
+            // the second request. By here the note is saved and its text is
+            // on screen; the 相关思考 section re-reads the file on every
+            // appear, so the only cost of a slow link is a briefly-empty
+            // section, which is self-healing on the next look.
+            //
+            // Still inside the `do`, so a call-1 failure takes the `catch` and
+            // skips this — correct, since without an optimized title and
+            // summary there is nothing to compare against.
+            await relatedNotesService.link(for: recordId)
         } catch let error as LLMError {
             Logger.warning("LLM processWithLLM failed: \(error.errorDescription ?? "unknown")")
 

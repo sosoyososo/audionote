@@ -255,6 +255,13 @@ struct RelatedNotesService {
     /// (spec §6 — "relations are best-effort and never block, never error,
     /// never surface").
     ///
+    /// **Caller's contract:** the note must already be persisted *and* its
+    /// optimized text already on screen before this is awaited. `link` spends
+    /// a second LLM round trip, so awaiting it while the caller still shows a
+    /// "processing" UI would mask the first call's output for 1–3s. Getting
+    /// that wrong costs a briefly-empty 相关思考 section, which self-heals;
+    /// linking too early costs a stalled UI.
+    ///
     /// Serialized through `gate`, so two overlapping triggers (a fast second
     /// recording, or `networkDidRecover` firing alongside) run one after the
     /// other instead of interleaving a read-modify-write on the same file.

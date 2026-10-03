@@ -130,20 +130,29 @@ final class RelatedNotesLinkTests: XCTestCase {
 
     /// Spec §6: "findRelated throws or returns junk → no edge written, no error
     /// surfaced." `link(for:)` is `async` and non-throwing by contract.
+    ///
+    /// The `callCount` assertion is what makes this test mean what its name
+    /// says. `edges.isEmpty` alone cannot distinguish "the LLM failed and we
+    /// swallowed it" from "prescreen found too few candidates and we never
+    /// called the LLM" — both leave the edge set empty, so the second case
+    /// would false-pass. Pinning the call count proves the failure was actually
+    /// reached and that it is the *LLM's* failure that produced the empty set.
     func testLLMFailureLeavesNoEdgesAndDoesNotThrow() async throws {
         let current = tagged(["a", "b", "c"])
         let x = tagged(["a", "b"])
         let y = tagged(["a", "c"])
         let z = tagged(["a", "b"])
 
+        let llm = StubLLM(error: LLMError.decodingError)
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: StubLLM(error: LLMError.decodingError)
+            llm: llm
         )
 
         await service.link(for: current.id) // must not throw
 
+        XCTAssertEqual(llm.callCount, 1, "the LLM must actually be reached and fail")
         let edges = try await relations.loadAll()
         XCTAssertTrue(edges.isEmpty)
     }
@@ -207,7 +216,69 @@ final class RelatedNotesLinkTests: XCTestCase {
     }
 }
 
+/// `Gate` is a hand-rolled FIFO mutex built on `withCheckedContinuation`, and
+/// that kind of code fails *silently* when wrong — a lock that admits two
+/// callers still produces correct-looking edges, it just occasionally loses
+/// one, and only on real devices under real timing. So the gate is tested
+/// directly rather than inferred through `link(for:)`.
+final class RelatedNotesGateTests: XCTestCase {
+
+    func testWithLockAdmitsExactlyOneCallerAtATime() async {
+        let gate = Gate()
+        let counter = ConcurrencyCounter()
+
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 0..<8 {
+                group.addTask {
+                    await gate.withLock {
+                        await counter.enterAndYield()
+                    }
+                }
+            }
+        }
+
+        // Ruling D: read the actor's values into locals first. An
+        // `XCTAssertEqual(await counter.maxSeen, 1)` autoclosure does not
+        // compile, and hiding the `await` in a closure would take the async
+        // work outside the assertion.
+        let maxSeen = await counter.maxSeen
+        let current = await counter.current
+
+        XCTAssertEqual(maxSeen, 1, "withLock must admit exactly one caller at a time")
+        XCTAssertEqual(current, 0, "every acquisition must be released — a leaked lock is a permanently dead gate")
+    }
+
+    /// The counter is balanced only if `release()` ran on every exit path of
+    /// the critical section, including the ones that return early.
+    func testWithLockReleasesWhenTheBodyReturnsEarly() async {
+        let gate = Gate()
+
+        await gate.withLock { return }
+        await gate.withLock { /* empty body */ }
+
+        // Both critical sections completed, so the gate must be free again.
+        // A third acquisition that never returns would hang here instead.
+        await gate.withLock { return }
+    }
+}
+
 // MARK: - Test doubles
+
+/// Records the highest concurrency ever observed inside a `Gate` critical
+/// section. The `Task.yield()` is the whole point: it hands the cooperative
+/// pool a chance to run a *competing* task while this one is still inside the
+/// section, which is the interleaving a correct lock has to prevent.
+actor ConcurrencyCounter {
+    private(set) var current = 0
+    private(set) var maxSeen = 0
+
+    func enterAndYield() async {
+        current += 1
+        maxSeen = max(maxSeen, current)
+        await Task.yield()
+        current -= 1
+    }
+}
 
 /// In-memory stand-in for `TranscriptionStorage`'s read path. The real one
 /// needs a bootstrapped folder; `link(for:)` only ever calls `loadAll()`.
