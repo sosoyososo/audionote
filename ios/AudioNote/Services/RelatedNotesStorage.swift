@@ -49,6 +49,14 @@ final class RelatedNotesStorage {
     }
 
     /// Counterpart notes for `id`, strongest first, threshold applied.
+    ///
+    /// Ties on score break by `uuidString`. Without that the order of two
+    /// equally-scored neighbours would follow whatever order the file happens
+    /// to hold — and `upsert` writes `Array(merged.values)`, which is
+    /// Dictionary hash order, seeded per process. The list would then reshuffle
+    /// between launches, which §4.3/§4.4 forbid. `upsert` dedupes by `key`, so
+    /// the ids reaching the sort are distinct and `(score, uuidString)` is a
+    /// total order — stable in a way Swift's sort alone does not guarantee.
     func related(to id: UUID) async -> [RelatedNote] {
         guard let all = try? await loadAll() else { return [] }
         return all
@@ -57,7 +65,10 @@ final class RelatedNotesStorage {
                       edge.score >= Self.minimumScore else { return nil }
                 return RelatedNote(id: other, score: edge.score)
             }
-            .sorted { $0.score > $1.score }
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score { return lhs.score > rhs.score }
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
     }
 
     // MARK: - Writes

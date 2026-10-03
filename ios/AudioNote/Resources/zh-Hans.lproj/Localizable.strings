@@ -138,3 +138,7 @@
 "Settings.Storage.Title" = "存储位置";
 "Settings.Storage.Change" = "更换存储位置";
 "Settings.Storage.Footer" = "更换后,新的数据将写入新位置,旧位置数据不会被迁移";
+
+/* Related Notes (2026-10-02) */
+"Related.Section.Title" = "相关思考";
+"Related.Section.Empty" = "（暂无相关笔记）";

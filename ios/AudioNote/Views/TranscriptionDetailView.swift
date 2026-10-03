@@ -9,6 +9,7 @@ struct TranscriptionDetailView: View {
     @State private var editedContent: String = ""
     @State private var isProcessing = false
     @State private var localArchived: Bool = false
+    @State private var relatedNotes: [RelatedNote] = []
 
     init(record: TranscriptionRecord, viewModel: TranscriptionViewModel) {
         self.record = record
@@ -44,6 +45,15 @@ struct TranscriptionDetailView: View {
                 }
 
                 llmResultsSection
+
+                RelatedNotesSection(
+                    rows: RelatedNotesSectionBuilder.rows(
+                        for: currentRecord,
+                        candidates: viewModel.historyRecords,
+                        related: relatedNotes
+                    ),
+                    viewModel: viewModel
+                )
             }
             .padding()
         }
@@ -96,6 +106,15 @@ struct TranscriptionDetailView: View {
         .overlay(alignment: .bottom) {
             ToastView(message: actionsViewModel.toastMessage, isShowing: $actionsViewModel.showCopiedToast)
                 .padding(.bottom, 40)
+        }
+        .task(id: currentRecord.id) {
+            // `relatedNotes.json` is the source of truth and the store has no
+            // cache (spec §5.2), so this re-reads on every appear — the task
+            // is cancelled and restarted when the view leaves. Loading once
+            // would leave the section permanently empty for a note opened while
+            // its own relation call was still in flight (1–3s window), since
+            // nothing would re-read the file afterward.
+            relatedNotes = await RelatedNotesStorage.shared.related(to: currentRecord.id)
         }
     }
 
@@ -417,6 +436,122 @@ struct TranscriptionDetailView: View {
     private func enterEditingMode() {
         editedContent = currentRecord.content
         isEditing = true
+    }
+}
+
+struct RelatedNotesRow: Identifiable, Equatable {
+    let id: UUID
+    let title: String
+    let createdAt: Date
+    let preview: String
+    let sharedTags: [String]
+    /// The record a `NavigationLink` pushes. Carried here so the row stays a
+    /// plain value the builder can construct without a view model.
+    let record: TranscriptionRecord
+}
+
+/// Pure mapping from stored edges to renderable rows, so the skip rules are
+/// unit-testable without instantiating a SwiftUI view.
+enum RelatedNotesSectionBuilder {
+
+    static func rows(
+        for record: TranscriptionRecord,
+        candidates: [TranscriptionRecord],
+        related: [RelatedNote]
+    ) -> [RelatedNotesRow] {
+        let byID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let currentTagNames = Set(record.tagNames)
+
+        // `related(to:)` already hands back score-descending edges, so this
+        // sort is a no-op in production. It is kept, with the *same*
+        // `uuidString` tie-break as the storage, so the rendered order cannot
+        // drift from the stored one — and so the builder is well-defined for
+        // any `related` input rather than trusting its caller's ordering.
+        let ordered = related.sorted { lhs, rhs in
+            if lhs.score != rhs.score { return lhs.score > rhs.score }
+            return lhs.id.uuidString < rhs.id.uuidString
+        }
+
+        return ordered.compactMap { link -> RelatedNotesRow? in
+            guard let other = byID[link.id], other.archived != true else { return nil }
+            // Exact, case-sensitive intersection — deliberately the same match
+            // `RelatedNotesService.prescreen` uses. A chip the prescreen never
+            // matched would read as a contradiction; normalize both or neither.
+            let shared = other.tagNames.filter { currentTagNames.contains($0) }
+            return RelatedNotesRow(
+                id: other.id,
+                title: other.title?.isEmpty == false ? other.title! : other.preview,
+                createdAt: other.createdAt,
+                preview: other.preview,
+                sharedTags: shared,
+                record: other
+            )
+        }
+    }
+}
+
+/// Rendered at the bottom of the detail page. Hides itself entirely when
+/// there is nothing to show — no empty state, no spinner. Takes the view model
+/// separately so `RelatedNotesRow` stays a plain value.
+struct RelatedNotesSection: View {
+    let rows: [RelatedNotesRow]
+    @ObservedObject var viewModel: TranscriptionViewModel
+
+    var body: some View {
+        if !rows.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Related.Section.Title".localized)
+                    .font(.headline)
+
+                ForEach(rows) { row in
+                    NavigationLink {
+                        TranscriptionDetailView(record: row.record, viewModel: viewModel)
+                    } label: {
+                        RelatedNotesRowView(row: row)
+                    }
+                }
+            }
+            .padding(.vertical, 8)
+        }
+    }
+}
+
+struct RelatedNotesRowView: View {
+    let row: RelatedNotesRow
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(row.title)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(.primary)
+
+            HStack(spacing: 6) {
+                Text(row.createdAt, style: .date)
+                Text(row.createdAt, style: .time)
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+
+            Text(row.preview)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .lineLimit(2)
+
+            if !row.sharedTags.isEmpty {
+                HStack(spacing: 6) {
+                    ForEach(row.sharedTags, id: \.self) { tag in
+                        Text(tag)
+                            .font(.caption2)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.accentColor.opacity(0.1))
+                            .cornerRadius(8)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
     }
 }
 

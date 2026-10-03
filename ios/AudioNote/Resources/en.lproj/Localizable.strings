@@ -138,3 +138,7 @@
 "Settings.Storage.Title" = "Storage Location";
 "Settings.Storage.Change" = "Change Storage Location";
 "Settings.Storage.Footer" = "After changing, new data is written to the new location. Existing data at the old location will not be migrated.";
+
+/* Related Notes (2026-10-02) */
+"Related.Section.Title" = "Related Notes";
+"Related.Section.Empty" = "(No related notes)";
