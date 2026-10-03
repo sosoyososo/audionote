@@ -100,6 +100,30 @@ final class FindRelatedParsingTests: XCTestCase {
         XCTAssertTrue(out.isEmpty, "a reply with nothing usable is 'no relation', not a decode failure")
     }
 
+    func testDropsBooleanScoreButKeepsTheNumericEntryBesideIt() throws {
+        // `JSONSerialization` has no boolean type: `true` arrives as
+        // `__NSCFBoolean`, an `NSNumber` subclass, so `as? Double` succeeds
+        // and the entry would carry a perfect 1.0 — a maximal relevance claim
+        // the model never made, which then sorts to the top of the display
+        // list and persists. `JSONDecoder` rejected this outright, so it is a
+        // hole the switch to `JSONSerialization` opened, not a pre-existing
+        // one.
+        let good = "11111111-1111-1111-1111-111111111111"
+        let alsoGood = "22222222-2222-2222-2222-222222222222"
+        let json = """
+        {"related":[
+          {"id":"\(good)","score":0.71},
+          {"id":"\(alsoGood)","score":true}
+        ]}
+        """
+        let out = try LLMService.parseRelated(content: json)
+        XCTAssertEqual(
+            out.map(\.id.uuidString), [good],
+            "the boolean-scored entry must be dropped, not promoted to a perfect 1.0, and its neighbour must survive"
+        )
+        XCTAssertEqual(out.map(\.score), [0.71])
+    }
+
     func testMalformedElementsAreAlsoDroppedThroughTheExtractionPath() throws {
         let prose = """
         结果如下：

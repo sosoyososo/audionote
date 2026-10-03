@@ -79,10 +79,9 @@ struct RelatedNoteMatch: Decodable {
 /// returns three good pairs plus one truncated uuid would throw all four
 /// away — and the reply is adversarial input, where that shape is ordinary.
 /// `JSONSerialization` hands the array back as plain values, so each element
-/// can be judged on its own and only the unreadable ones dropped. (The
-/// `Decodable` cursor offers no way to *skip* an element it cannot decode:
-/// after a failure it does not reliably advance, so a lenient `try?` loop
-/// silently swallows every element that follows.)
+/// can be judged on its own and only the unreadable ones dropped. A `Decodable`
+/// rewrite is not the answer: its cursor cannot *skip* an element it fails to
+/// decode, so a lenient `try?` loop silently swallows everything after it.
 ///
 /// The envelope itself is still all-or-nothing: `nil` means "not a reply we
 /// can read at all", which is what sends `parseRelated` on to the
@@ -102,24 +101,32 @@ private enum RelatedPayload {
     /// **The strictness boundary. An element survives only if `id` is a JSON
     /// string that parses as a `UUID` *and* `score` is a JSON number.**
     /// Everything else is dropped, explicitly including the near-misses a
-    /// lenient reader might rescue:
-    ///
-    /// - `"id": "1111-11"` — a truncated uuid, the single most common model
-    ///   slip. Dropped here rather than carried forward for `sanitize` to
-    ///   reject, because `sanitize`'s whitelist can only compare a real
-    ///   `UUID`.
-    /// - `"score": "0.9"` — score as a JSON *string*. Dropped: the prompt
-    ///   specifies a number, and silently coercing tells us nothing about how
-    ///   much of the rest of the reply to trust.
-    /// - a missing `id` or a missing `score` — dropped.
-    /// - a non-object element (a bare string or number) — dropped.
+    /// lenient reader might rescue — a truncated uuid (`"id": "1111-11"`,
+    /// the most common model slip), a score as a JSON *string* (`"0.9"`), a
+    /// missing `id`, a missing `score`, and a non-object element.
     private static func element(_ raw: Any) -> RelatedNoteMatch? {
         guard let fields = raw as? [String: Any],
               let id = fields["id"] as? String,
-              let score = fields["score"] as? Double,
               let uuid = UUID(uuidString: id)
         else { return nil }
+        guard let score = jsonNumber(fields["score"]) else { return nil }
         return RelatedNoteMatch(id: uuid, score: score)
+    }
+
+    /// `JSONSerialization` has no boolean type — `true` and `false` arrive as
+    /// `__NSCFBoolean`, an `NSNumber` subclass, and `as? Double` succeeds on
+    /// it. A bare `as? Double` would therefore read `"score": true` as a
+    /// perfect `1.0`: a maximal relevance claim the model never made, which
+    /// then tops the display list and persists. Check the CF type first.
+    ///
+    /// This covers the boolean case only, not a general range check — an
+    /// out-of-range number (`85`, `1e300`) still passes, as it did before
+    /// the switch to `JSONSerialization`. That gap is known and tracked
+    /// separately; do not read this guard as a strictness guarantee.
+    private static func jsonNumber(_ value: Any?) -> Double? {
+        guard let value = value else { return nil }
+        guard CFGetTypeID(value as CFTypeRef) != CFBooleanGetTypeID() else { return nil }
+        return value as? Double
     }
 }
 

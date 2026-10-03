@@ -77,20 +77,54 @@ final class RelatedNotesSanitizeTests: XCTestCase {
 
     // MARK: - Deterministic tie-break
 
-    func testEqualScoresKeepTheModelsOwnOrder() {
+    func testEqualScoresFollowTheModelsOrderForEveryRotationOfTheSameIdSet() {
         // spec §4.3/§4.4: a stored list must not reshuffle between app
         // launches, and Dictionary iteration order is seeded per process. So
         // a tie on score is broken by first appearance in the model's list,
         // not by hash order. `maxRelated` ids, all tied, so the whole output
         // is decided by the tie-break and nothing is left to the cap.
+        //
+        // One order is not enough. An implementation that fell back to hash
+        // order would still answer this correctly whenever the seeded order
+        // happened to coincide with the one order asserted here — measured at
+        // ~1.4% of process launches (17/1200), a false PASS, i.e. CI green
+        // over a broken guarantee. So the id set is held fixed and all
+        // `maxRelated` cyclic rotations of it are asserted, and the suite
+        // also pins that repeated calls on one input agree with each other.
+        //
+        // Together those two make the test seed-independent rather than
+        // merely unlikely-to-false-pass. Suppose the tie-break were dropped:
+        // the output is then one fixed permutation, the same for every call
+        // (same key set, same process seed) — call that P. Passing now needs
+        // P to equal all 5 rotations at once, and 5 distinct rotations are
+        // pairwise distinct permutations, so P can match at most one of
+        // them: the test fails for every seed. The only way out would be an
+        // implementation whose output varies between two calls on the *same*
+        // input, and that is precisely what the repeat call rejects. A single
+        // asserted order established determinism and the specific order at
+        // the same time; only the second one was really there.
         let ids = (0..<RelatedNotesService.maxRelated)
             .map { UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", $0))! }
-        let modelOrder = Array(ids.reversed())
-        let input = modelOrder.map { RelatedNoteMatch(id: $0, score: 0.5) }
 
-        let out = RelatedNotesService.sanitize(input, candidateIDs: Set(ids), currentID: UUID())
-        XCTAssertEqual(out.count, RelatedNotesService.maxRelated)
-        XCTAssertEqual(out.map(\.id), modelOrder, "a full tie must fall back to the model's own order, deterministically")
+        let candidateIDs = Set(ids)
+        for rotation in 0..<RelatedNotesService.maxRelated {
+            let modelOrder: [UUID] = Array(ids[rotation...] + ids[..<rotation])
+            let input = modelOrder.map { RelatedNoteMatch(id: $0, score: 0.5) }
+
+            let out = RelatedNotesService.sanitize(input, candidateIDs: candidateIDs, currentID: UUID())
+            let outIDs = out.map(\.id)
+            XCTAssertEqual(outIDs.count, RelatedNotesService.maxRelated)
+            XCTAssertEqual(
+                outIDs, modelOrder,
+                "rotation \(rotation): a full tie must fall back to the model's own order, not to hash order"
+            )
+
+            let again = RelatedNotesService.sanitize(input, candidateIDs: candidateIDs, currentID: UUID())
+            XCTAssertEqual(
+                again.map(\.id), outIDs,
+                "rotation \(rotation): the same input must not render in a different order on a second call"
+            )
+        }
     }
 
     // MARK: - Non-positive scores
