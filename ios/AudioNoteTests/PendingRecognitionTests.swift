@@ -69,7 +69,8 @@ final class PendingRecognitionTests: XCTestCase {
         // exists precisely to avoid feeding meaningless records onward.
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: false, trimmedContent: ""),
+                hasRecognitionError: false, trimmedContent: "",
+                recognizerMode: .online),
             .discard
         )
     }
@@ -84,12 +85,14 @@ final class PendingRecognitionTests: XCTestCase {
         // this is a guard on the invariant rather than a live path.
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: true, trimmedContent: "   \n\t "),
+                hasRecognitionError: true, trimmedContent: "   \n\t ",
+                recognizerMode: .online),
             .save(.pending)
         )
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: false, trimmedContent: "   \n\t "),
+                hasRecognitionError: false, trimmedContent: "   \n\t ",
+                recognizerMode: .online),
             .discard
         )
     }
@@ -101,25 +104,39 @@ final class PendingRecognitionTests: XCTestCase {
         // with no record pointing at it.
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: true, trimmedContent: ""),
+                hasRecognitionError: true, trimmedContent: "",
+                recognizerMode: .online),
             .save(.pending)
         )
     }
 
     func testClassifySavesRecognizerModeWhenThereIsText() {
-        // A record with a transcript is a normal record. The error flag
-        // must not change that — the framework can fail *after* producing
-        // usable text, and the VM already handles that by treating it as
-        // on-device.
+        // A record with a transcript is a normal record. The error flag must
+        // not change that — the framework can fail *after* producing usable
+        // text, and the VM already handles that by treating it as on-device.
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: true, trimmedContent: "今天讨论了三个方案"),
+                hasRecognitionError: true, trimmedContent: "今天讨论了三个方案",
+                recognizerMode: .online),
             .save(.onDevice)
+        )
+
+        // The no-error path returns the recognizer's own mode, NOT a hardcoded
+        // `.online`. Offline + successful on-device recognition must stay
+        // `.onDevice`: that is what keeps the connectivity gate in
+        // `assessAndEnhance` and the upgrade filter in `networkDidRecover`
+        // matching this record.
+        XCTAssertEqual(
+            PendingRecognitionPolicy.classify(
+                hasRecognitionError: false, trimmedContent: "hello",
+                recognizerMode: .online),
+            .save(.online)
         )
         XCTAssertEqual(
             PendingRecognitionPolicy.classify(
-                hasRecognitionError: false, trimmedContent: "hello"),
-            .save(.online)
+                hasRecognitionError: false, trimmedContent: "今天讨论了三个方案",
+                recognizerMode: .onDevice),
+            .save(.onDevice)
         )
     }
 }

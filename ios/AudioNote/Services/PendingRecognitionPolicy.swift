@@ -33,8 +33,18 @@ enum PendingRecognitionPolicy {
     ///     spaces must never reach `TranscriptionStorage` as content, and
     ///     the same rule is what keeps the 2026-04-09 skip-empty design
     ///     honest if a future caller forgets to trim.
+    ///   - recognizerMode: the mode the recognizer actually ran in, i.e.
+    ///     `SpeechRecognizer.recognitionMode`. This is what the code
+    ///     `classify` replaced assigned to the record, and it is passed in
+    ///     rather than read from a collaborator so this stays a pure
+    ///     static. It is the honest label for a transcript produced without
+    ///     an error: an offline recording recognised on-device is
+    ///     `.onDevice`, and that label is what keeps the connectivity gate
+    ///     in `assessAndEnhance` and the onDevice→online upgrade filter in
+    ///     `networkDidRecover` matching the record.
     static func classify(hasRecognitionError: Bool,
-                         trimmedContent: String) -> Outcome {
+                         trimmedContent: String,
+                         recognizerMode: RecognitionMode) -> Outcome {
         let hasText = !trimmedContent
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty
@@ -42,8 +52,9 @@ enum PendingRecognitionPolicy {
         if hasText {
             // A transcript exists. When the recognizer also errored, the
             // framework fell back to on-device or emitted partials —
-            // the VM already maps that case to `.onDevice`.
-            return .save(hasRecognitionError ? .onDevice : .online)
+            // the VM already maps that case to `.onDevice`. Without an
+            // error, the recognizer's own mode is the truthful label.
+            return .save(hasRecognitionError ? .onDevice : recognizerMode)
         }
 
         // No text. The error flag is what separates "the user said

@@ -196,7 +196,8 @@ final class TranscriptionViewModel: ObservableObject {
         // with nothing referencing it (spec §4.2).
         let outcome = PendingRecognitionPolicy.classify(
             hasRecognitionError: speechRecognizer.hasRecognitionError,
-            trimmedContent: trimmedContent
+            trimmedContent: trimmedContent,
+            recognizerMode: speechRecognizer.recognitionMode
         )
 
         let mode: RecognitionMode
