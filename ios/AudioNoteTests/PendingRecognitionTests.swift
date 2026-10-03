@@ -351,8 +351,41 @@ final class PendingRecognitionTests: XCTestCase {
 
         XCTAssertEqual(RecordRowView.rowTitle(for: record),
                        RecognitionModeStyle(mode: .pending).label)
-        XCTAssertEqual(RecordRowView.rowSummary(for: record),
-                       "History.PendingSummary".localized)
+        let summary = RecordRowView.rowSummary(for: record)
+        XCTAssertEqual(summary, "History.PendingSummary".localized)
+        // `String.localized` returns the key itself when the bundle lookup
+        // misses, so the assertion above compares the key with itself and
+        // passes even if the key is missing from BOTH .strings files. This
+        // is what actually asserts the key resolves.
+        XCTAssertNotEqual(summary, "History.PendingSummary")
+    }
+
+    func testPendingRowFallsBackToContentOnceTheUserHasTypedIn() {
+        // A pending record the user hand-typed into keeps
+        // `recognitionMode: .pending` — `saveEditing` preserves the mode
+        // (`TranscriptionDetailView.saveEditing`) — while carrying real
+        // text. The pending fallbacks are for records with *nothing*, so
+        // they must not fire here: the row has to show what the user wrote,
+        // not a placeholder that claims there is nothing. This is the state
+        // the detail view's mode-only placeholder check got wrong, hiding
+        // saved text behind "此录音尚未识别".
+        let typed = "航班改到明天下午三点"
+        let record = TranscriptionRecord(
+            id: UUID(),
+            content: typed,
+            createdAt: Date(timeIntervalSince1970: 1700000000),
+            duration: 42,
+            audioFileName: "some-uuid.m4a",
+            recognitionMode: .pending
+        )
+
+        XCTAssertEqual(RecordRowView.rowTitle(for: record), typed)
+
+        let summary = RecordRowView.rowSummary(for: record)
+        XCTAssertNotEqual(summary, "History.PendingSummary".localized)
+        XCTAssertFalse(summary.isEmpty)
+        XCTAssertTrue(typed.hasPrefix(summary),
+                      "summary \(summary) should be a slice of the typed text")
     }
 
     func testRowTitleUnaffectedForNormalRecords() {

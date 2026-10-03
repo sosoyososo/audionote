@@ -400,9 +400,10 @@ struct RecordRowView: View {
         return prefix + (record.content.count > 30 ? "…" : "")
     }
 
-    /// The de-emphasized second line. `record.preview` already falls back
-    /// to a `content` slice, which is also empty for a pending record, so
-    /// the empty case is handled explicitly.
+    /// The de-emphasized second line. `record.preview` already returns a
+    /// `content` slice — but for empty content it returns the hardcoded
+    /// literal `"(无内容)"`, not `""`, so the empty case is branched
+    /// explicitly above rather than delegated.
     static func rowSummary(for record: TranscriptionRecord) -> String {
         if let summary = record.summary, !summary.isEmpty {
             return summary

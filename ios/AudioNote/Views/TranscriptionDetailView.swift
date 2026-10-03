@@ -189,12 +189,23 @@ struct TranscriptionDetailView: View {
                         .padding(8)
                         .background(Color(.systemGray6))
                         .cornerRadius(8)
-                } else if currentRecord.recognitionMode == .pending {
+                } else if !PendingRecognitionPolicy.isLLMEligible(text: currentRecord.content)
+                            && currentRecord.recognitionMode == .pending {
                     // No transcript yet — the recovery sweep fills this in
                     // later. Rendering `Text("")` here would leave a blank
                     // body with no explanation of why (spec §4.7). The
                     // playback bar below already covers the "listen to the
                     // audio" affordance, so this stays a status block.
+                    //
+                    // Gated on *emptiness*, not mode alone. `saveEditing`
+                    // preserves `recognitionMode`, so a pending record the
+                    // user typed into keeps `.pending` while carrying real
+                    // text — testing the mode alone hid the text they had
+                    // just saved, which the pre-placeholder `else` branch
+                    // (`Text(editedContent)`) had always shown. Same
+                    // predicate as the LLM block below, so a record with
+                    // nothing to show never shows the "nothing to show"
+                    // placeholder plus a dead button side by side.
                     VStack(spacing: 12) {
                         let style = RecognitionModeStyle(mode: .pending)
                         Image(systemName: style.icon)
@@ -269,7 +280,7 @@ struct TranscriptionDetailView: View {
                 Text("Detail.LLM.Processing".localized)
             }
             .disabled(true)
-        } else {
+        } else if PendingRecognitionPolicy.isLLMEligible(text: llmCandidateText) {
             // Show action button based on status
             Button {
                 reprocessRecord()
@@ -281,6 +292,21 @@ struct TranscriptionDetailView: View {
             }
             .disabled(viewModel.isLLMProcessing)
         }
+        // else: no text to send, so no button. A pending record with empty
+        // `content` and `llmProcessingStatus == nil` is exactly the state
+        // that used to render an enabled button here, and the tap landed on
+        // the `isLLMEligible` guard in `reprocessRecord` — a log line and
+        // no visible change. The guard stays (it is the only thing between a
+        // race in the record snapshot and an invented title/summary/tags);
+        // this just stops offering a control that cannot do anything.
+    }
+
+    /// The text `reprocessRecord` would send. Same `optimizedContent ?? content`
+    /// resolution the function uses, so the button's visibility and its guard
+    /// can never disagree — and read off the record rather than the
+    /// `editedContent` buffer, so it does not flicker while the user types.
+    private var llmCandidateText: String {
+        currentRecord.optimizedContent ?? currentRecord.content
     }
 
     private var buttonIcon: String {
@@ -392,12 +418,21 @@ struct TranscriptionDetailView: View {
             // `optimizeAndProcess` itself, so it carries its own copy of the
             // empty-text guard. A `.pending` record reaches this screen
             // (`displayedRecords` filters on archived / search / tags only)
-            // with `content == ""` and `llmProcessingStatus == nil`, which
-            // is exactly the state that gets `llmStatusView` to render a
-            // tappable button. Without this guard the model would answer
-            // `""` with an invented title, summary and tags, and those would
-            // be written over the record and stamped `.completed`, while the
-            // later recognition retry would fix only `content`.
+            // with `content == ""` and `llmProcessingStatus == nil`. Without
+            // this guard the model would answer `""` with an invented title,
+            // summary and tags, and those would be written over the record
+            // and stamped `.completed`, while the later recognition retry
+            // would fix only `content`.
+            //
+            // `llmStatusView` already hides the button for a textless
+            // record, so this is the second layer, not the first: the button
+            // is built from the *render-time* `currentRecord` and this
+            // re-reads `currentRecord` when the tap lands. A recovery sweep
+            // writing content between those two moments — or the record
+            // being handed to `reprocessRecord` from anywhere else later —
+            // would otherwise slip past a UI-only check. Both sides call the
+            // same predicate, so they can only ever disagree by the record
+            // having changed, which is precisely the case this covers.
             //
             // Deliberately before the profile lookup: a record with no text
             // does not need a provider configured in order to be rejected.
