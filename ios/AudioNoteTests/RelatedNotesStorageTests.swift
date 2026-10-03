@@ -63,6 +63,22 @@ final class RelatedNotesStorageTests: XCTestCase {
         XCTAssertEqual(all.count, 2, "hidden edges are still stored")
     }
 
+    /// `related(to:)` carries the last `try?` in the store (Ruling M), serving
+    /// spec §6's "corrupt file → treated as no relations, section hidden" — a
+    /// **read/render** policy that must never block the user. This is the only
+    /// test that reads through that path: flip the `try?` back to a `try` and
+    /// every other test in the suite still passes, because nothing else
+    /// exercises it.
+    func testRelatedReturnsEmptyOnCorruptFileInsteadOfThrowing() async throws {
+        let url = tmpDir.appendingPathComponent("relatedNotes.json")
+        try Data("{ this is not json".utf8).write(to: url)
+        let related = await store.related(to: a) // non-throwing by contract
+        XCTAssertTrue(related.isEmpty, "a corrupt file renders as no relations, never as an error")
+        // The read must not have repaired or truncated the file either.
+        let after = try Data(contentsOf: url)
+        XCTAssertEqual(String(decoding: after, as: UTF8.self), "{ this is not json")
+    }
+
     func testRemoveAllInvolvingDropsOnlyMatchingEdges() async throws {
         try await store.upsert([
             NoteRelation(a: a, b: b, score: 0.9),

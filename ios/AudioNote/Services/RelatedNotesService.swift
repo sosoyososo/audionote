@@ -265,6 +265,13 @@ struct RelatedNotesService {
     /// Serialized through `gate`, so two overlapping triggers (a fast second
     /// recording, or `networkDidRecover` firing alongside) run one after the
     /// other instead of interleaving a read-modify-write on the same file.
+    ///
+    /// **Idempotent with respect to existing edges (§4.4).** A second call for
+    /// the same note — re-analysis, a retry, a re-entry into the view — may
+    /// create edges for notes it has never been compared against, but it never
+    /// re-rates or removes an edge that already exists. See the comment at the
+    /// exclusion below for why that is a correctness property and not an
+    /// optimization.
     func link(for recordId: UUID) async {
         await gate.withLock {
             do {
@@ -278,7 +285,39 @@ struct RelatedNotesService {
                     return
                 }
 
+                // §4.4: "For any pair (A, B) ... the relation is measured
+                // **exactly once** ... The single score from that measurement
+                // is the score both notes show, forever." `upsert` *replaces*
+                // the score on an existing undirected pair, so without this
+                // exclusion a re-analysis silently re-rates — and can
+                // permanently destroy — a row on the **other** note's page,
+                // for a note the user did not touch. Re-analysis is reachable:
+                // `TranscriptionDetailView`'s 在线升级识别 button re-runs
+                // `processWithLLM` (and so `link`) on a note that is already
+                // `.completed` and already carries edges, because its
+                // visibility condition tests `recognitionMode`, never
+                // `llmProcessingStatus`.
+                //
+                // The exclusion is applied to the **candidate list**, not to
+                // the upsert, for three reasons. (1) The candidate list is
+                // also `sanitize`'s whitelist, so one exclusion covers every
+                // downstream path — a result-only filter would leave the
+                // model free to re-rate the pair in the one place that
+                // writes. (2) Asking a model to re-judge a pair whose answer
+                // is already on disk burns tokens to produce a number the
+                // spec says must never change. (3) It costs nothing: a
+                // re-analysis with no unlinked candidates left falls through
+                // to the `minimumCandidates` gate below and spends no call
+                // at all, while one with new candidates left links those
+                // normally.
+                let alreadyLinked = Set(
+                    try await storage.loadAll()
+                        .filter { $0.involves(current.id) }
+                        .compactMap { $0.otherID(from: current.id) }
+                )
                 let candidates = Self.prescreen(current: current, among: all)
+                    .filter { !alreadyLinked.contains($0.id) }
+
                 // Spec §6: "Fewer than 3 candidates → return before calling the
                 // LLM. No edge written." The LLM call is the expensive step, so
                 // this gate is about spend — a small corpus legitimately

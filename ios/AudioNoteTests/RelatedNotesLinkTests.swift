@@ -107,8 +107,130 @@ final class RelatedNotesLinkTests: XCTestCase {
         XCTAssertTrue(edges.allSatisfy { $0.involves(current.id) })
     }
 
-    /// Re-linking the same note merges rather than appends: `upsert` replaces
-    /// the score on an existing undirected pair (§4.3).
+    /// Spec §4.4: "For any pair (A, B) ... the relation is measured **exactly
+    /// once** — during B's write, when A is a candidate. The single score from
+    /// that measurement is the score both notes show, forever."
+    ///
+    /// `link(for:)` is reachable more than once for the same note. The
+    /// 在线升级识别 button in `TranscriptionDetailView` re-runs
+    /// `processWithLLM` on a note that is already `.completed` and already
+    /// carries edges — its visibility condition tests `recognitionMode`, never
+    /// `llmProcessingStatus`. And `upsert` *replaces* the score on an existing
+    /// undirected pair, so without an exclusion a re-analysis silently re-rates
+    /// the **other** note's page: down past `minimumScore` that is a row that
+    /// disappears forever, and anywhere else a list that reorders behind the
+    /// user's back while the note they did not touch is the one that changed.
+    ///
+    /// The seeded edge is 0.92; the re-analysis is offered the same pair and
+    /// rates it 0.24, below the 0.3 threshold. The 0.92 must survive — and the
+    /// re-analysis must still be free to create a *new* edge, which is the
+    /// whole reason this is an exclusion and not a refusal to re-link.
+    func testRelinkNeverReratesAnExistingEdge() async throws {
+        let current = tagged(["a", "b", "c"])
+        let already = tagged(["a", "b"])
+        let fresh = tagged(["a", "c"])
+        let third = tagged(["a", "b"])
+        let fourth = tagged(["a", "c"])
+
+        try await relations.upsert([NoteRelation(a: current.id, b: already.id, score: 0.92)])
+
+        let llm = StubLLM(returns: [
+            RelatedNoteMatch(id: already.id, score: 0.24), // would destroy the seeded edge
+            RelatedNoteMatch(id: fresh.id, score: 0.7),
+        ])
+        let service = RelatedNotesService(
+            storage: relations,
+            records: InMemoryRecords(all: [current, already, fresh, third, fourth]),
+            llm: llm
+        )
+
+        await service.link(for: current.id)
+
+        let edges = try await relations.loadAll()
+        let preserved = edges.first { $0.key == NoteRelation(a: current.id, b: already.id, score: 0).key }
+        XCTAssertEqual(preserved?.score ?? 0, 0.92, accuracy: 0.0001,
+                       "§4.4: an existing pair is never re-measured, so the seeded score must stand")
+        XCTAssertTrue(edges.contains { $0.key == NoteRelation(a: current.id, b: fresh.id, score: 0).key },
+                      "a re-analysis must still be able to create a NEW edge")
+        XCTAssertEqual(llm.callCount, 1, "the exclusion must not make the pass a no-op")
+        XCTAssertFalse(llm.lastCandidateIDs.contains(already.id),
+                       "an already-linked note must not be re-offered for judgment")
+    }
+
+    /// Ruling AP: `prescreen`'s `guard !currentTags.isEmpty` is a deliberate,
+    /// documented deviation from spec §4.1 (now a row in §6's table). A note
+    /// with no tags therefore never *initiates* a pass — but it must still be
+    /// pickable as a CANDIDATE in someone else's pass. `prescreen` keeps
+    /// zero-overlap candidates by design (that is where the serendipity comes
+    /// from), and this pins it, because without it the guard would cost a
+    /// tagless note every relation in both directions rather than only its own.
+    ///
+    /// Passes on the current code — it pins existing intended behavior that
+    /// nothing else covers, and it is the half of the deviation that makes
+    /// keeping the guard cheap.
+    func testTaglessNoteStillAppearsAsAnotherNotesCandidate() async throws {
+        let current = tagged(["a", "b", "c"])
+        let tagless = tagged([]) // zero tag overlap — ranked on recency alone
+        let y = tagged(["a", "c"])
+        let z = tagged(["a", "b"])
+
+        let llm = StubLLM(returns: [RelatedNoteMatch(id: tagless.id, score: 0.8)])
+        let service = RelatedNotesService(
+            storage: relations,
+            records: InMemoryRecords(all: [current, tagless, y, z]),
+            llm: llm
+        )
+
+        await service.link(for: current.id)
+
+        XCTAssertTrue(llm.lastCandidateIDs.contains(tagless.id),
+                      "a zero-overlap candidate must still reach the model — that is the feature")
+        let edges = try await relations.loadAll()
+        XCTAssertTrue(edges.contains { $0.key == NoteRelation(a: current.id, b: tagless.id, score: 0).key },
+                      "a tagless note must accumulate edges normally as a candidate")
+    }
+
+    /// The one test that spans the production seam, end to end:
+    /// `link(for:)` → `relatedNotesStorage.related(to:)` →
+    /// `RelatedNotesSectionBuilder.rows(...)` over a real temp-dir store.
+    ///
+    /// The other three files each stop short: link tests assert against raw
+    /// `loadAll()`, row-model tests hand-build `RelatedNote` values, storage
+    /// tests never reach the builder. So a regression where `related(to:)`
+    /// returned the **queried** id instead of the counterpart would render a
+    /// note listing *itself* — and every other test in the suite would stay
+    /// green. This is the highest-value test of the round.
+    func testLinkThroughStorageToRenderedRowYieldsTheOtherNote() async throws {
+        let current = tagged(["a", "b", "c"])
+        let other = tagged(["a", "b"])
+        let y = tagged(["a", "c"])
+        let z = tagged(["a", "b"])
+
+        let service = RelatedNotesService(
+            storage: relations,
+            records: InMemoryRecords(all: [current, other, y, z]),
+            llm: StubLLM(returns: [RelatedNoteMatch(id: other.id, score: 0.9)])
+        )
+
+        await service.link(for: current.id)
+
+        let related = await relations.related(to: current.id)
+        let rows = RelatedNotesSectionBuilder.rows(
+            for: current,
+            candidates: [current, other, y, z],
+            related: related
+        )
+
+        XCTAssertEqual(rows.count, 1)
+        XCTAssertEqual(rows.first?.id, other.id, "the row is the OTHER note")
+        XCTAssertNotEqual(rows.first?.id, current.id, "a note must never list itself as related")
+        XCTAssertEqual(rows.first?.record.id, other.id, "the pushed record is the other note too")
+    }
+
+    /// Linking the same note twice writes one edge, not two. Note this is now
+    /// satisfied by the §4.4 exclusion rather than by `upsert` merging: the
+    /// second pass does not re-offer the already-linked candidate, so there is
+    /// nothing left for `upsert` to merge.
     func testLinkIsIdempotent() async throws {
         let current = tagged(["a", "b"])
         let x = tagged(["a", "b"])
