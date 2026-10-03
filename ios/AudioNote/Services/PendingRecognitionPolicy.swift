@@ -118,10 +118,14 @@ extension PendingRecognitionPolicy {
     /// confident invented title, summary and tags, which are written over
     /// the record.
     ///
-    /// The same predicate is also what decides whether a *retry* succeeded.
-    /// A recognizer can return a final result with an empty transcription —
-    /// silence, noise, a truncated .m4a — without throwing, so "did not
-    /// throw" is not "succeeded".
+    /// The same predicate is also what decides whether a *re-recognition*
+    /// produced anything worth keeping. A recognizer can return a final result
+    /// with an empty transcription — silence, noise, a truncated .m4a — without
+    /// throwing, so "did not throw" is not "succeeded". Both call sites that
+    /// re-recognize from a file use this one check:
+    /// `retryRecognitionFromFile`, where an empty result would drop the record
+    /// out of the retry queue, and `enhanceRecognition`, where it would
+    /// overwrite a transcript the record already has.
     static func isLLMEligible(text: String) -> Bool {
         !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

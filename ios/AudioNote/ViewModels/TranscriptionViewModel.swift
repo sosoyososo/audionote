@@ -320,6 +320,28 @@ final class TranscriptionViewModel: ObservableObject {
 
         do {
             let enhancedText = try await speechRecognizer.recognizeFromFile(url: audioURL)
+
+            // `recognizeFromFile` resumes on any *final* result, and a final
+            // result can be empty — silence, noise, a truncated .m4a — without
+            // throwing, so the `catch` below (whose comment is right about
+            // keeping the original text) never runs for that case.
+            //
+            // This is worse than the same hole in `retryRecognitionFromFile`:
+            // that record has nothing to lose, but this one already holds a
+            // real on-device transcript. Writing `""` over it destroys text the
+            // user had, and stamping `.enhanced` makes the loss look like a
+            // success. Returning here leaves both `record.content` and
+            // `record.recognitionMode` untouched; the record simply stays
+            // `.onDevice` and the next network recovery tries again.
+            // `defer` above clears `isEnhancing` on this path.
+            guard PendingRecognitionPolicy.isLLMEligible(text: enhancedText) else {
+                Logger.warning(
+                    "Enhance recognition returned empty text for \(recordId); "
+                    + "keeping the original transcript"
+                )
+                return
+            }
+
             Logger.info("Enhanced recognition succeeded for record \(recordId)")
             recognitionMode = .enhanced
 
