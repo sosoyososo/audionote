@@ -1,9 +1,71 @@
 import Foundation
 
+/// Read-only view of the note store. Lets `link(for:)` be tested without a
+/// bootstrapped folder; `TranscriptionStorage` satisfies it as-is.
+protocol RecordsSource {
+    func loadAll() async throws -> [TranscriptionRecord]
+}
+
+/// The slice of `LLMService` that `link(for:)` needs — the one method, with
+/// the same signature `LLMService.findRelated` already has.
+protocol RelatedNotesLLM {
+    func findRelated(
+        currentTitle: String,
+        currentSummary: String,
+        candidates: [RelatedNoteCandidate],
+        profile: LLMProviderProfile,
+        apiKey: String?
+    ) async throws -> [RelatedNoteMatch]
+}
+
+/// Minimal async mutex guarding the read-modify-write on `relatedNotes.json`.
+///
+/// `link(for:)` is the only serialized section. A second caller **queues** —
+/// it does not skip, coalesce, or bail: a fast second recording must still get
+/// its own linking pass, just after the first one has finished writing.
+/// The queue is FIFO, so relations land in the order the notes were created.
+///
+/// Both the acquisition and the release happen inside the actor, which is why
+/// `withLock` exists rather than an `acquire()` / `defer { release() }` pair
+/// spread across the caller: `await` is illegal inside `defer`, so the release
+/// would have to be deferred onto an unscheduled `Task`, and a caller returning
+/// from `link(for:)` could then start a second pass while the gate still
+/// reported busy.
+actor Gate {
+    private var isBusy = false
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    /// Runs `body` with the gate held, releasing it on every exit path.
+    func withLock(_ body: () async -> Void) async {
+        await acquire()
+        defer { release() }
+        await body()
+    }
+
+    private func acquire() async {
+        if !isBusy {
+            isBusy = true
+            return
+        }
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    /// Hands the lock to the next waiter if there is one, otherwise clears it.
+    /// Synchronous on purpose: `isBusy` and `waiters` are only ever touched
+    /// from inside the actor.
+    private func release() {
+        if waiters.isEmpty {
+            isBusy = false
+        } else {
+            waiters.removeFirst().resume()
+        }
+    }
+}
+
 /// Owns prescreen → LLM → sanitize → persist for related notes.
 /// Knows nothing about SwiftUI. `link(for:)` never throws.
-///
-/// This task ships the local, offline half only: `prescreen`.
 struct RelatedNotesService {
 
     /// Upper bound on candidates handed to the LLM.
@@ -17,6 +79,25 @@ struct RelatedNotesService {
     /// says `最多 5 条` in prose; that literal is a model instruction and
     /// stays a literal, but the two must not drift apart.
     static let maxRelated = 5
+
+    // MARK: - Dependencies
+
+    private let storage: RelatedNotesStorage
+    private let records: RecordsSource
+    private let llm: RelatedNotesLLM
+
+    /// Serializes the read-modify-write on `relatedNotes.json`.
+    private let gate = Gate()
+
+    init(
+        storage: RelatedNotesStorage = .shared,
+        records: RecordsSource = TranscriptionStorage.shared,
+        llm: RelatedNotesLLM = LLMService()
+    ) {
+        self.storage = storage
+        self.records = records
+        self.llm = llm
+    }
 
     // MARK: - Prescreen (pure, local, free)
 
@@ -165,5 +246,86 @@ struct RelatedNotesService {
             }
             .prefix(Self.maxRelated)
             .map { $0 }
+    }
+
+    // MARK: - Link (orchestration)
+
+    /// Compute and persist relations for one note. Never throws: a failure
+    /// here must not disturb the note's own save or surface to the user
+    /// (spec §6 — "relations are best-effort and never block, never error,
+    /// never surface").
+    ///
+    /// Serialized through `gate`, so two overlapping triggers (a fast second
+    /// recording, or `networkDidRecover` firing alongside) run one after the
+    /// other instead of interleaving a read-modify-write on the same file.
+    func link(for recordId: UUID) async {
+        await gate.withLock {
+            do {
+                let all = try await records.loadAll()
+                guard let current = all.first(where: { $0.id == recordId }),
+                      current.llmProcessingStatus == .completed,
+                      let title = current.title, !title.isEmpty,
+                      let summary = current.summary, !summary.isEmpty
+                else {
+                    Logger.info("Related notes skipped for \(recordId): no completed note with title + summary")
+                    return
+                }
+
+                let candidates = Self.prescreen(current: current, among: all)
+                // Spec §6: "Fewer than 3 candidates → return before calling the
+                // LLM. No edge written." The LLM call is the expensive step, so
+                // this gate is about spend — a small corpus legitimately
+                // produces no relations.
+                guard candidates.count >= Self.minimumCandidates else {
+                    Logger.info("Related notes skipped for \(recordId): only \(candidates.count) candidates")
+                    return
+                }
+
+                // Connectivity is not re-checked here: `LLMService.findRelated`
+                // runs its own gate #2 before every request (spec §6's offline
+                // row is satisfied there).
+                //
+                // `ProviderProfileStore` is main-actor isolated, so hop for the
+                // read. No active profile means the LLM path is off entirely —
+                // same silent skip `processWithLLM` does.
+                guard let profile = await MainActor.run(body: { ProviderProfileStore.shared.active }) else {
+                    Logger.info("Related notes skipped for \(recordId): no active provider profile")
+                    return
+                }
+                let apiKey = await MainActor.run(body: { ProviderProfileStore.shared.apiKey(for: profile.id) })
+
+                let payload = candidates.map {
+                    RelatedNoteCandidate(id: $0.id, title: $0.title ?? "", summary: $0.summary ?? "")
+                }
+                let raw = try await llm.findRelated(
+                    currentTitle: title,
+                    currentSummary: summary,
+                    candidates: payload,
+                    profile: profile,
+                    apiKey: apiKey
+                )
+
+                let sanitized = Self.sanitize(
+                    raw,
+                    candidateIDs: Set(candidates.map(\.id)),
+                    currentID: current.id
+                )
+                guard !sanitized.isEmpty else {
+                    Logger.info("Related notes: model returned nothing usable for \(recordId)")
+                    return
+                }
+
+                // `upsert` throws on a read failure rather than defaulting to
+                // an empty merge set — overwriting an undecodable file would
+                // destroy relations that, per §4.4, are never recomputed. So
+                // the swallow belongs here, at the caller, and only here.
+                try await storage.upsert(
+                    sanitized.map { NoteRelation(a: current.id, b: $0.id, score: $0.score) }
+                )
+                Logger.info("Related notes linked for \(recordId): \(sanitized.count) edges")
+            } catch {
+                Logger.warning("Related notes linking failed for \(recordId): \(error.localizedDescription)")
+            }
+        }
     }
 }

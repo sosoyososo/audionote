@@ -94,3 +94,10 @@ actor TranscriptionStorage {
         }
     }
 }
+
+// MARK: - Related notes
+
+/// Satisfies `RecordsSource` for `RelatedNotesService.link(for:)`, which only
+/// needs the read path. The actor-isolated `loadAll()` satisfies the async
+/// requirement unchanged.
+extension TranscriptionStorage: RecordsSource {}

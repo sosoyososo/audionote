@@ -28,6 +28,7 @@ final class TranscriptionViewModel: ObservableObject {
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
     private let llmService = LLMService()
+    private let relatedNotesService = RelatedNotesService()
     private var durationTimer: Timer?
     private var recordingStartTime: Date?
     private var textStreamTask: Task<Void, Never>?
@@ -383,6 +384,13 @@ final class TranscriptionViewModel: ObservableObject {
                 record.tags = result.tags
                 record.llmProcessingStatus = .completed
                 try await storage.save(record)
+
+                // Relations are best-effort: this never throws and never
+                // surfaces an error. It runs after the record is persisted so
+                // a slow or failing relation call cannot lose the note — the
+                // LLM work it depends on is already on disk.
+                await relatedNotesService.link(for: record.id)
+
                 transcribedText = result.optimizedText
                 isTextOptimized = true
                 await loadHistory()

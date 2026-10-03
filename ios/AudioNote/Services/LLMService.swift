@@ -645,3 +645,10 @@ actor LLMService {
         return String(text[firstBrace...end])
     }
 }
+
+// MARK: - Related notes
+
+/// `link(for:)` is tested against a stub, so the one method it needs is
+/// declared as a protocol. The actor-isolated original satisfies the async
+/// requirement unchanged.
+extension LLMService: RelatedNotesLLM {}
