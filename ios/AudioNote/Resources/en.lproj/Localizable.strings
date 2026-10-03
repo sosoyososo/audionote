@@ -76,6 +76,7 @@
 
 /* Recording */
 "Recording.Result" = "Recognition Result";
+"Recognition.Pending" = "Pending recognition";
 "Permission.MicRequired" = "Microphone Permission Required";
 "Permission.MicMessage" = "Please enable microphone permission in Settings to use speech recognition";
 

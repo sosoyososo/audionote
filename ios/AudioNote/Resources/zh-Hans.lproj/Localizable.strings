@@ -76,6 +76,7 @@
 
 /* Recording */
 "Recording.Result" = "识别结果";
+"Recognition.Pending" = "待识别";
 "Permission.MicRequired" = "需要麦克风权限";
 "Permission.MicMessage" = "请在设置中开启麦克风权限以使用语音识别功能";
 

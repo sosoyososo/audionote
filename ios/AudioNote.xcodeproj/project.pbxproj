@@ -12,6 +12,7 @@
 		11CA2D835B8653989B1F76DB /* RecognitionLanguage.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF858C446B93248AD38C924E /* RecognitionLanguage.swift */; };
 		13E251952737BDE92C70C4D1 /* LLMService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E0C6553862AC35EA0BD3F9C /* LLMService.swift */; };
 		178DCB9F4CA61E4B827900BD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 6F11E3E2CD920AD3340B9F45 /* Localizable.strings */; };
+		1CDF33DA5DF495D66F0320D2 /* PendingRecognitionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726B41AA958CB0DE709DD9AD /* PendingRecognitionTests.swift */; };
 		214D9CCE33CA72DD2B938F53 /* RelatedNotesLinkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA41FDA8C62FA426A166513 /* RelatedNotesLinkTests.swift */; };
 		22119CA9A83C3B68897D4B43 /* SharedComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = C27A05976893E36E23155678 /* SharedComponents.swift */; };
 		231A2D72D9607264E532E218 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9EEC9316C25B0B5D8233415 /* SettingsViewModel.swift */; };
@@ -88,6 +89,7 @@
 		6473D7687F02B939447720BB /* ProfileDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDetailView.swift; sourceTree = "<group>"; };
 		6D25135B89AC4C7D9B447CCD /* RelatedNotesCleanupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesCleanupTests.swift; sourceTree = "<group>"; };
 		70063F7D2FAB4A9AB8B647E2 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		726B41AA958CB0DE709DD9AD /* PendingRecognitionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingRecognitionTests.swift; sourceTree = "<group>"; };
 		735C55B04244C142BD1F8263 /* AudioNoteApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioNoteApp.swift; sourceTree = "<group>"; };
 		78BA671DCA8B93226BA5AB87 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStorage.swift; sourceTree = "<group>"; };
@@ -139,6 +141,7 @@
 				4D8AAE5FD7146C620FA23B52 /* FindRelatedParsingTests.swift */,
 				F23BD0E39D8D879554C972A2 /* FindRelatedPromptTests.swift */,
 				E9C65AFC2AAE556702D23321 /* NoteRelationTests.swift */,
+				726B41AA958CB0DE709DD9AD /* PendingRecognitionTests.swift */,
 				6D25135B89AC4C7D9B447CCD /* RelatedNotesCleanupTests.swift */,
 				CEA41FDA8C62FA426A166513 /* RelatedNotesLinkTests.swift */,
 				A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */,
@@ -349,6 +352,7 @@
 				F8DA3504993398F2D8893FC1 /* FindRelatedParsingTests.swift in Sources */,
 				FA1AD37D7F926F0CF299E896 /* FindRelatedPromptTests.swift in Sources */,
 				31E42652E417FE04CE3A7C2F /* NoteRelationTests.swift in Sources */,
+				1CDF33DA5DF495D66F0320D2 /* PendingRecognitionTests.swift in Sources */,
 				A12D893D5AAA72B81D0D951D /* RelatedNotesCleanupTests.swift in Sources */,
 				214D9CCE33CA72DD2B938F53 /* RelatedNotesLinkTests.swift in Sources */,
 				991A8C1D4989C1D69B5E8421 /* RelatedNotesPrescreenTests.swift in Sources */,

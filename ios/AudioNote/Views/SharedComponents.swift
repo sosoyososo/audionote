@@ -90,6 +90,7 @@ struct RecognitionModeStyle {
         case .onDevice: return .yellow
         case .enhanced: return .blue
         case .failed: return .red
+        case .pending: return .orange
         }
     }
 
@@ -99,6 +100,7 @@ struct RecognitionModeStyle {
         case .onDevice: return "iphone.gen1"
         case .enhanced: return "cloud.fill.badge.checkmark"
         case .failed: return "xmark.shield.fill"
+        case .pending: return "clock.badge.questionmark"
         }
     }
 
@@ -108,6 +110,7 @@ struct RecognitionModeStyle {
         case .onDevice: return "离线识别"
         case .enhanced: return "已在线升级"
         case .failed: return "识别失败"
+        case .pending: return "Recognition.Pending".localized
         }
     }
 }
