@@ -8,18 +8,20 @@
 
 | Term | Symbol | Note |
 |---|---|---|
-| **assess-and-enhance pipeline** | `TranscriptionViewModel.assessAndEnhance` at `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:233` | Phase-2 dispatch: routes `.online` → LLM, `.onDevice` → LLM-or-enhance, `.failed` → retry-from-file |
+| **assess-and-enhance pipeline** | `TranscriptionViewModel.assessAndEnhance` at `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:261` | Phase-2 dispatch with four arms: `.online` → LLM, `.onDevice` → LLM-or-enhance, `.failed` → retry-from-file, `.pending` → retry-from-file (never the LLM). Locked by ADR-0001 §30 and ADR-0005 |
 | **RecordingViewModel** | _(does not exist)_ | **Misnomer trap.** The orchestrator is `TranscriptionViewModel` (line 1 of its file). Don't create one — this name will confuse future readers |
-| **RecognitionMode** | `TranscriptionRecord.RecognitionMode` at `ios/AudioNote/Models/TranscriptionRecord.swift:3` | Enum: `.online` / `.onDevice` / `.enhanced` / `.failed`. **Never** add a 5th case without updating `assessAndEnhance` and the UI mode badges |
+| **RecognitionMode** | top-level `enum RecognitionMode` (file scope, **not** nested in `TranscriptionRecord`) at `ios/AudioNote/Models/TranscriptionRecord.swift:3` | Enum: `.online` / `.onDevice` / `.enhanced` / `.failed` / `.pending`. **Never** add a 6th case without extending `assessAndEnhance` (ADR-0001 §30) and deciding which recovery queue admits it (ADR-0005) |
 | **enhanced** | `RecognitionMode.enhanced` | Set when `SpeechRecognizer.recognizeFromFile` succeeds; means we re-ran recognition against the saved audio, not the live stream |
+| **pending** | `RecognitionMode.pending` at `ios/AudioNote/Models/TranscriptionRecord.swift:19` | Audio exists, transcript does not — the recognizer errored and returned nothing. Distinct from `.failed` (a retry already happened and also came back empty). Must never reach the LLM: its `content` is empty, and an empty prompt comes back hallucinated. See ADR-0005 |
+| **PendingRecognitionPolicy** | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:21` (`enum`, pure statics only) | Every decision that stands between a recording and its transcript, extracted as pure statics because `TranscriptionViewModel`'s collaborators are `private let` singletons and so the VM itself cannot be unit-tested. Members: `classify`, `llmQueue`, `recognitionRetryQueue`, `isHandEdited`, `llmInputText`, `handEditMarker`, `isLLMEligible`, `shouldRefuseToRecord`. See ADR-0005 |
 | **assess** | informal — no symbol | The dispatch decision itself, lived in `assessAndEnhance`. Don't rename files to "Assessment" |
 
 ## Domain: Persistence
 
 | Term | Symbol | Note |
 |---|---|---|
-| **TranscriptionRecord** | `ios/AudioNote/Models/TranscriptionRecord.swift:17` | The on-disk model. JSON-serialized by `TranscriptionStorage`. Adding a field is a **schema change** — see Contracts (not yet written) |
-| **optimizedContent** | field on `TranscriptionRecord` | User-edited text. **Invariant**: when `optimizedContent != content`, auto-enhance MUST skip (see `assessAndEnhance` skipped branch) |
+| **TranscriptionRecord** | `ios/AudioNote/Models/TranscriptionRecord.swift:37` | The on-disk model. JSON-serialized by `TranscriptionStorage`. Adding a field is a **schema change** — see Contracts (not yet written) |
+| **optimizedContent** | field on `TranscriptionRecord` (`ios/AudioNote/Models/TranscriptionRecord.swift:50`) | **Overloaded — read this before trusting the old description.** It holds the text content was *derived from*, and it is set by two different writers that the record cannot tell apart: the LLM path (`processWithLLM` writes the pre-LLM original) and the hand-edit path (`PendingRecognitionPolicy.handEditMarker` writes the pre-edit text). **Invariant**: when `optimizedContent != content`, auto-enhance and every automatic recovery pass MUST skip. The predicate for it is `PendingRecognitionPolicy.isHandEdited(_:)`, which therefore means "content has diverged from its source", **not** "a human typed this" — essentially every LLM-processed record satisfies it. A hand-edited record may carry **any** `llmProcessingStatus`, including `.failed`: `updateRecord` derives the marker independently of status, so status is not evidence of who wrote the text. Consequences: the 优化后 badge must stay gated on `llmProcessingStatus == .completed` and never on this predicate, and LLM input must resolve through `PendingRecognitionPolicy.llmInputText(for:)` rather than a bare `optimizedContent ?? content`. See ADR-0005 |
 | **audioFileName** | field on `TranscriptionRecord` | UUID + `.m4a`. File URL is reconstructed via `AudioRecorderService.generateFileUrl(for: uuid)` — **do not** store URLs directly |
 | **archived** | field on `TranscriptionRecord` (Bool, default `false`) | When true, record is hidden from `LibraryListView.displayedRecords`. Still counted by `archivedHitIDs` when matching the current search/tag filters |
 | **archivedAt** | field on `TranscriptionRecord` (`Date?`, default `nil`) | Set when archived; cleared on unarchive. Drives archive ordering and freshness logic if added later |
@@ -31,7 +33,7 @@
 | Term | Symbol | Note |
 |---|---|---|
 | **AudioRecorderService** | `ios/AudioNote/Services/AudioRecorderService.swift:4` | Owns audio file naming and lifecycle. Use `generateFileUrl(for:)` to derive URLs |
-| **SpeechRecognizer** | `ios/AudioNote/Services/SpeechRecognizer.swift:34` | Wraps Apple `SFSpeechRecognizer`. Two modes: live stream (`startRecording`) and file re-recognition (`recognizeFromFile`) |
+| **SpeechRecognizer** | `ios/AudioNote/Services/SpeechRecognizer.swift:44` | Wraps Apple `SFSpeechRecognizer`. Two modes: live stream (`startRecording`) and file re-recognition (`recognizeFromFile`) |
 | **LLMService** | `ios/AudioNote/Services/LLMService.swift` | Two entry points: `optimizeAndProcess(text, profile:, apiKey:)` (the merged variant — see ADR-0002 / 0003) and `ping(profile:, apiKey:)` (lightweight reachability check for Settings). **Caller must supply the active profile + API key** — there is no global default |
 | **NetworkMonitor** | `ios/AudioNote/Utilities/NetworkMonitor.swift:4` | Singleton `.shared`. `checkConnectivity()` is the gate before any LLM/online call |
 | **AIProcessingService** | `ios/AudioNote/Services/AIProcessingService.swift:3` | Background queue / retry helper. `processPendingRecords` runs on app launch for records left in intermediate states |

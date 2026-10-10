@@ -647,11 +647,14 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func updateRecord(_ record: TranscriptionRecord) async throws {
-        // Preserve the original createdAt timestamp + audioFileName + optimizedContent +
-        // archived state when updating. The caller's input may not carry these fields
+        // Preserve the original createdAt timestamp + audioFileName + archived
+        // state when updating. The caller's input may not carry these fields
         // (e.g. TranscriptionDetailView.reprocessRecord / saveEditing only set a subset),
         // and dropping them was causing playback + archive state to silently disappear
         // after the user clicked Analyze or Save in the detail view.
+        //
+        // `optimizedContent` is NOT preserved — it is derived below, and it is
+        // the one field here whose handling decides whether a hand edit survives.
         let existingRecord = try await storage.get(id: record.id)
 
         // A record the user has hand-typed into has to stay that way. This

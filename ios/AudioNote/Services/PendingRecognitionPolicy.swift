@@ -98,23 +98,36 @@ extension PendingRecognitionPolicy {
     /// Read the filter as "content has diverged from its source", NOT as
     /// "the user wrote this". Because `processWithLLM` has always set
     /// `optimizedContent = originalText` alongside
-    /// `content = optimizedText`, **this also excludes every
-    /// LLM-processed record**, with no human keystroke anywhere.
+    /// `content = optimizedText`, **this also excludes essentially every
+    /// LLM-processed record** — those whose optimized text differs from
+    /// their input — with no human keystroke anywhere.
     ///
-    /// That extra reach is **inert today, and inert for a specific reason**:
-    /// step 4 keys on `llmProcessingStatus == .failed`, and a status only
-    /// becomes `.failed` when `processWithLLM` fails — and every failure
-    /// branch there sets `.failed` without ever writing `optimizedContent`.
-    /// So no record is reachable with both a diverged marker *and* a
-    /// `.failed` status, and the LLM-processed records this filter drops
-    /// would not have been swept anyway. Stating the mechanism, because
-    /// otherwise the next reader has to guess: "intentional, preserve it" and
-    /// "accidental, fix it" are both wrong, and it is inert for neither
-    /// reason.
+    /// **Do not "tidy" that extra reach away, and do not enforce an
+    /// invariant that says a `.failed` record never carries a diverged
+    /// marker. That invariant is false.** A record whose LLM pass failed
+    /// can be hand-edited: `saveEditing` passes `llmProcessingStatus`
+    /// straight through, the pencil button is not gated on it, and
+    /// `updateRecord` derives the marker independently of status. So the
+    /// state is reachable in three taps, today.
     ///
-    /// If a future change ever sets `optimizedContent` on a failed LLM call,
-    /// that record would silently stop being retried by step 4, and this is
-    /// the place to look first.
+    /// Which makes this filter **load-bearing rather than
+    /// belt-and-braces**. Step 4 retries every `.failed` record, sending
+    /// its text to the LLM, and `processWithLLM` writes the result over
+    /// `content`. For a hand-edited record that is the exact data loss
+    /// this feature shipped: the user reconnects and their text is
+    /// replaced. Excluding it is the locked decision doing real work
+    /// (ADR-0005).
+    ///
+    /// The narrower claim that IS true: no `processWithLLM` failure branch
+    /// writes `optimizedContent` — its only assignment there is in the
+    /// success branch, which also sets `.completed`. A failure never
+    /// manufactures a marker; only a later hand edit does.
+    ///
+    /// The trap is symmetric. An agent who believes the false invariant and
+    /// enforces it in `updateRecord` by stripping the marker when status
+    /// is `.failed` re-arms the original bug — the edit looks protected
+    /// at the moment it is being unprotected. The invariant is a
+    /// consequence of who writes the field, not a target to enforce.
     ///
     /// Filtering in the queue rather than inside `processWithLLM` is what
     /// keeps the manual routes working. `retryLLM` and the "重试" button in

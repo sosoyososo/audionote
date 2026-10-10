@@ -17,6 +17,7 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 | `docs/GLOSSARY.md` | Adding a feature, naming a type, looking for the canonical symbol for a concept |
 | `docs/decisions/0001-assess-enhance-llm-pipeline.md` | Touching `TranscriptionViewModel.assessAndEnhance` or `RecognitionMode` |
 | `docs/decisions/0002-merge-llm-calls.md` | Touching `LLMService.optimizeAndProcess` or its 4-field response schema |
+| `docs/decisions/0005-pending-recognition-mode.md` | Touching `RecognitionMode.pending`, `PendingRecognitionPolicy`, or the `networkDidRecover` queues |
 | `docs/decisions/` (new ADRs go here) | Touching any locked decision |
 | `docs/ROADMAP.md` | List of deferred doc types + when to activate them (RISKS / state-machines / contracts / etc.) |
 | `docs/superpowers/specs/<date>-<topic>-design.md` | Adding a new feature or behavior (read the design doc first) |
@@ -24,9 +25,11 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 ## Locked decisions (don't change without checking the doc)
 
 - **RecordingViewModel** does not exist. The orchestrator is `TranscriptionViewModel` (`ios/AudioNote/ViewModels/TranscriptionViewModel.swift`). Don't create a parallel one.
-- `assessAndEnhance` dispatch shape (3 cases by `RecognitionMode`) is locked. See ADR-0001.
+- `assessAndEnhance` dispatch shape (4 cases by `RecognitionMode`) is locked. See ADR-0001, ADR-0005.
 - Any online call (LLM, online recognition) MUST be gated by `NetworkMonitor.shared.checkConnectivity()` first. No exceptions.
-- `optimizedContent != content` (record was user-edited) ⇒ auto-enhance MUST skip.
+- `optimizedContent != content` ⇒ auto-enhance and every automatic recovery pass MUST skip. Note the predicate is overloaded: it is true for LLM-written text too, so `isHandEdited` means "content diverged from its source", not "a human typed this". See ADR-0005.
+- A `RecognitionMode.pending` record (audio, no transcript) MUST be excluded from every LLM path. See ADR-0005.
+- A bare `record.optimizedContent ?? record.content` at a new LLM call site is a bug — it silently sends the user's pre-edit text to the model. Resolve input through `PendingRecognitionPolicy.llmInputText(for:)` instead. See ADR-0005.
 
 ## Don't do these
 

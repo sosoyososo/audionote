@@ -6,12 +6,24 @@
 
 ---
 
-## ADR-0003: Skip-empty-transcription
+## (Retired) "ADR-0003: Skip-empty-transcription" — historical placeholder
 
-- **What**: The decision that empty/blank transcripts MUST skip both save and LLM path.
+> Heading deliberately de-numbered: this placeholder's number collides with the
+> real `docs/decisions/0003-multi-provider-llm.md`, which is one of the reasons
+> it was retired. Kept as text, not as a heading, so it cannot collide again.
+
+- **Status**: **RETIRED** — superseded in practice by ADR-0005. This was a
+  placeholder, never filed as a decision, and its core assumption turned out to
+  be false: "empty content means the user said nothing." A recognizer failure
+  also produces empty content, and dropping those records is precisely what
+  stranded the audio on disk with nothing referencing it. ADR-0005 replaced the
+  content check with an explicit split — `PendingRecognitionPolicy.classify`
+  discards silent recordings and saves failed ones as `.pending`. The empty-text
+  guard that survived is `isLLMEligible`, owned by ADR-0005.
+- The number was also already taken by `0003-multi-provider-llm.md`.
+- **What it was going to say**: empty/blank transcripts MUST skip both the save
+  and LLM paths.
 - **Source**: `docs/superpowers/specs/2026-04-09-skip-empty-transcription-design.md`
-- **Why deferred**: Already implicit in `TranscriptionViewModel.stopRecording:198-202`. Locking it is a small benefit; mostly redundant with code.
-- **Activate when**: An agent (or human) refactors `stopRecording` and removes the empty check thinking it's redundant. Write ADR-0003 first, then restore the check.
 
 ---
 
