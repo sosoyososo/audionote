@@ -497,4 +497,146 @@ final class PendingRecognitionTests: XCTestCase {
         XCTAssertFalse(queue.contains { $0.id == failed.id })
         XCTAssertTrue(queue.contains { $0.id == untouchedFailed.id })
     }
+
+    // MARK: - llmInputText() — the HIGH-finding resolution
+
+    func testLlmInputTextTruthTable() {
+        // Hand-edited → the *current* text. This is the whole point: the
+        // naive `optimizedContent ?? content` would send the pre-edit text
+        // here and `processWithLLM` would write the answer over the user's.
+        let handEdited = makeRecord(mode: .onDevice,
+                                    content: "我的修改",
+                                    optimizedContent: "原始转写")
+        XCTAssertEqual(PendingRecognitionPolicy.llmInputText(for: handEdited), "我的修改")
+
+        // Not hand-edited, marker present but *equal* → the marker, which
+        // is the same string as `content` anyway. This is the only
+        // "marker present, not hand-edited" state there is: `isHandEdited`
+        // is exactly `optimizedContent != nil && content != optimizedContent`,
+        // so a marker that differs from `content` is hand-edited by
+        // definition — including on every LLM-processed record, which
+        // `processWithLLM` has always written as (original, polished).
+        let markerEqualsContent = makeRecord(mode: .online,
+                                             content: "原始转写",
+                                             optimizedContent: "原始转写")
+        XCTAssertEqual(
+            PendingRecognitionPolicy.llmInputText(for: markerEqualsContent), "原始转写")
+
+        // Not hand-edited, no marker → content, unchanged.
+        let untouched = makeRecord(mode: .onDevice, content: "原始转写")
+        XCTAssertEqual(PendingRecognitionPolicy.llmInputText(for: untouched), "原始转写")
+    }
+
+    func testLlmInputTextForHandTypedPendingRecordSendsTypedText() {
+        // The exact state the HIGH finding names: `content` is what the user
+        // typed, the marker is the empty text the record had before. The
+        // old idiom returned `""` here and the LLM answered a summary of
+        // nothing; this returns the user's text.
+        let typed = "航班改到明天下午三点"
+        let record = makeRecord(mode: .pending, content: typed, optimizedContent: "")
+        XCTAssertEqual(PendingRecognitionPolicy.llmInputText(for: record), typed)
+    }
+
+    func testLlmInputTextForAlreadyLlmProcessedRecordSendsPolishedText() {
+        // Documents a behaviour change the review brief did not anticipate.
+        // It claimed `llmInputText` returns "exactly what the old idiom
+        // returned" for every non-hand-edited record — true — but an
+        // already-LLM-processed record is *not* non-hand-edited: the marker
+        // is the pre-LLM original and differs from the polished content, so
+        // the predicate is true. Re-processing such a record therefore now
+        // re-sends the polished text rather than the original.
+        //
+        // That is defensible (re-polishing the current text is what a user
+        // asking to re-process means) and it is the only answer available
+        // without a field that can tell the two origins apart. The old
+        // behaviour is pinned here so a future change to it is deliberate.
+        let llmProcessed = makeRecord(mode: .online,
+                                      content: "模型润色后的文本",
+                                      optimizedContent: "原始转写")
+        XCTAssertEqual(
+            PendingRecognitionPolicy.llmInputText(for: llmProcessed), "模型润色后的文本")
+    }
+
+    // MARK: - llmQueue() hand-edit filter (finding 1a)
+    func testLlmQueueExcludesHandEditedOnDeviceRecord() {
+        // The finding-1 scenario, and the reason this is not a `.pending`
+        // test: the record is `.onDevice`, with real text and a real marker.
+        // Only the `.pending` exclusion existed before, so this record was
+        // swept into `networkDidRecover` steps 1 and 4 and lost its text.
+        let edited = makeRecord(mode: .onDevice,
+                                content: "我的修改",
+                                optimizedContent: "原始转写")
+        let untouched = makeRecord(mode: .onDevice, content: "原始转写")
+
+        let queue = PendingRecognitionPolicy.llmQueue(from: [edited, untouched])
+
+        XCTAssertFalse(queue.contains { $0.id == edited.id })
+        XCTAssertTrue(queue.contains { $0.id == untouched.id })
+    }
+
+    func testHandEditedOnDeviceRecordIsOutOfBothAutomaticQueues() {
+        // Regression test for the HIGH finding, named so the connection is
+        // obvious. Before the marker existed, a hand-edited record was in
+        // *both* automatic queues' blast radius: `llmQueue` sent it to the
+        // model and `processWithLLM` overwrote `content`. Neither sweep may
+        // touch it now.
+        let edited = makeRecord(mode: .onDevice,
+                                content: "我的修改",
+                                optimizedContent: "原始转写",
+                                audioFileName: "some-uuid.m4a")
+
+        XCTAssertFalse(PendingRecognitionPolicy.llmQueue(from: [edited]).contains {
+            $0.id == edited.id
+        })
+        XCTAssertFalse(PendingRecognitionPolicy.recognitionRetryQueue(from: [edited])
+            .contains { $0.id == edited.id })
+    }
+
+    // MARK: - handEditMarker() — the extracted derivation
+
+    func testHandEditMarkerTruthTable() {
+        let existing = makeRecord(mode: .pending, content: "原始内容", audioFileName: nil)
+
+        // Content unchanged → carry the existing marker forward, no new one.
+        let unchanged = makeRecord(mode: .pending, content: "原始内容", audioFileName: nil)
+        XCTAssertNil(PendingRecognitionPolicy.handEditMarker(
+            incoming: unchanged, existing: existing))
+
+        // Content changed → the pre-edit content becomes the marker. This is
+        // the case the whole task exists for.
+        let changed = makeRecord(mode: .pending, content: "用户改过的内容", audioFileName: nil)
+        XCTAssertEqual(PendingRecognitionPolicy.handEditMarker(
+            incoming: changed, existing: existing), "原始内容")
+
+        // The caller states the value outright → it wins over the derivation.
+        let explicit = makeRecord(mode: .pending,
+                                  content: "用户改过的内容",
+                                  optimizedContent: "调用方指定的原文本",
+                                  audioFileName: nil)
+        XCTAssertEqual(PendingRecognitionPolicy.handEditMarker(
+            incoming: explicit, existing: existing), "调用方指定的原文本")
+
+        // Nothing stored yet → no crash, and no marker invented. A brand-new
+        // record has no "pre-edit text" to stash; stamping one would mark it
+        // hand-edited on creation.
+        let fresh = makeRecord(mode: .onDevice, content: "刚录的", audioFileName: nil)
+        XCTAssertNil(PendingRecognitionPolicy.handEditMarker(
+            incoming: fresh, existing: nil))
+    }
+
+    func testHandEditMarkerCarriesExistingMarkerWhenNothingChanged() {
+        // A title-only re-save of a record that is *already* marked must not
+        // clear the marker. Without this, saving the title would silently
+        // hand the record back to the automatic sweeps.
+        let existing = makeRecord(mode: .onDevice,
+                                  content: "用户改过的内容",
+                                  optimizedContent: "原始内容",
+                                  audioFileName: nil)
+        let resave = makeRecord(mode: .onDevice,
+                                content: "用户改过的内容",
+                                audioFileName: nil)
+
+        XCTAssertEqual(PendingRecognitionPolicy.handEditMarker(
+            incoming: resave, existing: existing), "原始内容")
+    }
 }

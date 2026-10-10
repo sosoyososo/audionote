@@ -547,7 +547,7 @@ final class TranscriptionViewModel: ObservableObject {
         for record in PendingRecognitionPolicy.llmQueue(from: records)
         where record.llmProcessingStatus == nil {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
-            let text = record.optimizedContent ?? record.content
+            let text = PendingRecognitionPolicy.llmInputText(for: record)
             await processWithLLM(recordId: record.id, originalText: text)
         }
 
@@ -570,7 +570,7 @@ final class TranscriptionViewModel: ObservableObject {
         for record in PendingRecognitionPolicy.llmQueue(from: records)
         where record.llmProcessingStatus == .failed {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
-            let text = record.optimizedContent ?? record.content
+            let text = PendingRecognitionPolicy.llmInputText(for: record)
             await processWithLLM(recordId: record.id, originalText: text)
         }
 
@@ -589,7 +589,7 @@ final class TranscriptionViewModel: ObservableObject {
     /// Manually retry LLM processing for a record (from UI)
     func retryLLM(recordId: UUID) async {
         guard let record = try? await storage.get(id: recordId) else { return }
-        let text = record.optimizedContent ?? record.content
+        let text = PendingRecognitionPolicy.llmInputText(for: record)
         await processWithLLM(recordId: recordId, originalText: text)
     }
 
@@ -663,15 +663,13 @@ final class TranscriptionViewModel: ObservableObject {
         // network recovery overwrote what they wrote. Stashing the
         // *pre-edit* content as the marker is what makes the rule fire.
         //
-        // `contentChanged` is why the marker is conditional: `updateRecord`
-        // is also reached from `reprocessRecord` and from saves that touch
-        // only `title`, and without the check a re-save of an untouched
-        // record would mark itself hand-edited and freeze it out of both
-        // auto-enhance and auto-recovery forever.
-        let previousContent = existingRecord?.content ?? record.content
-        let contentChanged = record.content != previousContent
-        let marker = record.optimizedContent
-            ?? (contentChanged ? previousContent : existingRecord?.optimizedContent)
+        // The derivation itself lives in `PendingRecognitionPolicy` with the
+        // rest of this feature's decisions, so it can be unit-tested — this
+        // class has no seam for it.
+        let marker = PendingRecognitionPolicy.handEditMarker(
+            incoming: record,
+            existing: existingRecord
+        )
 
         let updatedRecord = TranscriptionRecord(
             id: record.id,

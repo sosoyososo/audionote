@@ -89,8 +89,22 @@ extension PendingRecognitionPolicy {
     /// problem, verbatim: "大模型收到空文本，可能返回幻觉信息"
     /// (that spec's `问题` section; the doc is written in Chinese and
     /// has no numbered subsections).
+    ///
+    /// Records that are hand-edited are excluded too, so both automatic
+    /// sweeps — this one and `recognitionRetryQueue` — leave text the user
+    /// owns alone. This is the step that makes the HIGH hole closed: with
+    /// the `.pending` filter alone, an `.onDevice` record the user had
+    /// edited was still swept into steps 1 and 4, and `processWithLLM`
+    /// writes its result straight over `content`.
+    ///
+    /// Filtering in the queue rather than inside `processWithLLM` is what
+    /// keeps the manual routes working. `retryLLM` and the "重试" button in
+    /// `RecordingView` reach `processWithLLM` directly, and for those the
+    /// user is explicitly asking for their text to be replaced.
     static func llmQueue(from records: [TranscriptionRecord]) -> [TranscriptionRecord] {
-        records.filter { $0.recognitionMode != .pending }
+        records.filter {
+            $0.recognitionMode != .pending && !isHandEdited($0)
+        }
     }
 
     /// Records that `networkDidRecover` should re-recognize from audio —
@@ -100,12 +114,12 @@ extension PendingRecognitionPolicy {
     /// cost than a real three-minute recording being abandoned after a
     /// retry cap (spec D4).
     ///
-    /// Hand-edited records are excluded. `updateRecord` stamps the
-    /// pre-edit content into `optimizedContent` when the user changes the
-    /// text, which is what `isHandEdited` reads; a record in that state has
-    /// text a human wrote, and re-recognizing from audio would overwrite it
-    /// on every reconnect, silently and forever. Excluding it here rather
-    /// than inside `retryRecognitionFromFile` keeps the manual route —
+    /// Records that `isHandEdited` reports are excluded. A queued record
+    /// re-recognizes from audio and writes the result over `content`, so
+    /// one that has already diverged from its source text is a record that
+    /// an automatic sweep would keep overwriting, on every reconnect,
+    /// without ever asking. Excluding it here rather than inside
+    /// `retryRecognitionFromFile` keeps the manual route —
     /// `reRecognizeOnline`, the "在线重新识别" button in
     /// `TranscriptionDetailView` — working: the user asking for an
     /// overwrite is exactly the case where an overwrite is what they want.
@@ -119,23 +133,83 @@ extension PendingRecognitionPolicy {
         }
     }
 
-    /// Whether the record's text was written by the user rather than by a
-    /// recognizer.
+    /// Whether `record.content` has diverged from the text it was derived
+    /// from.
     ///
-    /// `optimizedContent` is this codebase's only "the user edited this"
-    /// marker, and `optimizedContent != content` is a locked project
-    /// decision (see CLAUDE.md). The two halves are both load-bearing:
-    /// `optimizedContent != nil` rules out a record that has never been
-    /// marked, and `content != optimizedContent` rules out the ordinary
-    /// case where the LLM legitimately cleaned the text and the two are
-    /// equal by construction.
+    /// This is the locked project decision in predicate form (see
+    /// CLAUDE.md): `optimizedContent != content` ⇒ skip. The two halves are
+    /// both load-bearing. `optimizedContent != nil` rules out a record that
+    /// has never been marked; `content != optimizedContent` rules out the
+    /// case where the two are equal and nothing has diverged.
     ///
-    /// It lives here, as one definition shared with `enhanceRecognition`,
-    /// so the two guards cannot drift apart. If they did, a record could be
-    /// protected from auto-enhance and clobbered by the recovery sweep,
-    /// which is the failure this predicate exists to prevent.
+    /// It does **not** mean "a human typed this". `processWithLLM` has
+    /// always set `optimizedContent = originalText` alongside
+    /// `content = optimizedText`, so every LLM-processed record already
+    /// satisfies this predicate with no human keystroke anywhere. The
+    /// marker field is overloaded: it holds the pre-LLM original *and* the
+    /// pre-edit text, and the record cannot tell them apart. Distinguishing
+    /// them would need a field on `TranscriptionRecord`, which is locked
+    /// out of scope. So the honest description is what is written above —
+    /// content has diverged from its source — and that is what the
+    /// consumers of this predicate actually act on.
+    ///
+    /// It lives here, as one definition shared by `enhanceRecognition`,
+    /// `llmQueue`, `recognitionRetryQueue` and `llmInputText`, so those
+    /// guards cannot drift apart. If they did, a record could be protected
+    /// from one path and clobbered by another.
     static func isHandEdited(_ record: TranscriptionRecord) -> Bool {
         record.optimizedContent != nil && record.content != record.optimizedContent
+    }
+
+    /// The text an LLM call should be given for `record`.
+    ///
+    /// The historical resolution was `record.optimizedContent ?? record.content`,
+    /// which was correct for as long as `optimizedContent` only ever held a
+    /// pre-LLM original: the original was the right input to re-optimize.
+    /// It is no longer safe on its own, because the same field now also
+    /// holds *the text from before the user's last edit*. Resolving it
+    /// naively on a hand-edited record sends the pre-edit text to the LLM
+    /// and `processWithLLM` writes the answer back over the user's own.
+    ///
+    /// So the hand-edited case resolves to `content` — the current text is
+    /// what the user wants processed — and every other record keeps the
+    /// historical answer exactly. Routes that resolve this themselves have
+    /// to call here; the idiom is wrong on its own now.
+    static func llmInputText(for record: TranscriptionRecord) -> String {
+        isHandEdited(record) ? record.content : (record.optimizedContent ?? record.content)
+    }
+
+    /// The `optimizedContent` a record should carry after `updateRecord`.
+    ///
+    /// Extracted as a pure static for the same reason as `classify`:
+    /// `updateRecord` reaches `TranscriptionStorage` and `loadHistory`
+    /// through the view model's collaborators, so the view model cannot be
+    /// constructed in a unit test. The *decision* is what matters, so the
+    /// decision is what gets tested.
+    ///
+    /// Three terms, in precedence order:
+    ///
+    /// 1. `incoming.optimizedContent` — a caller that states the value
+    ///    outright is believed. `reprocessRecord` does this.
+    /// 2. `existing?.content`, but only when `incoming.content` differs
+    ///    from it — the user changed the text, so the text they changed
+    ///    *from* is the pre-edit original. The conditional matters:
+    ///    `updateRecord` is also reached from `reprocessRecord` and from
+    ///    saves that touch only `title`, and without it a re-save of an
+    ///    untouched record would mark itself hand-edited and freeze it out
+    ///    of every automatic route, forever.
+    /// 3. `existing?.optimizedContent` — nothing changed, so carry the
+    ///    existing marker forward. `nil` falls out of this for free.
+    static func handEditMarker(
+        incoming: TranscriptionRecord,
+        existing: TranscriptionRecord?
+    ) -> String? {
+        if let explicit = incoming.optimizedContent { return explicit }
+
+        let previousContent = existing?.content ?? incoming.content
+        if incoming.content != previousContent { return previousContent }
+
+        return existing?.optimizedContent
     }
 }
 

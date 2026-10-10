@@ -170,7 +170,22 @@ struct TranscriptionDetailView: View {
 
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if currentRecord.optimizedContent != nil {
+            // Gated on `llmProcessingStatus`, not on `optimizedContent != nil`.
+            // The marker field is overloaded: it holds the pre-LLM original
+            // *and* the pre-edit text, and a record the user typed into
+            // carries one of those too. Gating on the marker's presence would
+            // announce LLM-optimized text the user wrote character by
+            // character. `isHandEdited` is no better — it is true for every
+            // LLM-processed record, since `processWithLLM` has always set
+            // `optimizedContent = originalText`, so it would hide the badge
+            // from exactly the records it exists for. LLM status is the one
+            // signal here that is genuinely about the model.
+            //
+            // Accepted residual: a record that was LLM-processed and *then*
+            // hand-edited still shows the badge. Defensible — the text was
+            // optimized before the user took it over — and it is the best
+            // available answer without adding a field to `TranscriptionRecord`.
+            if currentRecord.llmProcessingStatus == .completed {
                 HStack {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
@@ -206,8 +221,8 @@ struct TranscriptionDetailView: View {
                     // `isLLMEligible` with the LLM block below, but feeds
                     // it a different argument — this branch reads
                     // `currentRecord.content`, the button reads
-                    // `optimizedContent ?? content` — so sharing the
-                    // predicate does not make the two gates agree. They
+                    // `llmInputText` — so sharing the predicate does not
+                    // make the two gates agree. They
                     // happen to agree for every record reachable today:
                     // `retryLLM` is the only LLM route with no mode filter
                     // and it has no UI caller yet, so nothing can fill
@@ -310,8 +325,8 @@ struct TranscriptionDetailView: View {
         // this just stops offering a control that cannot do anything.
     }
 
-    /// The text `reprocessRecord` would send. Same `optimizedContent ?? content`
-    /// resolution the function uses, and read off the record rather than the
+    /// The text `reprocessRecord` would send. Same `llmInputText` resolution
+    /// the function uses, and read off the record rather than the
     /// `editedContent` buffer, so it does not flicker while the user types.
     ///
     /// Same source, but not the same instant: the button is built from this
@@ -319,7 +334,7 @@ struct TranscriptionDetailView: View {
     /// when the tap lands. The two therefore agree only until the record
     /// changes in between — which is the case the guard exists for.
     private var llmCandidateText: String {
-        currentRecord.optimizedContent ?? currentRecord.content
+        PendingRecognitionPolicy.llmInputText(for: currentRecord)
     }
 
     private var buttonIcon: String {
@@ -425,7 +440,7 @@ struct TranscriptionDetailView: View {
         isProcessing = true
         Task {
             let baseRecord = currentRecord
-            let originalText = baseRecord.optimizedContent ?? baseRecord.content
+            let originalText = PendingRecognitionPolicy.llmInputText(for: baseRecord)
 
             // This view is NOT a route through `processWithLLM` — it calls
             // `optimizeAndProcess` itself, so it carries its own copy of the
@@ -488,6 +503,13 @@ struct TranscriptionDetailView: View {
                     summary: result.summary,
                     tags: result.tags,
                     llmProcessingStatus: .completed,
+                    // "If I sent something other than what is stored, that
+                    // is the pre-LLM original." Still the right test after
+                    // `llmInputText`: for a hand-edited record `originalText`
+                    // is now the user's own text, so it equals `content`, the
+                    // false arm runs, and the existing pre-edit marker is
+                    // carried forward — the record stays hand-edited, which
+                    // is what protects the user's text from later sweeps.
                     optimizedContent: originalText != baseRecord.content ? originalText : baseRecord.optimizedContent,
                     recognitionMode: baseRecord.recognitionMode
                 )

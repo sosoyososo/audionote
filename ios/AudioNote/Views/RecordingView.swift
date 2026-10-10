@@ -279,7 +279,10 @@ struct RecordingView: View {
                             Task {
                                 if let recordId = viewModel.currentRecordId,
                                    let record = await viewModel.getRecord(id: recordId) {
-                                    await viewModel.processWithLLM(recordId: recordId, originalText: record.optimizedContent ?? record.content)
+                                    await viewModel.processWithLLM(
+                                        recordId: recordId,
+                                        originalText: PendingRecognitionPolicy.llmInputText(for: record)
+                                    )
                                 }
                             }
                         }
@@ -493,7 +496,7 @@ struct RecordingView: View {
         let recordId = viewModel.currentRecordId
         let updatedRecord = TranscriptionRecord(
             id: recordId ?? UUID(),
-            content: editedText,
+            content: editedText.trimmingCharacters(in: .whitespacesAndNewlines),
             createdAt: Date(),
             duration: viewModel.recordingDuration,
             language: viewModel.selectedLanguage.rawValue,
