@@ -574,13 +574,20 @@ final class PendingRecognitionTests: XCTestCase {
         XCTAssertTrue(queue.contains { $0.id == untouched.id })
     }
 
-    func testHandEditedOnDeviceRecordIsOutOfBothAutomaticQueues() {
+    func testHandEditedRecordIsOutOfBothAutomaticQueues() {
         // Regression test for the HIGH finding, named so the connection is
         // obvious. Before the marker existed, a hand-edited record was in
         // *both* automatic queues' blast radius: `llmQueue` sent it to the
         // model and `processWithLLM` overwrote `content`. Neither sweep may
         // touch it now.
-        let edited = makeRecord(mode: .onDevice,
+        //
+        // The fixture is `.failed`, not `.onDevice`. With `.onDevice` the
+        // second assertion was vacuous: `recognitionRetryQueue` rejects that
+        // mode on `recognitionMode` alone, so it passed with the hand-edit
+        // filter deleted — the teeth check proved it. `.failed` is a mode
+        // the retry queue actually admits, so both assertions now carry the
+        // filter's weight.
+        let edited = makeRecord(mode: .failed,
                                 content: "我的修改",
                                 optimizedContent: "原始转写",
                                 audioFileName: "some-uuid.m4a")

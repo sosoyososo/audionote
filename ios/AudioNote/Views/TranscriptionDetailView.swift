@@ -218,18 +218,23 @@ struct TranscriptionDetailView: View {
                     // text — testing the mode alone hid the text they had
                     // just saved, which the pre-placeholder `else` branch
                     // (`Text(editedContent)`) had always shown. Shares
-                    // `isLLMEligible` with the LLM block below, but feeds
-                    // it a different argument — this branch reads
-                    // `currentRecord.content`, the button reads
-                    // `llmInputText` — so sharing the predicate does not
-                    // make the two gates agree. They
-                    // happen to agree for every record reachable today:
-                    // `retryLLM` is the only LLM route with no mode filter
-                    // and it has no UI caller yet, so nothing can fill
-                    // `optimizedContent` first. Give one a caller, or let a
-                    // record gain `optimizedContent` while `content` is
-                    // still empty, and this placeholder can sit beside a
-                    // button that does have text to send.
+                    // `isLLMEligible` with the LLM block below, and feeds
+                    // it the same value: this branch reads
+                    // `currentRecord.content` and the button reads
+                    // `llmCandidateText`, which is `llmInputText` and
+                    // returns `content` for every record (see its doc). So
+                    // the two gates are exact complements on the text test,
+                    // not merely in agreement for today's records — an
+                    // earlier version of this comment called that a
+                    // coincidence of no route filling `optimizedContent`
+                    // first, which stopped being true the moment
+                    // `llmInputText` existed.
+                    //
+                    // The one asymmetry that remains is this branch's extra
+                    // `&& recognitionMode == .pending`: a non-pending record
+                    // with empty text shows neither the placeholder nor a
+                    // button. Adding a mode condition to the button, or
+                    // dropping this one, would reintroduce the split.
                     VStack(spacing: 12) {
                         let style = RecognitionModeStyle(mode: .pending)
                         Image(systemName: style.icon)
@@ -503,14 +508,19 @@ struct TranscriptionDetailView: View {
                     summary: result.summary,
                     tags: result.tags,
                     llmProcessingStatus: .completed,
-                    // "If I sent something other than what is stored, that
-                    // is the pre-LLM original." Still the right test after
-                    // `llmInputText`: for a hand-edited record `originalText`
-                    // is now the user's own text, so it equals `content`, the
-                    // false arm runs, and the existing pre-edit marker is
-                    // carried forward — the record stays hand-edited, which
-                    // is what protects the user's text from later sweeps.
-                    optimizedContent: originalText != baseRecord.content ? originalText : baseRecord.optimizedContent,
+                    // Was `originalText != baseRecord.content ? originalText : baseRecord.optimizedContent`
+                    // — "if I sent something other than what is stored, that
+                    // is the pre-LLM original". Collapsed because it became a
+                    // constant-false test: `llmInputText` returns `content`
+                    // for every record (see its doc), so `originalText`
+                    // always equals `baseRecord.content` and the true arm
+                    // became unreachable when this function started calling
+                    // `llmInputText`. Nothing is lost by dropping it — the
+                    // marker that was carried is still the right one, and
+                    // `handEditMarker` term 1 believes whatever is passed
+                    // here, so a hand-edited record keeps its pre-edit marker
+                    // and stays hand-edited.
+                    optimizedContent: baseRecord.optimizedContent,
                     recognitionMode: baseRecord.recognitionMode
                 )
                 try await viewModel.updateRecord(updatedRecord)

@@ -90,12 +90,31 @@ extension PendingRecognitionPolicy {
     /// (that spec's `问题` section; the doc is written in Chinese and
     /// has no numbered subsections).
     ///
-    /// Records that are hand-edited are excluded too, so both automatic
-    /// sweeps — this one and `recognitionRetryQueue` — leave text the user
-    /// owns alone. This is the step that makes the HIGH hole closed: with
-    /// the `.pending` filter alone, an `.onDevice` record the user had
-    /// edited was still swept into steps 1 and 4, and `processWithLLM`
-    /// writes its result straight over `content`.
+    /// Records that `isHandEdited` reports are excluded too. That is what
+    /// closes the HIGH: with the `.pending` filter alone, an `.onDevice`
+    /// record the user had edited was still swept into steps 1 and 4, and
+    /// `processWithLLM` writes its result straight over `content`.
+    ///
+    /// Read the filter as "content has diverged from its source", NOT as
+    /// "the user wrote this". Because `processWithLLM` has always set
+    /// `optimizedContent = originalText` alongside
+    /// `content = optimizedText`, **this also excludes every
+    /// LLM-processed record**, with no human keystroke anywhere.
+    ///
+    /// That extra reach is **inert today, and inert for a specific reason**:
+    /// step 4 keys on `llmProcessingStatus == .failed`, and a status only
+    /// becomes `.failed` when `processWithLLM` fails — and every failure
+    /// branch there sets `.failed` without ever writing `optimizedContent`.
+    /// So no record is reachable with both a diverged marker *and* a
+    /// `.failed` status, and the LLM-processed records this filter drops
+    /// would not have been swept anyway. Stating the mechanism, because
+    /// otherwise the next reader has to guess: "intentional, preserve it" and
+    /// "accidental, fix it" are both wrong, and it is inert for neither
+    /// reason.
+    ///
+    /// If a future change ever sets `optimizedContent` on a failed LLM call,
+    /// that record would silently stop being retried by step 4, and this is
+    /// the place to look first.
     ///
     /// Filtering in the queue rather than inside `processWithLLM` is what
     /// keeps the manual routes working. `retryLLM` and the "重试" button in
@@ -163,18 +182,33 @@ extension PendingRecognitionPolicy {
 
     /// The text an LLM call should be given for `record`.
     ///
-    /// The historical resolution was `record.optimizedContent ?? record.content`,
-    /// which was correct for as long as `optimizedContent` only ever held a
-    /// pre-LLM original: the original was the right input to re-optimize.
-    /// It is no longer safe on its own, because the same field now also
-    /// holds *the text from before the user's last edit*. Resolving it
-    /// naively on a hand-edited record sends the pre-edit text to the LLM
-    /// and `processWithLLM` writes the answer back over the user's own.
+    /// **This returns `record.content`, always.** That is provable, not
+    /// incidental: `isHandEdited` true → `content`; false → either
+    /// `optimizedContent == nil` (so `?? content` yields `content`) or
+    /// `content == optimizedContent` (so it yields a string equal to
+    /// `content`). There is no record for which the expression below
+    /// returns anything other than `content`.
     ///
-    /// So the hand-edited case resolves to `content` — the current text is
-    /// what the user wants processed — and every other record keeps the
-    /// historical answer exactly. Routes that resolve this themselves have
-    /// to call here; the idiom is wrong on its own now.
+    /// It is kept anyway, deliberately. The idiom it replaces,
+    /// `record.optimizedContent ?? record.content`, reads as the obvious
+    /// correct thing to do and is what five call sites used. It was correct
+    /// only while `optimizedContent` held nothing but a pre-LLM original.
+    /// Now it also holds *the text from before the user's last edit*, and
+    /// the naive resolution sends that pre-edit text to the LLM —
+    /// `processWithLLM` then writes the answer over the user's own text.
+    /// That was the HIGH finding, and it is silent: nothing about the
+    /// expression looks wrong.
+    ///
+    /// So the helper exists to make `optimizedContent ?? content`
+    /// **unreintroducible** at the five sites that resolve LLM input. Five
+    /// bare `record.content` reads would each be correct and would carry no
+    /// statement of why the obvious idiom is wrong; the first reader to
+    /// "fix" one of them reopens the HIGH.
+    ///
+    /// **Delete this helper** if it is ever reduced to identity *and* all
+    /// five call sites are replaced by a comment that records why the
+    /// idiom must not come back. Identity alone is not a reason to keep
+    /// it; the note is the reason.
     static func llmInputText(for record: TranscriptionRecord) -> String {
         isHandEdited(record) ? record.content : (record.optimizedContent ?? record.content)
     }
