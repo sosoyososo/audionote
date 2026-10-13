@@ -9,7 +9,7 @@ These are iOS system semantic colours (Dark Mode aware by default). No raw hex.
 
 | Token | Value | Used in |
 |---|---|---|
-| `Color.accentColor` | (asset-catalog tint, blue-ish by default) | tab icons, primary buttons, language-tag selected, save button, share/copy/pencil action buttons |
+| `Color.accentColor` | (asset-catalog tint, blue-ish by default) | tab icons, primary buttons, language-tag selected, save button, toolbar share/pencil buttons, tag-chip backgrounds (§1b), related-note tag pills |
 | `.primary` | label | title text, content text |
 | `.secondary` | secondaryLabel | captions, secondary metadata, search-bar leading icon |
 | `.white` | white | icon over accent fills, toast text, primary button text |
@@ -18,6 +18,22 @@ These are iOS system semantic colours (Dark Mode aware by default). No raw hex.
 | `.yellow` | systemYellow | recognition-mode `.onDevice` |
 | `.blue` | systemBlue | recognition-mode `.enhanced`, "在线升级识别" button bg/foreground |
 | `.red` | systemRed | recognition-mode `.failed`, recording indicator dot, recording button stroke + fill (active) |
+
+## §1b. Accent opacity steps (2026-10-13)
+
+`Color.accentColor` is used at three fixed opacities. Only two are semantic —
+pick the row, don't invent a value.
+
+| Opacity | Token name | Used in |
+|---|---|---|
+| `0.1` | chip base | `TagFlowView` chip background (default / unmatched) |
+| `0.18` | chip matched | `TagFlowView` chip background when its name is in `highlighted` (the library's live `selectedTags`) |
+| `0.3` | recording ring | `RecordingView` outer ring (pre-existing, unrelated to chips) |
+
+Chip **matched** state is `0.18` background at full opacity; **unmatched**
+(or *no filter in play*) is `0.1` at `opacity(0.4)`. `0.18` rather than a solid
+fill so the `.caption` name and the `.caption2` score stay legible and the chip
+keeps its radius-8 shape.
 | `Color(.systemGray5)` | systemGray5 | unselected language chip background |
 | `Color(.systemGray6)` | systemGray6 | text-card / search-bar background (10× uses — dominant) |
 | `Color(.systemBackground)` | systemBackground | permission overlay backdrop |

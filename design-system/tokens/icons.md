@@ -40,11 +40,13 @@
 | `chevron.right` | archived-banner trailing | `LibraryListView.swift:152` |
 | `eye` | context menu "View" | `LibraryListView.swift:304` |
 | `trash` | context menu / swipe delete | `LibraryListView.swift:232/319` |
+| `doc.on.doc` | row context menu "Copy" | `LibraryListView.swift:294` |
 
 ## §4. Detail
 
 | SF Symbol | Use | File |
 |---|---|---|
+| `doc.on.doc` | copy the block — one per section label row (`components/copy-icon-button.md`) | `SharedComponents.swift` (`CopyIconButton`) |
 | `calendar` | metadata row | `TranscriptionDetailView.swift:105` |
 | `clock` | metadata row | `TranscriptionDetailView.swift:112` |
 | `timer` | metadata row | `TranscriptionDetailView.swift:120` |
@@ -74,6 +76,20 @@
 Recognition-mode icons exist only in `TranscriptionDetailView.swift`. The
 `RecordingView.swift` shows the mode label + colour but no icon. This is
 inconsistent — see `components/recognition-mode-badge.md`.
+
+## §6b. `doc.on.doc` — three sizes, one meaning (2026-10-13)
+
+`doc.on.doc` is the app's single copy token, but it renders at three sizes
+depending on context, and the detail toolbar no longer carries one at all:
+
+| Context | Size | File |
+|---|---|---|
+| Toolbar action | nav-bar default | `RecordingView.swift:310` |
+| List row context menu | menu default | `LibraryListView.swift:294` |
+| Detail section label row | `.caption` | `SharedComponents.swift` (`CopyIconButton`) |
+
+The detail's toolbar copy button was removed in favour of the third row —
+see `components/copy-icon-button.md` §4 for why.
 
 ## §7. States covered
 

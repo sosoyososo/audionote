@@ -51,6 +51,7 @@
 "Detail.Title" = "Transcription Details";
 "Detail.Edit.Title" = "Edit Content";
 "Detail.NoContent" = "(No content)";
+"Detail.Content.Label" = "Transcript";
 "Detail.LLM.Title" = "Title";
 "Detail.LLM.Summary" = "Summary";
 "Detail.LLM.Tags" = "Tags";

@@ -71,6 +71,41 @@ public final class RecordActionsViewModel: ObservableObject {
     }
 }
 
+// MARK: - Copy Icon Button
+
+/// The per-block copy affordance: a low-key `doc.on.doc` that sits on the
+/// right edge of a section's caption label row, so each copyable block owns
+/// exactly one way to take its text out of the app.
+///
+/// Deliberately not a toolbar button. Three sections carrying three
+/// equal-weight toolbar buttons would give the two low-frequency values
+/// (LLM title, summary) the same visual weight as the body, which is the one
+/// thing users actually carry out of the app — see
+/// `docs/superpowers/specs/2026-10-13-detail-section-copy-buttons-design.md`.
+///
+/// Sizing: `.caption` + `.secondary` to match the label row it sits in. A
+/// `.body` icon next to `.caption` text reads as content rather than as a
+/// control. The `padding` + `contentShape` keep the tappable region at the
+/// 44 pt HIG minimum without the icon itself growing.
+public struct CopyIconButton: View {
+    private let action: () -> Void
+
+    public init(action: @escaping () -> Void) {
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            Image(systemName: "doc.on.doc")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .buttonStyle(.plain)
+        .padding(8)
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - Recognition Mode Style
 //
 // Extracted from `RecordingView.modeColor/Label` and

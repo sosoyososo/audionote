@@ -80,12 +80,6 @@ struct TranscriptionDetailView: View {
                 } else {
                     HStack {
                         Button {
-                            actionsViewModel.copyText(currentRecord.content)
-                        } label: {
-                            Image(systemName: "doc.on.doc")
-                        }
-
-                        Button {
                             actionsViewModel.showShareSheet = true
                         } label: {
                             Image(systemName: "square.and.arrow.up")
@@ -170,29 +164,50 @@ struct TranscriptionDetailView: View {
 
     private var contentSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Gated on `llmProcessingStatus`, not on `optimizedContent != nil`.
-            // The marker field is overloaded: it holds the pre-LLM original
-            // *and* the pre-edit text, and a record the user typed into
-            // carries one of those too. Gating on the marker's presence would
-            // announce LLM-optimized text the user wrote character by
-            // character. `isHandEdited` is no better — it is true for every
-            // LLM-processed record, since `processWithLLM` has always set
-            // `optimizedContent = originalText`, so it would hide the badge
-            // from exactly the records it exists for. LLM status is the one
-            // signal here that is genuinely about the model.
-            //
-            // Accepted residual: a record that was LLM-processed and *then*
-            // hand-edited still shows the badge. Defensible — the text was
-            // optimized before the user took it over — and it is the best
-            // available answer without adding a field to `TranscriptionRecord`.
-            if currentRecord.llmProcessingStatus == .completed {
-                HStack {
+            // Always present, so the copy button below has a stable home: a
+            // row that appeared only with the seal would make the affordance
+            // jump in and out as LLM status changed. The seal is a prefix
+            // inside this row, not the row itself.
+            HStack {
+                // Gated on `llmProcessingStatus`, not on `optimizedContent != nil`.
+                // The marker field is overloaded: it holds the pre-LLM original
+                // *and* the pre-edit text, and a record the user typed into
+                // carries one of those too. Gating on the marker's presence would
+                // announce LLM-optimized text the user wrote character by
+                // character. `isHandEdited` is no better — it is true for every
+                // LLM-processed record, since `processWithLLM` has always set
+                // `optimizedContent = originalText`, so it would hide the badge
+                // from exactly the records it exists for. LLM status is the one
+                // signal here that is genuinely about the model.
+                //
+                // Accepted residual: a record that was LLM-processed and *then*
+                // hand-edited still shows the badge. Defensible — the text was
+                // optimized before the user took it over — and it is the best
+                // available answer without adding a field to `TranscriptionRecord`.
+                if currentRecord.llmProcessingStatus == .completed {
                     Image(systemName: "checkmark.seal.fill")
                         .foregroundColor(.green)
                     Text("优化后")
                         .font(.caption)
                         .foregroundColor(.green)
-                    Spacer()
+                }
+
+                Text("Detail.Content.Label".localized)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Spacer(minLength: 8)
+
+                // Exact complement of the pending placeholder's *text* test
+                // below — no `recognitionMode` term. Adding one would split
+                // the pair again, the regression the placeholder's comment
+                // records. `isEditing` because the text on screen is
+                // `editedContent`, which has not been written back yet: a copy
+                // button here would silently hand over the pre-edit value.
+                if !isEditing && PendingRecognitionPolicy.isLLMEligible(text: currentRecord.content) {
+                    CopyIconButton {
+                        actionsViewModel.copyText(currentRecord.content)
+                    }
                 }
             }
 
@@ -264,9 +279,15 @@ struct TranscriptionDetailView: View {
             if currentRecord.title != nil || currentRecord.summary != nil || currentRecord.tags != nil {
                 if let title = currentRecord.title, !title.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Detail.LLM.Title".localized)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text("Detail.LLM.Title".localized)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer(minLength: 8)
+                            CopyIconButton {
+                                actionsViewModel.copyText(title)
+                            }
+                        }
                         Text(title)
                             .font(.headline)
                     }
@@ -274,9 +295,15 @@ struct TranscriptionDetailView: View {
 
                 if let summary = currentRecord.summary, !summary.isEmpty {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("Detail.LLM.Summary".localized)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text("Detail.LLM.Summary".localized)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer(minLength: 8)
+                            CopyIconButton {
+                                actionsViewModel.copyText(summary)
+                            }
+                        }
                         Text(summary)
                             .font(.body)
                     }
@@ -287,7 +314,7 @@ struct TranscriptionDetailView: View {
                         Text("Detail.LLM.Tags".localized)
                             .font(.caption)
                             .foregroundColor(.secondary)
-                        TagFlowView(tags: tags)
+                        TagFlowView(tags: tags, highlighted: viewModel.selectedTags)
                     }
                 }
             }
@@ -696,6 +723,26 @@ struct RelatedNotesRowView: View {
 struct TagFlowView: View {
     let tags: [TaggedItem]
 
+    /// Tag names the surrounding context has selected — in practice the
+    /// library's `selectedTags`. Chips in this set render at full strength and
+    /// the rest recede, so a record opened from a filtered list says which of
+    /// its tags brought it there. The filter is OR (`displayedRecords`), so
+    /// this is often a strict subset of the chips on screen.
+    ///
+    /// **Empty means "no context", not "nothing matches"** — every chip then
+    /// renders identically, which is why there is no separate
+    /// `isFilterActive` flag: the rule lives here, so a call site cannot
+    /// forget to apply it.
+    ///
+    /// Matched with exact, case-sensitive `contains` on purpose. The library's
+    /// own filter (`TranscriptionViewModel.displayedRecords`) compares the same
+    /// way, so this stays in agreement with the thing that decided the record
+    /// is on screen. `TranscriptionRecord.score(forTagName:)` resolves names
+    /// case-*insensitively*; borrowing that comparison here would light a chip
+    /// that had not actually filtered the record in — reintroducing on this
+    /// screen the very ambiguity the highlight exists to remove.
+    let highlighted: Set<String>
+
     /// Tags sorted by relevance score descending. The LLM is *instructed* to
     /// return them sorted, but doesn't reliably honor that — sorting here
     /// guarantees the most relevant tag renders first regardless of what the
@@ -708,6 +755,14 @@ struct TagFlowView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(sortedTags, id: \.name) { tag in
+                    // Two variables, not one: "matched" decides the tint,
+                    // "demphasised" decides the fade, and they do NOT
+                    // partition the same way. With no filter the chips must
+                    // stay exactly as they were — base tint, full opacity —
+                    // so `isMatched` alone would wrongly tint them all 0.18,
+                    // while `isDemphasised` alone would wrongly fade them all.
+                    let isMatched = highlighted.contains(tag.name)
+                    let isDemphasised = !highlighted.isEmpty && !isMatched
                     HStack(spacing: 4) {
                         Text(tag.name)
                             .font(.caption)
@@ -718,8 +773,9 @@ struct TagFlowView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .background(Color.accentColor.opacity(0.1))
+                    .background(Color.accentColor.opacity(isMatched ? 0.18 : 0.1))
                     .cornerRadius(8)
+                    .opacity(isDemphasised ? 0.4 : 1)
                 }
             }
         }
