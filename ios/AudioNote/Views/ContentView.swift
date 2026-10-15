@@ -29,7 +29,7 @@ struct ContentView: View {
 
     private var mainTabContentView: some View {
         ZStack {
-            TabView(selection: $selectedTab) {
+            TabView(selection: tabSelection) {
                 RecordingView(viewModel: viewModel)
                     .tabItem {
                         Label("Tab.Recording".localized(for: languageManager.current), systemImage: "mic.fill")
@@ -49,18 +49,31 @@ struct ContentView: View {
                     .tag(AppTab.settings)
             }
             .environmentObject(viewModel)
-            .onChange(of: selectedTab) { tab in
-                // Landing on the library tab — from another tab or by
-                // re-tapping the one you're already on — always means the
-                // default list. Archive mode is a mode you leave deliberately,
-                // not one you can get stuck in. Search and tag filters are
-                // untouched: clearing them here would throw away a query the
-                // user is mid-way through typing.
-                if tab == .library {
+        }
+    }
+
+    /// Handles the selection *write* rather than observing it.
+    /// `onChange(of:)` fires only when the value actually changes, so it is
+    /// blind to re-tapping the tab you are already on — which is the one case
+    /// where the user is standing right there asking to go home.
+    /// `TabView` does write the selection back on a re-tap (the same value, so
+    /// there is nothing to observe), and this setter sees that write.
+    ///
+    /// Landing on the library tab at all — from another tab, or by re-tapping —
+    /// means the default list. Archive mode is a mode you leave deliberately,
+    /// not one you can get stuck in. Search and tag filters are untouched:
+    /// clearing them here would throw away a query the user is mid-way
+    /// through typing.
+    private var tabSelection: Binding<AppTab> {
+        Binding(
+            get: { selectedTab },
+            set: { newTab in
+                selectedTab = newTab
+                if newTab == .library {
                     viewModel.isArchiveMode = false
                 }
             }
-        }
+        )
     }
 
     private enum AppTab: Hashable {
