@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -106,7 +106,7 @@
 		9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelectorView.swift; sourceTree = "<group>"; };
 		A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesPrescreenTests.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BF3214FE237AB13413336F8A /* LibraryArchiveModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryArchiveModeTests.swift; sourceTree = "<group>"; };
 		C27A05976893E36E23155678 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
 		C6FCE4F5826EB2C4039508A6 /* RelatedNotesRowModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesRowModelTests.swift; sourceTree = "<group>"; };
@@ -317,6 +317,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					8D0EE74616E156E4C9C1D118 = {
+						DevelopmentTeam = 8V95JS2XCZ;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -332,6 +333,7 @@
 			);
 			mainGroup = A9D344E48523A55813F66EBB;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -452,7 +454,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				DEVELOPMENT_TEAM = 25FH23Q3GA;
+				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AudioNote/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -472,7 +474,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "Apple Development";
-				DEVELOPMENT_TEAM = 25FH23Q3GA;
+				DEVELOPMENT_TEAM = 8V95JS2XCZ;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = AudioNote/Resources/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
