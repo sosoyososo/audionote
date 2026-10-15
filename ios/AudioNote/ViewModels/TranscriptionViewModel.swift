@@ -817,6 +817,15 @@ final class TranscriptionViewModel: ObservableObject {
         }
     }
 
+    /// Whether the archive toggle accepts taps. It goes dead only when there
+    /// is nothing to go to AND you are not already there: gating it on
+    /// `archivedRecordCount == 0` alone strands the user, because deleting
+    /// the last archived record while inside archive mode kills the one
+    /// control that could leave it.
+    var canToggleArchiveMode: Bool {
+        isArchiveMode || archivedRecordCount > 0
+    }
+
     func setSearchQuery(_ query: String) {
         searchQuery = query
     }

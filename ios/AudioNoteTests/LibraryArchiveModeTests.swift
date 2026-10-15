@@ -201,6 +201,26 @@ final class LibraryArchiveModeTests: XCTestCase {
 
         XCTAssertFalse(vm.hasRecordsInScope)
     }
+
+    /// The strand this change fixes: inside archive mode, deleting the last
+    /// archived record took the toggle's only exit with it.
+    func testToggleStaysLiveInsideArchiveModeOnceTheLastRecordIsGone() {
+        let vm = makeViewModel([record("收起来的", archived: true)])
+        vm.isArchiveMode = true
+        XCTAssertTrue(vm.canToggleArchiveMode)
+
+        vm.historyRecords.removeAll()          // deleted from the archive list
+
+        XCTAssertEqual(vm.archivedRecordCount, 0)
+        XCTAssertFalse(vm.hasRecordsInScope)
+        XCTAssertTrue(vm.canToggleArchiveMode, "the only control that leaves archive mode must not die with it")
+    }
+
+    func testToggleIsDeadOnTheLiveSideOnlyWhenThereIsNothingToArchive() {
+        XCTAssertFalse(makeViewModel([]).canToggleArchiveMode)
+        XCTAssertFalse(makeViewModel([record("活着的")]).canToggleArchiveMode)
+        XCTAssertTrue(makeViewModel([record("收起来的", archived: true)]).canToggleArchiveMode)
+    }
 }
 
 private extension Array {

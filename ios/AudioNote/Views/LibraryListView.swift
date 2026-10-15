@@ -151,7 +151,7 @@ struct LibraryListView: View {
         } label: {
             Image(systemName: viewModel.isArchiveMode ? "archivebox.fill" : "archivebox")
         }
-        .disabled(viewModel.archivedRecordCount == 0)
+        .disabled(!viewModel.canToggleArchiveMode)
         .badge(viewModel.archivedRecordCount)
     }
 
