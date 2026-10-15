@@ -187,9 +187,13 @@ struct TranscriptionRecord: Codable, Identifiable, Equatable {
 extension TranscriptionRecord {
     /// Look up the score for a tag name on this record (case-insensitive).
     /// Returns `nil` if the tag isn't present.
+    ///
+    /// Shares `TagIdentity.key` with the filters and chip builder rather than
+    /// lowercasing inline — one definition of "the same tag", so this lookup
+    /// cannot drift from what the list decided to show.
     func score(forTagName name: String) -> Double? {
         guard let tags = tags else { return nil }
-        let needle = name.lowercased()
-        return tags.first { $0.name.lowercased() == needle }?.score
+        let needle = TagIdentity.key(name)
+        return tags.first { TagIdentity.key($0.name) == needle }?.score
     }
 }

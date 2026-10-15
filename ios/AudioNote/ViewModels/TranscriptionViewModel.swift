@@ -736,50 +736,108 @@ final class TranscriptionViewModel: ObservableObject {
     /// Records in scope that match the current search query and selected tags.
     /// Sort: tag-match-count desc → createdAt desc when tags are selected; otherwise createdAt desc.
     var displayedRecords: [TranscriptionRecord] {
+        let selected = TagIdentity.matchingKeys(selectedTags)
         let matching = recordsInScope
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter { record in
-                selectedTags.isEmpty
-                    || record.tagNames.contains(where: selectedTags.contains)
+                selected.isEmpty
+                    || TagIdentity.matchCount(ofNames: record.tagNames, in: selected) > 0
             }
 
-        if selectedTags.isEmpty {
+        if selected.isEmpty {
             return matching.sorted { $0.createdAt > $1.createdAt }
         }
         return matching.sorted { lhs, rhs in
-            let lhsCount = lhs.tagNames.filter(selectedTags.contains).count
-            let rhsCount = rhs.tagNames.filter(selectedTags.contains).count
+            let lhsCount = TagIdentity.matchCount(ofNames: lhs.tagNames, in: selected)
+            let rhsCount = TagIdentity.matchCount(ofNames: rhs.tagNames, in: selected)
             if lhsCount != rhsCount { return lhsCount > rhsCount }
             return lhs.createdAt > rhs.createdAt
         }
     }
 
-    /// All unique tag names from the records in scope. Order is by the maximum
-    /// relevance score across all records carrying the tag (descending), so the
-    /// most "important" tags surface first; ties break alphabetically.
+    /// One chip per tag identity, from the records in scope.
+    ///
+    /// Records spell the same tag however the LLM felt like that day, so chips
+    /// are grouped by `TagIdentity.key`: `Work` and `work` collapse into one
+    /// chip instead of two that each find only their own spelling. The chip's
+    /// displayed form is the spelling carried by the most records; ties go to
+    /// the higher-scored one, then alphabetically, so the choice is
+    /// deterministic rather than whatever happened to be iterated first.
+    ///
+    /// Order across chips is by the maximum relevance score across all records
+    /// carrying the tag (descending), so the most "important" tags surface
+    /// first; ties break alphabetically.
     var availableTags: [String] {
         struct ScoredTag { let name: String; let maxScore: Double }
-        var byName: [String: ScoredTag] = [:]
+
+        // Identity key -> spelling -> (best score on it, records carrying it).
+        // Two dictionaries rather than one so a chip can be assembled from all
+        // its spellings; both are keyed the same way and kept in step.
+        var maxScores: [String: [String: Double]] = [:]
+        var recordCounts: [String: [String: Int]] = [:]
+
         for record in recordsInScope {
+            // Counted per record, so a record carrying both `Work` and `work`
+            // contributes to each spelling's count without being counted twice
+            // within one of them.
+            var spellingsThisRecord: [String: Set<String>] = [:]
             for tag in record.tags ?? [] {
-                let prev = byName[tag.name]
-                let prevScore = prev?.maxScore ?? -.infinity
-                byName[tag.name] = ScoredTag(
-                    name: tag.name,
-                    maxScore: max(prevScore, tag.score)
-                )
+                let identity = TagIdentity.key(tag.name)
+                spellingsThisRecord[identity, default: []].insert(tag.name)
+                var group = maxScores[identity] ?? [:]
+                group[tag.name] = max(group[tag.name] ?? -.infinity, tag.score)
+                maxScores[identity] = group
+            }
+            for (identity, spellings) in spellingsThisRecord {
+                for spelling in spellings {
+                    recordCounts[identity, default: [:]][spelling, default: 0] += 1
+                }
             }
         }
+
+        var chips: [ScoredTag] = []
+        for (identity, spellings) in recordCounts {
+            // `min(by:)` with a "preferred first" comparator picks the display
+            // form; the guard is unreachable in practice but keeps the
+            // optional non-fatal.
+            guard let winner = spellings.keys.min(by: { lhs, rhs in
+                let lhsCount = spellings[lhs] ?? 0
+                let rhsCount = spellings[rhs] ?? 0
+                if lhsCount != rhsCount { return lhsCount > rhsCount }
+                let lhsScore = maxScores[identity]?[lhs] ?? -.infinity
+                let rhsScore = maxScores[identity]?[rhs] ?? -.infinity
+                if lhsScore != rhsScore { return lhsScore > rhsScore }
+                // Last resort. Case-insensitive compare returns "same" for
+                // `Work` vs `work` — exactly the pair this whole decision is
+                // about — so ordering those would be left to `min(by:)`'s
+                // iteration order, which is dictionary order and not stable
+                // across runs. Raw `<` is arbitrary but deterministic.
+                if lhs.localizedCaseInsensitiveCompare(rhs) == .orderedSame {
+                    return lhs < rhs
+                }
+                return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+            }) else { continue }
+            chips.append(ScoredTag(
+                name: winner,
+                maxScore: maxScores[identity]?[winner] ?? -.infinity
+            ))
+        }
+
         // Archive mode can be entered with tags selected against the live list
         // that no archived record carries. Rendering those at count 0 is what
         // makes an empty archive list explicable — without them the filter is
-        // silently applied with nothing on screen to switch off.
+        // silently applied with nothing on screen to switch off. Matched by
+        // identity so a selected `Work` is not re-added alongside a chip the
+        // archive's own records already contributed as `work`.
         if isArchiveMode {
-            for name in selectedTags where byName[name] == nil {
-                byName[name] = ScoredTag(name: name, maxScore: -.infinity)
+            for name in selectedTags {
+                let identity = TagIdentity.key(name)
+                guard !chips.contains(where: { TagIdentity.key($0.name) == identity }) else { continue }
+                chips.append(ScoredTag(name: name, maxScore: -.infinity))
             }
         }
-        return byName.values
+
+        return chips
             .sorted { lhs, rhs in
                 if lhs.maxScore != rhs.maxScore { return lhs.maxScore > rhs.maxScore }
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
@@ -787,16 +845,27 @@ final class TranscriptionViewModel: ObservableObject {
             .map(\.name)
     }
 
-    /// Per-tag count of in-scope records that also match the current search query.
+    /// Per-tag-identity count of in-scope records that also match the current
+    /// search query. Keyed by `TagIdentity.key`, so all spellings of one tag
+    /// are summed into the single chip that represents them — a merged chip
+    /// reading 2 beside two spellings reading 1 each would contradict itself.
+    ///
+    /// Read through `tagCount(for:)`, which takes the chip's display form.
     var tagCounts: [String: Int] {
         var counts: [String: Int] = [:]
         for record in recordsInScope {
             guard Self.matchesSearch(record, query: searchQuery) else { continue }
-            for name in record.tagNames {
-                counts[name, default: 0] += 1
+            for identity in Set(record.tagNames.map(TagIdentity.key)) {
+                counts[identity, default: 0] += 1
             }
         }
         return counts
+    }
+
+    /// Hits for a chip, given the chip's displayed name. 0 for a chip no
+    /// in-scope record carries — which is the point of rendering those at all.
+    func tagCount(for tag: String) -> Int {
+        tagCounts[TagIdentity.key(tag)] ?? 0
     }
 
     /// Whether the current side of the archive split holds any record at all,
@@ -830,9 +899,12 @@ final class TranscriptionViewModel: ObservableObject {
         searchQuery = query
     }
 
+    /// Adds or removes a tag from the filter. Compared by identity, so
+    /// re-selecting the same tag under a different spelling removes it
+    /// instead of stacking a second, redundant entry.
     func toggleTag(_ tag: String) {
-        if selectedTags.contains(tag) {
-            selectedTags.remove(tag)
+        if let existing = selectedTags.first(where: { TagIdentity.key($0) == TagIdentity.key(tag) }) {
+            selectedTags.remove(existing)
         } else {
             selectedTags.insert(tag)
         }

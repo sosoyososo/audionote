@@ -128,14 +128,19 @@ struct RelatedNotesService {
     /// Does not enforce `minimumCandidates` — the caller must check that before
     /// spending an LLM call.
     static func prescreen(current: TranscriptionRecord, among: [TranscriptionRecord]) -> [TranscriptionRecord] {
-        // First tag wins on a duplicated name, matching the LLM's descending-score order.
+        // First tag wins on a duplicated name, matching the LLM's descending-
+        // score order. Keyed by `TagIdentity` so `Work` and `work` on the same
+        // record are one tag, not two — otherwise a note could double-count a
+        // tag it carries under two spellings.
         var currentTags: [String: Double] = [:]
-        for tag in current.tags ?? [] where currentTags[tag.name] == nil {
-            currentTags[tag.name] = tag.score
+        for tag in current.tags ?? [] where currentTags[TagIdentity.key(tag.name)] == nil {
+            currentTags[TagIdentity.key(tag.name)] = tag.score
         }
         guard !currentTags.isEmpty else { return [] }
 
-        let currentNames = Set(currentTags.keys)
+        // Keys, not names, from here down: the shared-tag count is a count of
+        // shared *identities*, and a name spelled two ways is one shared tag.
+        let currentKeys = Set(currentTags.keys)
         let now = Date()
 
         let scored: [(record: TranscriptionRecord, score: Double)] = among.compactMap { candidate in
@@ -144,11 +149,11 @@ struct RelatedNotesService {
                   candidate.llmProcessingStatus == LLMStatus.completed
             else { return nil }
 
-            var candidateNames: Set<String> = []
+            var candidateKeys: Set<String> = []
             for tag in candidate.tags ?? [] {
-                candidateNames.insert(tag.name)
+                candidateKeys.insert(TagIdentity.key(tag.name))
             }
-            let sharedNames = candidateNames.intersection(currentNames)
+            let sharedKeys = candidateKeys.intersection(currentKeys)
 
             // "Mean shared-tag score" is the per-shared-tag `min` of the two
             // notes' scores for that tag, averaged. `min` (rather than the mean
@@ -156,10 +161,10 @@ struct RelatedNotesService {
             // symmetric — swapping current and candidate gives the same number —
             // and conservative: a tag one side scores poorly cannot pull the
             // pair up.
-            let sharedScores = sharedNames.map { name -> Double in
-                min(currentTags[name] ?? 0, candidate.score(forTagName: name) ?? 0)
+            let sharedScores = sharedKeys.map { identity -> Double in
+                min(currentTags[identity] ?? 0, candidate.score(forTagName: identity) ?? 0)
             }
-            let tagCount = Double(sharedNames.count)
+            let tagCount = Double(sharedKeys.count)
             let meanTagScore = sharedScores.isEmpty ? 0 : sharedScores.reduce(0, +) / Double(sharedScores.count)
             let ageDays = max(0, now.timeIntervalSince(candidate.createdAt) / 86_400)
             let recency = 1.0 / (1.0 + ageDays / 30.0)

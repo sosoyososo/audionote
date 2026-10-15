@@ -29,7 +29,7 @@ filtering exactly as they do on the live list.
 |---|---|---|
 | `navigationTitle` | `Tab.Library` | `Library.ArchiveModeTitle` ("归档 · %d") |
 | Toggle icon | `archivebox` | `archivebox.fill` |
-| Toggle disabled | when `archivedRecordCount == 0` | same |
+| Toggle disabled | when `archivedRecordCount == 0` | **never** |
 | Badge | — | `archivedRecordCount`, unfiltered |
 
 Rules the split introduced:
@@ -39,9 +39,29 @@ Rules the split introduced:
   (`availableTags` synthesizes it) — otherwise the filter would be applied
   with nothing on screen to switch off.
 - That synthesized chip sorts **last** (score `-infinity`).
+- The toggle is gated on `canToggleArchiveMode`, not `archivedRecordCount`.
+  Inside the archive it stays live even at 0 records: gating it on the count
+  alone kills the only control that leaves archive mode when the user deletes
+  the last archived record.
 - `archivedRecordCount` ignores `searchQuery` / `selectedTags`: "you have
   12 archived" must not read as 0 because the user typed something.
 - Un-archive is via the detail sheet's existing action, not a swipe.
+
+## §1c. Tag chips
+
+One chip per **tag identity**, not per spelling. Tags come from an LLM that
+picks casing per record, so `availableTags` groups by `TagIdentity.key`
+(lowercased) and `Work` / `work` collapse into a single chip.
+
+| Rule | Behaviour |
+|---|---|
+| Displayed form | the spelling carried by the **most records**; ties → higher score; ties → raw `<` so it stays deterministic (a case-insensitive compare returns "same" for exactly this pair) |
+| Chip order | by max score across the whole group desc; ties alphabetical |
+| Count | sums **all** spellings — read via `tagCount(for:)`, since `tagCounts` is keyed by identity |
+| Match | case-insensitive everywhere; a record spelled either way is found by the one chip |
+
+Chinese tags are unaffected — CJK has no case, so `lowercased()` is a no-op
+for them.
 
 ## §2. Row visual conventions
 

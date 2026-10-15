@@ -115,8 +115,8 @@ struct LibraryListView: View {
     }
 
     private func tagChip(_ tag: String) -> some View {
-        let isSelected = viewModel.selectedTags.contains(tag)
-        let count = viewModel.tagCounts[tag] ?? 0
+        let isSelected = TagIdentity.matches(tag, anyOf: viewModel.selectedTags)
+        let count = viewModel.tagCount(for: tag)
 
         return Button {
             viewModel.toggleTag(tag)

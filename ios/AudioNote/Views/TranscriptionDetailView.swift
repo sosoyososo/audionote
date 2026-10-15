@@ -625,7 +625,7 @@ enum RelatedNotesSectionBuilder {
         related: [RelatedNote]
     ) -> [RelatedNotesRow] {
         let byID = Dictionary(candidates.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
-        let currentTagNames = Set(record.tagNames)
+        let currentTagKeys = TagIdentity.matchingKeys(Set(record.tagNames))
 
         // `related(to:)` already hands back score-descending edges, so this
         // sort is a no-op in production. It is kept, with the *same*
@@ -639,10 +639,12 @@ enum RelatedNotesSectionBuilder {
 
         return ordered.compactMap { link -> RelatedNotesRow? in
             guard let other = byID[link.id], other.archived != true else { return nil }
-            // Exact, case-sensitive intersection — deliberately the same match
+            // Matched through `TagIdentity` — deliberately the same match
             // `RelatedNotesService.prescreen` uses. A chip the prescreen never
             // matched would read as a contradiction; normalize both or neither.
-            let shared = other.tagNames.filter { currentTagNames.contains($0) }
+            // The shared tags keep the *other* record's spelling, since they
+            // are rendered as that record's tags.
+            let shared = TagIdentity.matching(other.tagNames, in: currentTagKeys)
             return RelatedNotesRow(
                 id: other.id,
                 title: other.title?.isEmpty == false ? other.title! : other.preview,
@@ -734,13 +736,13 @@ struct TagFlowView: View {
     /// `isFilterActive` flag: the rule lives here, so a call site cannot
     /// forget to apply it.
     ///
-    /// Matched with exact, case-sensitive `contains` on purpose. The library's
-    /// own filter (`TranscriptionViewModel.displayedRecords`) compares the same
-    /// way, so this stays in agreement with the thing that decided the record
-    /// is on screen. `TranscriptionRecord.score(forTagName:)` resolves names
-    /// case-*insensitively*; borrowing that comparison here would light a chip
-    /// that had not actually filtered the record in — reintroducing on this
-    /// screen the very ambiguity the highlight exists to remove.
+    /// Matched through `TagIdentity`, the same comparison the library's own
+    /// filter (`TranscriptionViewModel.displayedRecords`) uses. Sharing the
+    /// definition is what keeps this honest: a chip lights up exactly when it
+    /// actually filtered the record in. A case-sensitive `contains` here would
+    /// light nothing at all whenever the record spells the tag differently
+    /// from the chip — reintroducing on this screen the very ambiguity the
+    /// highlight exists to remove.
     let highlighted: Set<String>
 
     /// Tags sorted by relevance score descending. The LLM is *instructed* to
@@ -761,7 +763,7 @@ struct TagFlowView: View {
                     // stay exactly as they were — base tint, full opacity —
                     // so `isMatched` alone would wrongly tint them all 0.18,
                     // while `isDemphasised` alone would wrongly fade them all.
-                    let isMatched = highlighted.contains(tag.name)
+                    let isMatched = TagIdentity.matches(tag.name, anyOf: highlighted)
                     let isDemphasised = !highlighted.isEmpty && !isMatched
                     HStack(spacing: 4) {
                         Text(tag.name)
