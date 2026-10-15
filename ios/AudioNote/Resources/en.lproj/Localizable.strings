@@ -95,8 +95,8 @@
 "Library.Search.Placeholder" = "Search title, summary, tags, content";
 "Library.NoResults" = "No matching records";
 "Library.NoTags" = "No tags yet — analyze records to enable filtering";
-"Library.ArchivedBanner" = "%d archived matches · tap to view";
-"Library.ArchivedSublistTitle" = "Archived matches";
+"Library.ArchiveModeTitle" = "Archive · %d";
+"Library.ArchiveEmpty" = "No archived records";
 "Library.ClearFilters" = "Clear filters";
 
 /* Settings — LLM Provider (multi-profile, 2026-09-24) */

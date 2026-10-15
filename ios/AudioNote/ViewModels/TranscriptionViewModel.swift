@@ -24,6 +24,13 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var searchQuery: String = ""
     @Published var selectedTags: Set<String> = []
 
+    /// Which side of the archive split the library list is showing. `false`
+    /// (the default) is the live list; `true` shows archived records only,
+    /// filtered and sorted exactly the way the live list is. Toggling leaves
+    /// `searchQuery` and `selectedTags` untouched — see `availableTags` for how
+    /// a filter that matches nothing on the far side stays visible.
+    @Published var isArchiveMode: Bool = false
+
     private let speechRecognizer = SpeechRecognizer()
     private let storage = TranscriptionStorage.shared
     private let permissionsManager = PermissionsManager.shared
@@ -718,11 +725,18 @@ final class TranscriptionViewModel: ObservableObject {
 
     // MARK: - Library filtering (思录)
 
-    /// Active records (non-archived) that match the current search query and selected tags.
+    /// Records on the current side of the archive split. Archive mode is not a
+    /// special case with its own rules — it is the same query against the other
+    /// half of the library, so both halves share this one scope and every
+    /// filter below stays identical across the toggle.
+    private var recordsInScope: [TranscriptionRecord] {
+        historyRecords.filter { $0.archived == isArchiveMode }
+    }
+
+    /// Records in scope that match the current search query and selected tags.
     /// Sort: tag-match-count desc → createdAt desc when tags are selected; otherwise createdAt desc.
     var displayedRecords: [TranscriptionRecord] {
-        let activeMatching = historyRecords
-            .filter { !$0.archived }
+        let matching = recordsInScope
             .filter { Self.matchesSearch($0, query: searchQuery) }
             .filter { record in
                 selectedTags.isEmpty
@@ -730,9 +744,9 @@ final class TranscriptionViewModel: ObservableObject {
             }
 
         if selectedTags.isEmpty {
-            return activeMatching.sorted { $0.createdAt > $1.createdAt }
+            return matching.sorted { $0.createdAt > $1.createdAt }
         }
-        return activeMatching.sorted { lhs, rhs in
+        return matching.sorted { lhs, rhs in
             let lhsCount = lhs.tagNames.filter(selectedTags.contains).count
             let rhsCount = rhs.tagNames.filter(selectedTags.contains).count
             if lhsCount != rhsCount { return lhsCount > rhsCount }
@@ -740,23 +754,29 @@ final class TranscriptionViewModel: ObservableObject {
         }
     }
 
-    /// All unique tag names from active records. Order is by the maximum relevance
-    /// score across all records that carry the tag (descending), so the most
-    /// "important" tags surface first; ties break alphabetically. Legacy records
-    /// without scores still surface, ordered alphabetically among themselves.
+    /// All unique tag names from the records in scope. Order is by the maximum
+    /// relevance score across all records carrying the tag (descending), so the
+    /// most "important" tags surface first; ties break alphabetically.
     var availableTags: [String] {
-        struct ScoredTag { let name: String; let maxScore: Double; let hasScore: Bool }
+        struct ScoredTag { let name: String; let maxScore: Double }
         var byName: [String: ScoredTag] = [:]
-        for record in historyRecords where !record.archived {
+        for record in recordsInScope {
             for tag in record.tags ?? [] {
                 let prev = byName[tag.name]
                 let prevScore = prev?.maxScore ?? -.infinity
-                let newScore = max(prevScore, tag.score)
                 byName[tag.name] = ScoredTag(
                     name: tag.name,
-                    maxScore: newScore,
-                    hasScore: (prev?.hasScore ?? false) || true
+                    maxScore: max(prevScore, tag.score)
                 )
+            }
+        }
+        // Archive mode can be entered with tags selected against the live list
+        // that no archived record carries. Rendering those at count 0 is what
+        // makes an empty archive list explicable — without them the filter is
+        // silently applied with nothing on screen to switch off.
+        if isArchiveMode {
+            for name in selectedTags where byName[name] == nil {
+                byName[name] = ScoredTag(name: name, maxScore: -.infinity)
             }
         }
         return byName.values
@@ -767,10 +787,10 @@ final class TranscriptionViewModel: ObservableObject {
             .map(\.name)
     }
 
-    /// Per-tag count of active records that also match the current search query.
+    /// Per-tag count of in-scope records that also match the current search query.
     var tagCounts: [String: Int] {
         var counts: [String: Int] = [:]
-        for record in historyRecords where !record.archived {
+        for record in recordsInScope {
             guard Self.matchesSearch(record, query: searchQuery) else { continue }
             for name in record.tagNames {
                 counts[name, default: 0] += 1
@@ -779,21 +799,22 @@ final class TranscriptionViewModel: ObservableObject {
         return counts
     }
 
-    /// IDs of archived records that match the current search query and selected tags.
-    var archivedHitIDs: [UUID] {
-        historyRecords
-            .filter { $0.archived }
-            .filter { Self.matchesSearch($0, query: searchQuery) }
-            .filter { record in
-                selectedTags.isEmpty
-                    || record.tagNames.contains(where: selectedTags.contains)
-            }
-            .map { $0.id }
+    /// Whether the current side of the archive split holds any record at all,
+    /// ignoring filters. Distinguishes "this side is empty" from "your filters
+    /// matched nothing" — including the case of archiving your last live
+    /// record, which leaves the live list genuinely empty rather than filtered.
+    var hasRecordsInScope: Bool {
+        historyRecords.contains { $0.archived == isArchiveMode }
     }
 
-    /// Count of archived records that match the current search query and selected tags.
-    var archivedHitCount: Int {
-        archivedHitIDs.count
+    /// Every archived record, unfiltered. Drives the archive toggle's badge and
+    /// the archive-mode title. Deliberately ignores `searchQuery` and
+    /// `selectedTags`: "you have 12 archived" must not read as 0 just because
+    /// the user typed something into the search box.
+    var archivedRecordCount: Int {
+        historyRecords.reduce(into: 0) { total, record in
+            if record.archived { total += 1 }
+        }
     }
 
     func setSearchQuery(_ query: String) {
@@ -813,8 +834,8 @@ final class TranscriptionViewModel: ObservableObject {
         selectedTags = []
     }
 
-    /// Mark a record as archived and persist the change. The record disappears from
-    /// `displayedRecords`; archived-hit counters update automatically.
+    /// Mark a record as archived and persist the change. The record leaves the live
+    /// list and enters archive mode's list; `archivedRecordCount` updates.
     func archiveRecord(id: UUID) async {
         Logger.info("Archiving record: \(id.uuidString)")
         guard var record = try? await storage.get(id: id) else {

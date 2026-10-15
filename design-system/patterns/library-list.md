@@ -9,14 +9,39 @@ NavigationView
 └── VStack(spacing: 0)
     ├── searchBar                       ← HStack with magnifyingglass + TextField + clear
     ├── tagChipsRow                     ← horizontal chip row OR "no tags" caption
-    ├── archivedBanner                  ← only when archivedHitCount > 0
     └── content                         ← empty | noResults | recordsListView
+    .navigationTitle(navigationTitle)    // "文库" or "归档 · N" — the archive-mode indicator
+    .toolbar { ToolbarItem(.topBarTrailing) { archiveToggle } }
     .sheet(item: $selectedRecord) { … }   // TranscriptionDetailView
     .alert(isPresented: $showDeleteConfirmation) { … }
     .overlay(alignment: .top) { ToastView … }
     .task { await viewModel.loadHistory() }
     .refreshable { await viewModel.loadHistory() }
 ```
+
+## §1b. Archive mode
+
+Archive is a **view mode, not a banner**. `isArchiveMode` flips the whole
+list onto the archived half of the library; search and tag chips keep
+filtering exactly as they do on the live list.
+
+| Element | Live | Archive |
+|---|---|---|
+| `navigationTitle` | `Tab.Library` | `Library.ArchiveModeTitle` ("归档 · %d") |
+| Toggle icon | `archivebox` | `archivebox.fill` |
+| Toggle disabled | when `archivedRecordCount == 0` | same |
+| Badge | — | `archivedRecordCount`, unfiltered |
+
+Rules the split introduced:
+
+- Filters are **not** cleared on toggle. A tag selected on the live side
+  that no archived record carries still renders as a chip at count 0
+  (`availableTags` synthesizes it) — otherwise the filter would be applied
+  with nothing on screen to switch off.
+- That synthesized chip sorts **last** (score `-infinity`).
+- `archivedRecordCount` ignores `searchQuery` / `selectedTags`: "you have
+  12 archived" must not read as 0 because the user typed something.
+- Un-archive is via the detail sheet's existing action, not a swipe.
 
 ## §2. Row visual conventions
 
@@ -39,9 +64,14 @@ VStack(alignment: .leading, spacing: 4) {
 
 ## §3. State branches
 
-- `viewModel.historyRecords.isEmpty` → `emptyLibraryState`
+- `!viewModel.hasRecordsInScope` → `scopeEmptyState` (`emptyLibraryState` live, `Library.ArchiveEmpty` in archive mode)
 - `viewModel.displayedRecords.isEmpty` (after filter) → `noResultsState`
 - else → `recordsListView` (grouped by date: Today / Yesterday / Date)
+
+`hasRecordsInScope` deliberately asks "is this side empty?" rather than
+"is the whole library empty?", so archiving your last live record shows the
+empty-library state instead of a no-results state with a pointless
+"clear filters" button.
 
 ## §4. Context menu / swipe
 
@@ -51,9 +81,10 @@ VStack(alignment: .leading, spacing: 4) {
 ## §5. States covered
 
 - ✅ empty library
+- ✅ archive empty (`Library.ArchiveEmpty`)
 - ✅ no-results (filtered)
 - ✅ populated (grouped)
-- ✅ archived-banner visible
+- ✅ archive mode (title + filled icon + 0-count orphan chip)
 - ✅ delete-confirmation alert
 - ✅ share-sheet modal
 - ✅ toast

@@ -1,7 +1,11 @@
 # Archived Matches Rows Are Not Tappable — Backlog Stub
 
-**Status:** 📋 FILED — no decision made. User deferred discussion of archiving
-to a later session (2026-10-13). Nothing here is a plan.
+**Status:** ✅ RESOLVED — superseded by the archive-mode rework (2026-10-14).
+The view it describes (`LibraryArchivedMatchesView`) and the banner that
+linked to it no longer exist. Archive is now a navigation-bar toggle that
+swaps the whole list onto the archived half, so the rows are the ordinary
+`recordsListView` rows with the ordinary `.sheet(item:)` detail path.
+**This file is kept for history only — do not implement against it.**
 **Created:** 2026-10-13
 **Branch at filing:** `main` (`cf37c8b`)
 

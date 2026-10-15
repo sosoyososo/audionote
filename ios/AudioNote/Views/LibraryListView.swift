@@ -14,11 +14,15 @@ struct LibraryListView: View {
             VStack(spacing: 0) {
                 searchBar
                 tagChipsRow
-                archivedBanner
 
                 content
             }
-            .navigationTitle("Tab.Library".localized)
+            .navigationTitle(navigationTitle)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    archiveToggle
+                }
+            }
             .refreshable { await viewModel.loadHistory() }
             .sheet(item: $selectedRecord) { record in
                 NavigationView {
@@ -138,39 +142,51 @@ struct LibraryListView: View {
         .buttonStyle(.plain)
     }
 
-    @ViewBuilder
-    private var archivedBanner: some View {
-        if viewModel.archivedHitCount > 0 {
-            NavigationLink {
-                LibraryArchivedMatchesView(viewModel: viewModel)
-            } label: {
-                HStack(spacing: 8) {
-                    Image(systemName: "archivebox")
-                    Text(String(format: "Library.ArchivedBanner".localized, viewModel.archivedHitCount))
-                        .font(.subheadline)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                }
-                .foregroundColor(.orange)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
-                .background(Color.orange.opacity(0.1))
-            }
-            .buttonStyle(.plain)
+    /// Archive lives in the navigation bar rather than as a banner above the
+    /// list: it takes no vertical space, so a rarely-visited archive cannot
+    /// push the records the user did *not* archive off the screen.
+    private var archiveToggle: some View {
+        Button {
+            viewModel.isArchiveMode.toggle()
+        } label: {
+            Image(systemName: viewModel.isArchiveMode ? "archivebox.fill" : "archivebox")
         }
+        .disabled(viewModel.archivedRecordCount == 0)
+        .badge(viewModel.archivedRecordCount)
+    }
+
+    /// The title doubles as the archive-mode indicator — it is the one element
+    /// guaranteed to be on screen whenever the list looks different from usual.
+    private var navigationTitle: String {
+        if viewModel.isArchiveMode {
+            return String(format: "Library.ArchiveModeTitle".localized,
+                          viewModel.archivedRecordCount)
+        }
+        return "Tab.Library".localized
     }
 
     // MARK: - Content (list / empty / no-results)
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.historyRecords.isEmpty {
-            emptyLibraryState
+        if !viewModel.hasRecordsInScope {
+            scopeEmptyState
         } else if viewModel.displayedRecords.isEmpty {
             noResultsState
         } else {
             recordsListView
+        }
+    }
+
+    @ViewBuilder
+    private var scopeEmptyState: some View {
+        if viewModel.isArchiveMode {
+            EmptyState(
+                systemImage: "archivebox",
+                title: "Library.ArchiveEmpty".localized
+            )
+        } else {
+            emptyLibraryState
         }
     }
 
@@ -419,40 +435,6 @@ struct RecordRowView: View {
         let remaining = String(record.content[start...])
         let slice = String(remaining.prefix(50))
         return slice.isEmpty ? record.preview : slice + (remaining.count > 50 ? "…" : "")
-    }
-}
-
-// MARK: - Archived matches sub-page
-
-struct LibraryArchivedMatchesView: View {
-    @ObservedObject var viewModel: TranscriptionViewModel
-
-    private var archivedMatches: [TranscriptionRecord] {
-        let ids = Set(viewModel.archivedHitIDs)
-        return viewModel.historyRecords
-            .filter { ids.contains($0.id) }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-
-    var body: some View {
-        Group {
-            if archivedMatches.isEmpty {
-                EmptyState(
-                    systemImage: "archivebox",
-                    title: "Library.NoResults".localized
-                )
-            } else {
-                List {
-                    ForEach(archivedMatches) { record in
-                        RecordRowView(record: record)
-                            .listRowBackground(Color.orange.opacity(0.05))
-                    }
-                }
-                .listStyle(.insetGrouped)
-            }
-        }
-        .navigationTitle("Library.ArchivedSublistTitle".localized)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

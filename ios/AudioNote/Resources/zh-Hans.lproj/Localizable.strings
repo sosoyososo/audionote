@@ -95,8 +95,8 @@
 "Library.Search.Placeholder" = "搜索标题、摘要、标签、原文";
 "Library.NoResults" = "无匹配记录";
 "Library.NoTags" = "暂无标签 — 分析记录后可启用筛选";
-"Library.ArchivedBanner" = "已归档 %d 条匹配 · 点击查看";
-"Library.ArchivedSublistTitle" = "归档命中";
+"Library.ArchiveModeTitle" = "归档 · %d";
+"Library.ArchiveEmpty" = "归档里还没有记录";
 "Library.ClearFilters" = "清除筛选";
 
 /* Settings — LLM Provider (multi-profile, 2026-09-24) */
