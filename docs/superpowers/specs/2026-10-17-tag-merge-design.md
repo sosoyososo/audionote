@@ -42,7 +42,7 @@ recorded here so a later reader does not "improve" them away:
 | Undo | **No.** A confirmation page instead | A snapshot file and a restore path is a second storage surface to keep correct forever, for an operation the user performs a handful of times. The confirmation page is the only safety net, and it must therefore be informative (§4). |
 | Semantics | **N into one existing tag** | Long-press the chip that survives; tick what disappears into it. Chip count strictly decreases. "Merge N tags into a brand-new name" is a different operation and is out of scope. |
 | Scope | **Whole library, including archived** | "These two are the same thing" is a fact, not a view. If archived records kept `工作项`, the chip would reappear the next time the user switched to archive mode. |
-| Candidates | **Every other tag, count-descending, searchable** | Restricting to substring matches (`工作` → `工作项`) would miss the most common real case: `客户A` into `客户`. |
+| Candidates | **Every other tag, searchable** | Restricting to substring matches (`工作` → `工作项`) would miss the most common real case: `客户A` into `客户`. **Amended 2026-10-17** — the *ordering* was specified here as count-descending and is now pinyin/alphabetical; see §4.1. The candidate **set** is unchanged. |
 
 ## §1. `TagMerger` — pure, no I/O
 
@@ -151,7 +151,7 @@ long-press 「工作」chip
   └─ 「合并标签…」
        └─ sheet: MergeTagsView(target: "工作")
             ├─ search field
-            ├─ list: every other tag + count, count-descending, multi-select
+            ├─ grid: every other tag + count, pinyin order, multi-select
             ├─ footer: 「将 N 个标签并入『工作』」
             └─ tap footer → confirmation page
                  「将影响 43 条记录。
@@ -173,6 +173,42 @@ Candidate list = `availableTags` minus the target's identity, filtered by the
 search string, ordered by `tagCount(for:)` descending. Counts come from the
 existing identity-aware `tagCount(for:)` rather than a fresh tally, so the
 number in the picker cannot disagree with the number on the chip.
+
+### §4.1. Picker layout and order — amended 2026-10-17
+
+The one-per-row, count-descending list above shipped, and using it on a real
+library (dozens of tags) showed both halves of it failing: it is a blind
+scroll, and the ordering is not one anybody can use. Both are replaced
+together, because the order only makes sense relative to the layout.
+
+**Order — `localizedStandardCompare`, not the chip row's score-descending
+`availableTags`.** Consistency with the chip row is the obvious candidate and
+it is wrong: the two orderings answer different questions. `availableTags`
+ranks by max score, which is a *discovery* ranking for a horizontal strip —
+its job is to float the most important tags into view without being read.
+The picker is a *lookup* surface, whose job is "find the misspelling, tick
+it", and a grid is findable only when the position is predictable. Count
+descending survives a single column (scan down, stop when it gets small) and
+stops surviving the moment cells sit side by side, where you must read every
+cell to know whether to stop. `localizedStandardCompare` sorts Chinese by
+pinyin, ignores English case, and puts `Apple2` before `Apple10`. The
+count-order tie-break is gone with it.
+
+**Layout — `LazyVGrid` over `GridItem(.adaptive(minimum: 140))`.** Adaptive
+rather than a hardcoded column count so a 568pt SE still fits two cells
+without truncating a 4-character tag, while a Max or a landscape iPhone gets
+three instead of stretching two across the full width.
+
+**Selection — accent fill, not a trailing ✓.** The checkmark was legible in
+one column only because it sat in the same place at the right edge of every
+row. In a grid, with cell widths varying, it is too weak to scan, and *which
+tags are already ticked* is precisely what has to be legible at a glance:
+multi-select is the entire point of the screen. Tiles otherwise echo the
+chip — same radius, padding, accent-when-on — so this reads as ticking the
+chips rather than as a different UI.
+
+**Also:** an empty search result now says so, rather than presenting a blank
+grid with no explanation.
 
 The confirmation page lists **per-source record counts and names**, not just
 a total. This is the only safety net (§ Decision table), and a merge is two

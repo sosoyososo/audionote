@@ -8,7 +8,8 @@
 ## Success criteria
 
 1. Long-pressing a tag chip offers 「合并标签…」; the sheet lists every other
-   tag with its count, count-descending, searchable, multi-select.
+   tag with its count as a multi-select **grid in pinyin order**, searchable.
+   (Layout and order were revised after the first device smoke — spec §4.1.)
 2. Confirming folds the selected tags into the long-pressed one across the
    **whole library including archived**, in one atomic write.
 3. A record carrying two of the merged tags is rewritten **once**, and the
@@ -244,8 +245,8 @@ without it, failing with `Cannot find 'TagMerger' in scope`. Check
 
 Manual smoke on the device, in this order:
 
-1. Long-press a chip → the sheet opens, showing other tags with counts,
-   count-descending.
+1. Long-press a chip → the sheet opens as a grid of tags with counts, in
+   pinyin order, target excluded, ticks showing as an accent fill.
 2. **Filter by a tag, then merge that very tag away.** The records that were
    on screen must still be on screen, and the list must not be empty. It may
    legitimately show **more** — the target's own records now belong to the

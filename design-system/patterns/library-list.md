@@ -82,10 +82,28 @@ sheet plus an `alert`:
 |---|---|
 | Confirm is a screen, not an alert/dialog | There is no undo, so the confirmation is the only thing standing between a mistyped merge and a whole-library rewrite. It has to name the target *and* every tag that disappears *with its count*; `confirmationDialog` has no message slot and an `alert`'s is too small for the list |
 | Affected count is **distinct records**, not the sum of per-tag counts | One record carrying two ticked tags is rewritten once. The page exists to make the blast radius clear — adding its count twice overstates it |
-| Candidates = every other tag, count-desc, searchable; ties alphabetical | Never leaves the user hunting a spelling in a flat list. The tie-break keeps equal-count tags from reshuffling between openings |
-| Count comes from `tagCount(for:)` | The number in the sheet cannot disagree with the number on the chip that was just pressed |
+| Picker is a `LazyVGrid`, one column per tile, **pinyin/alphabetical** order | One-per-row was a blind scroll through dozens of tags. Order is `localizedStandardCompare`, **not** the chip row's score-descending `availableTags` — see below |
+| `GridItem(.adaptive(minimum: 140))`, not a hardcoded column count | A 568pt SE fits two cells without truncating a 4-character tag; a Max or a landscape iPhone gets three instead of stretching two across the full width |
+| Selection is an **accent fill**, not a trailing ✓ | The checkmark worked in a single column only because it sat in the same place at the right edge of every row. In a grid with varying text widths it is too weak to scan, and *which tags are already ticked* is what has to be legible at a glance — multi-select is the point of the screen |
+| Tiles echo the chip (same radius, padding, accent-when-on) | Ticking tags here should feel like ticking the chips in the chip row, not like a different UI |
+| Count comes from `tagCount(for:)` | The number on a tile cannot disagree with the number on the chip that was just pressed |
+| Empty search result says so | Otherwise a search that matches nothing shows a blank grid with no explanation |
 | Merge button sits in a `safeAreaInset` bottom footer on both stages | The path from "I chose tags" to "I am about to rewrite my library" stays one continuous gesture instead of jumping between toolbars. Also dodges iOS 15: `if` inside `ToolbarContentBuilder` needs `buildIf`, which is iOS 16+ |
 | Merge button is `.tint(.red)` | Destructive-ish, permanent, whole-library. Not the same weight as an ordinary confirm |
+
+**Why the picker is *not* sorted like the chip row.** Consistency with the
+chips looks like the obvious call, and it was the question asked. It is
+wrong because the two orderings answer different questions. `availableTags`
+sorts by max score desc: that is a *discovery* ranking for a horizontal
+strip, whose job is to float the most important tags into view without the
+user reading anything. The picker is a *lookup* surface — the job is "find
+the misspelling, tick it" — and what makes a grid findable is a **position
+you can predict**. A score ranking has no predictable position; you would
+read every cell to decide whether to stop. Count-descending survives a single
+column (scan down, stop when it gets small) and does not survive the grid;
+pinyin order is what pairs with the grid. The tie-break was dropped along
+with the count ordering, since with an alphabetical primary key there is
+nothing to tie-break.
 
 ## §2. Row visual conventions
 
