@@ -103,6 +103,7 @@
 "Library.MergeTags.Action" = "合并标签…";
 "Library.MergeTags.Title" = "并入「%@」";
 "Library.MergeTags.Search" = "搜索标签";
+"Library.MergeTags.Empty" = "没有匹配的标签";
 "Library.MergeTags.Footer" = "将 %d 个标签并入「%@」";
 "Library.MergeTags.Confirm.Title" = "将影响 %d 条记录。";
 "Library.MergeTags.Confirm.Merging" = "并入「%@」";

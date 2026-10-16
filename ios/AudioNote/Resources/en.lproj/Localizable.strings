@@ -103,6 +103,7 @@
 "Library.MergeTags.Action" = "Merge Tags…";
 "Library.MergeTags.Title" = "Merge into \"%@\"";
 "Library.MergeTags.Search" = "Search tags";
+"Library.MergeTags.Empty" = "No matching tags";
 "Library.MergeTags.Footer" = "Merge %d tag(s) into \"%@\"";
 "Library.MergeTags.Confirm.Title" = "Will affect %d record(s).";
 "Library.MergeTags.Confirm.Merging" = "Merging into \"%@\"";

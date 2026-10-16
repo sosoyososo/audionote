@@ -22,24 +22,31 @@ struct MergeTagsView: View {
     @State private var isMerging = false
 
     /// Every tag except the target's own identity, filtered by the search
-    /// box, most-used first.
+    /// box, in pinyin/alphabetical order.
     ///
-    /// Counts come from `tagCount(for:)` rather than a fresh tally so the
-    /// number here cannot disagree with the number on the chip the user just
-    /// pressed. Ordering falls back to the name for a stable result —
-    /// otherwise tags with equal counts would reshuffle between openings.
+    /// **Not** the chip row's order. `availableTags` sorts by max score
+    /// desc — a *discovery* ranking for a horizontal strip, where the point
+    /// is that the most important tags float into view. This screen is a
+    /// *lookup* surface: the job is "find the misspelling, tick it". What
+    /// makes a grid findable is a position you can predict, and a score
+    /// ranking has none — you would read every cell to decide whether to
+    /// stop. In a single column count-desc could still work (scan down,
+    /// stop when it gets small); once the cells sit side by side it cannot.
+    ///
+    /// `localizedStandardCompare` rather than `localizedCaseInsensitiveCompare`
+    /// so Chinese collates by pinyin, English ignores case, and `Apple2`
+    /// precedes `Apple10`.
+    ///
+    /// Counts still come from `tagCount(for:)` rather than a fresh tally, so
+    /// the number on a tile cannot disagree with the number on the chip the
+    /// user just pressed.
     private var candidates: [String] {
         let targetKey = TagIdentity.key(target)
         let needle = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return viewModel.availableTags
             .filter { TagIdentity.key($0) != targetKey }
             .filter { needle.isEmpty || TagIdentity.key($0).contains(needle) }
-            .sorted { lhs, rhs in
-                let l = viewModel.tagCount(for: lhs)
-                let r = viewModel.tagCount(for: rhs)
-                if l != r { return l > r }
-                return lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
-            }
+            .sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     /// Distinct records the merge would rewrite. **Not** the sum of the
@@ -83,25 +90,28 @@ struct MergeTagsView: View {
     // MARK: - Stage 1: pick
 
     private var picker: some View {
-        List {
-            ForEach(candidates, id: \.self) { tag in
-                Button {
-                    toggle(tag)
-                } label: {
-                    HStack {
-                        Text(tag)
-                        Spacer()
-                        Text("\(viewModel.tagCount(for: tag))")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        if isTicked(tag) {
-                            Image(systemName: "checkmark")
-                                .font(.caption)
-                                .foregroundColor(.accentColor)
-                        }
-                    }
+        ScrollView {
+            // Adaptive, not a hardcoded 2 columns: a 568pt-wide SE fits two
+            // cells without truncating a 4-character tag, while a Max or a
+            // landscape iPhone fits three rather than stretching two across
+            // the whole width.
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 140), spacing: 8)],
+                spacing: 8
+            ) {
+                ForEach(candidates, id: \.self) { tag in
+                    candidateTile(tag)
                 }
-                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+
+            if candidates.isEmpty {
+                Text("Library.MergeTags.Empty".localized)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 40)
             }
         }
         .searchable(text: $searchText, prompt: "Library.MergeTags.Search".localized)
@@ -120,6 +130,42 @@ struct MergeTagsView: View {
             .padding(.bottom, 8)
             .background(.regularMaterial)
         }
+    }
+
+    /// Reads as the chip it replaces, packed tighter — same radius, same
+    /// padding, same accent-when-on — so ticking tags here feels like
+    /// ticking the chips in the chip row rather than like a different UI.
+    ///
+    /// The accent fill is load-bearing, not decoration. The original single
+    /// column marked a selection with a trailing ✓, which worked only
+    /// because every row put it in the same place at the right edge; in a
+    /// grid the cells are side by side with varying text widths, and a
+    /// corner checkmark is too weak to scan. Multi-select is the whole
+    /// point of this screen, so what has to be legible at a glance is
+    /// *which* tags are already ticked.
+    private func candidateTile(_ tag: String) -> some View {
+        let isTicked = isTicked(tag)
+
+        return Button {
+            toggle(tag)
+        } label: {
+            HStack(spacing: 6) {
+                Text(tag)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text("\(viewModel.tagCount(for: tag))")
+                    .font(.caption)
+                    .foregroundColor(isTicked ? Color.white.opacity(0.8) : Color.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(isTicked ? Color.accentColor : Color(.systemGray6))
+            .foregroundColor(isTicked ? .white : .primary)
+            .cornerRadius(16)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Stage 2: confirm
