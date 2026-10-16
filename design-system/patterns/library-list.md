@@ -82,13 +82,14 @@ sheet plus an `alert`:
 |---|---|
 | Confirm is a screen, not an alert/dialog | There is no undo, so the confirmation is the only thing standing between a mistyped merge and a whole-library rewrite. It has to name the target *and* every tag that disappears *with its count*; `confirmationDialog` has no message slot and an `alert`'s is too small for the list |
 | Affected count is **distinct records**, not the sum of per-tag counts | One record carrying two ticked tags is rewritten once. The page exists to make the blast radius clear — adding its count twice overstates it |
-| Picker is a `LazyVGrid`, one column per tile, **pinyin/alphabetical** order | One-per-row was a blind scroll through dozens of tags. Order is `localizedStandardCompare`, **not** the chip row's score-descending `availableTags` — see below |
-| `GridItem(.adaptive(minimum: 140))`, not a hardcoded column count | A 568pt SE fits two cells without truncating a 4-character tag; a Max or a landscape iPhone gets three instead of stretching two across the full width |
+| Picker is a **`FlowRow`** of content-sized tiles, **pinyin/alphabetical** order | One-per-row was a blind scroll through dozens of tags. Order is `localizedStandardCompare`, **not** the chip row's score-descending `availableTags` — see below |
+| `FlowRow` (custom `Layout`), **not** `LazyVGrid` / `GridItem(.adaptive)` | `GridItem(.adaptive)` computes a *column count* from a fixed minimum width and then divides the width equally, so every cell is the same size no matter what it holds. Tag names vary by an order of magnitude, so equal columns leave most of every row empty. Costs: no laziness (a `Layout` receives every subview up front — fine for dozens of two-`Text` tiles), and tiles must size to content, never `maxWidth: .infinity`, or they report infinity and each takes its own line |
+| Tiles are a fixed 32pt height, `minWidth: 44` | Level lines without per-line vertical centering, and `cornerRadius(16)` on 32pt is the same pill the chip row uses. The 44pt floor keeps short tags like `AI` tappable — a pure content-width tile would be well under the HIG minimum |
 | Selection is an **accent fill**, not a trailing ✓ | The checkmark worked in a single column only because it sat in the same place at the right edge of every row. In a grid with varying text widths it is too weak to scan, and *which tags are already ticked* is what has to be legible at a glance — multi-select is the point of the screen |
 | Tiles echo the chip (same radius, padding, accent-when-on) | Ticking tags here should feel like ticking the chips in the chip row, not like a different UI |
 | Count comes from `tagCount(for:)` | The number on a tile cannot disagree with the number on the chip that was just pressed |
 | Empty search result says so | Otherwise a search that matches nothing shows a blank grid with no explanation |
-| Merge button sits in a `safeAreaInset` bottom footer on both stages | The path from "I chose tags" to "I am about to rewrite my library" stays one continuous gesture instead of jumping between toolbars. Also dodges iOS 15: `if` inside `ToolbarContentBuilder` needs `buildIf`, which is iOS 16+ |
+| Merge button sits in a `safeAreaInset` bottom footer on both stages | The path from "I chose tags" to "I am about to rewrite my library" stays one continuous gesture instead of jumping between toolbars |
 | Merge button is `.tint(.red)` | Destructive-ish, permanent, whole-library. Not the same weight as an ordinary confirm |
 
 **Why the picker is *not* sorted like the chip row.** Consistency with the
@@ -97,13 +98,21 @@ wrong because the two orderings answer different questions. `availableTags`
 sorts by max score desc: that is a *discovery* ranking for a horizontal
 strip, whose job is to float the most important tags into view without the
 user reading anything. The picker is a *lookup* surface — the job is "find
-the misspelling, tick it" — and what makes a grid findable is a **position
+the misspelling, tick it" — and what makes a flow findable is a **position
 you can predict**. A score ranking has no predictable position; you would
 read every cell to decide whether to stop. Count-descending survives a single
 column (scan down, stop when it gets small) and does not survive the grid;
 pinyin order is what pairs with the grid. The tie-break was dropped along
 with the count ordering, since with an alphabetical primary key there is
 nothing to tie-break.
+
+**A ragged flow is accepted here, knowingly.** In a grid of equal-width
+cells the selected fill is a tidy matrix, which scans well; in a flow it is
+ragged, which scans worse. Content sizing won anyway because the waste is
+worse: equal columns leave a `学习` cell as wide as a `产品季度复盘纪要`, so
+most of every row is empty. The scan is carried by the fill plus the
+fixed-height pill shape instead — tiles stay visually uniform even though
+their widths are not.
 
 ## §2. Row visual conventions
 

@@ -2,7 +2,7 @@ name: AudioNote
 options:
   bundleIdPrefix: info.karsa.app
   deploymentTarget:
-    iOS: "15.0"
+    iOS: "16.0"
   xcodeVersion: "15.0"
   generateEmptyDirectories: true
 
@@ -20,7 +20,7 @@ targets:
   AudioNote:
     type: application
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: AudioNote
         excludes:
@@ -64,7 +64,7 @@ targets:
   AudioNoteTests:
     type: bundle.unit-test
     platform: iOS
-    deploymentTarget: "15.0"
+    deploymentTarget: "16.0"
     sources:
       - path: AudioNoteTests
     settings:

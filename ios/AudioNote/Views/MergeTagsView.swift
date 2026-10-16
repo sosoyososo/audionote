@@ -91,14 +91,12 @@ struct MergeTagsView: View {
 
     private var picker: some View {
         ScrollView {
-            // Adaptive, not a hardcoded 2 columns: a 568pt-wide SE fits two
-            // cells without truncating a 4-character tag, while a Max or a
-            // landscape iPhone fits three rather than stretching two across
-            // the whole width.
-            LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 140), spacing: 8)],
-                spacing: 8
-            ) {
+            // Content-sized tiles that wrap, not a fixed-column grid: tag
+            // names vary by an order of magnitude, and `GridItem` divides the
+            // width equally, so equal columns would leave most of every row
+            // empty. See `FlowRow` for what this costs (no laziness) and
+            // why it is worth paying here.
+            FlowRow(spacing: 8, lineSpacing: 8) {
                 ForEach(candidates, id: \.self) { tag in
                     candidateTile(tag)
                 }
@@ -132,17 +130,24 @@ struct MergeTagsView: View {
         }
     }
 
-    /// Reads as the chip it replaces, packed tighter — same radius, same
-    /// padding, same accent-when-on — so ticking tags here feels like
-    /// ticking the chips in the chip row rather than like a different UI.
+    /// Reads as the chip it replaces — same radius, same accent-when-on —
+    /// but sized to its own text instead of a column's share of the width.
+    ///
+    /// **No `maxWidth: .infinity` here.** `FlowRow` measures subviews with
+    /// `.unsspecified`; a greedy tile reports infinity, gets its own line,
+    /// and silently turns the flow back into one-per-row. `minWidth` is the
+    /// floor, not a share.
     ///
     /// The accent fill is load-bearing, not decoration. The original single
     /// column marked a selection with a trailing ✓, which worked only
-    /// because every row put it in the same place at the right edge; in a
-    /// grid the cells are side by side with varying text widths, and a
-    /// corner checkmark is too weak to scan. Multi-select is the whole
-    /// point of this screen, so what has to be legible at a glance is
-    /// *which* tags are already ticked.
+    /// because every row put it in the same place at the right edge; among
+    /// ragged neighbours a corner checkmark is too weak to scan. Multi-select
+    /// is the whole point of this screen, so what has to be legible at a
+    /// glance is *which* tags are already ticked.
+    ///
+    /// Fixed height, so lines are level without per-line vertical centering
+    /// — and `cornerRadius(16)` on a 32pt tile is the same pill the chip row
+    /// uses, which is the point.
     private func candidateTile(_ tag: String) -> some View {
         let isTicked = isTicked(tag)
 
@@ -153,14 +158,13 @@ struct MergeTagsView: View {
                 Text(tag)
                     .font(.subheadline)
                     .lineLimit(1)
-                Spacer(minLength: 0)
                 Text("\(viewModel.tagCount(for: tag))")
                     .font(.caption)
                     .foregroundColor(isTicked ? Color.white.opacity(0.8) : Color.secondary)
             }
             .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity)
+            .frame(minWidth: 44)
+            .frame(height: 32)
             .background(isTicked ? Color.accentColor : Color(.systemGray6))
             .foregroundColor(isTicked ? .white : .primary)
             .cornerRadius(16)
