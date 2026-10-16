@@ -67,9 +67,29 @@ drift (`工作` / `工作项` / `工作会议`), which chip merging cannot fix b
 those are genuinely different strings; that is what the LLM prompt's
 vocabulary hint (`existingTagVocabulary`) addresses at the source.
 
+### §1c.1. Long-press: merge tags into this one
+
+A chip carries a `contextMenu` with one entry — **Merge Tags…** — which opens
+`MergeTagsView(target:viewModel:)` for that chip's name. Long-press rather
+than a visible affordance on purpose: folding tags together is a repair
+action for a library that has drifted, not something to offer on every chip
+on every screen.
+
+`MergeTagsView` is **two stages in one screen** — pick, then confirm — not a
+sheet plus an `alert`:
+
+| Rule | Reason |
+|---|---|
+| Confirm is a screen, not an alert/dialog | There is no undo, so the confirmation is the only thing standing between a mistyped merge and a whole-library rewrite. It has to name the target *and* every tag that disappears *with its count*; `confirmationDialog` has no message slot and an `alert`'s is too small for the list |
+| Affected count is **distinct records**, not the sum of per-tag counts | One record carrying two ticked tags is rewritten once. The page exists to make the blast radius clear — adding its count twice overstates it |
+| Candidates = every other tag, count-desc, searchable; ties alphabetical | Never leaves the user hunting a spelling in a flat list. The tie-break keeps equal-count tags from reshuffling between openings |
+| Count comes from `tagCount(for:)` | The number in the sheet cannot disagree with the number on the chip that was just pressed |
+| Merge button sits in a `safeAreaInset` bottom footer on both stages | The path from "I chose tags" to "I am about to rewrite my library" stays one continuous gesture instead of jumping between toolbars. Also dodges iOS 15: `if` inside `ToolbarContentBuilder` needs `buildIf`, which is iOS 16+ |
+| Merge button is `.tint(.red)` | Destructive-ish, permanent, whole-library. Not the same weight as an ordinary confirm |
+
 ## §2. Row visual conventions
 
-`RecordRowView` (`LibraryListView.swift:326-413`):
+`RecordRowView` (`LibraryListView.swift:338-451`):
 
 ```swift
 VStack(alignment: .leading, spacing: 4) {
