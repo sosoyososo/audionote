@@ -99,6 +99,16 @@
 "Library.ArchiveEmpty" = "归档里还没有记录";
 "Library.ClearFilters" = "清除筛选";
 
+/* 思录 — 标签合并 (2026-10-17) */
+"Library.MergeTags.Action" = "合并标签…";
+"Library.MergeTags.Title" = "并入「%@」";
+"Library.MergeTags.Search" = "搜索标签";
+"Library.MergeTags.Footer" = "将 %d 个标签并入「%@」";
+"Library.MergeTags.Confirm.Title" = "将影响 %d 条记录。";
+"Library.MergeTags.Confirm.Merging" = "并入「%@」";
+"Library.MergeTags.Confirm.Body" = "记录正文、标题、摘要不受影响。";
+"Library.MergeTags.Confirm.Button" = "合并";
+
 /* Settings — LLM Provider (multi-profile, 2026-09-24) */
 "Settings.LLM.ProviderProfiles.Title" = "LLM Provider";
 "Settings.LLM.ProviderProfiles.Add" = "添加 Provider";

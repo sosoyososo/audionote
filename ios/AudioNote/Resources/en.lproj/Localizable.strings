@@ -99,6 +99,16 @@
 "Library.ArchiveEmpty" = "No archived records";
 "Library.ClearFilters" = "Clear filters";
 
+/* Library — tag merge (2026-10-17) */
+"Library.MergeTags.Action" = "Merge Tags…";
+"Library.MergeTags.Title" = "Merge into \"%@\"";
+"Library.MergeTags.Search" = "Search tags";
+"Library.MergeTags.Footer" = "Merge %d tag(s) into \"%@\"";
+"Library.MergeTags.Confirm.Title" = "Will affect %d record(s).";
+"Library.MergeTags.Confirm.Merging" = "Merging into \"%@\"";
+"Library.MergeTags.Confirm.Body" = "Content, title and summary are not affected.";
+"Library.MergeTags.Confirm.Button" = "Merge";
+
 /* Settings — LLM Provider (multi-profile, 2026-09-24) */
 "Settings.LLM.ProviderProfiles.Title" = "LLM Provider";
 "Settings.LLM.ProviderProfiles.Add" = "Add Provider";

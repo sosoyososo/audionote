@@ -950,6 +950,46 @@ final class TranscriptionViewModel: ObservableObject {
         }
     }
 
+    /// Fold `sources` into `target` across the whole library, archived
+    /// records included — "these are the same thing" is a fact, not a view.
+    ///
+    /// The `selectedTags` line below is **load-bearing and looks deletable**.
+    /// Remove it and this breaks: filter by `工作项`, merge `工作项` into
+    /// `工作`, and `selectedTags` still names a tag no record carries
+    /// anymore. `displayedRecords` then matches nothing and the library
+    /// renders **empty** — with no error, because the filter is behaving
+    /// exactly as written against a name that no longer exists.
+    ///
+    /// After the remap the visible list may legitimately show *more*
+    /// records than before: the target's own records now belong to the same
+    /// filter, since they are the same tag. The guarantee is a superset —
+    /// nothing on screen disappears and the list is never empty — not an
+    /// unchanged count.
+    func mergeTag(_ target: String, from sources: [String]) async {
+        guard !sources.isEmpty else { return }
+
+        // A merge that changes nothing should not rewrite the file. Cheap to
+        // check against what is already loaded, and it is the difference
+        // between "the user picked a tag and nothing happened" and "the app
+        // rewrote 400 records to produce an identical file".
+        let sourceKeys = TagIdentity.matchingKeys(Set(sources))
+        let touchesSomething = historyRecords.contains { record in
+            record.tags?.contains { sourceKeys.contains(TagIdentity.key($0.name)) } == true
+        }
+        guard touchesSomething else { return }
+
+        do {
+            try await storage.mergeTags(into: target, from: sources)
+            selectedTags = TagMerger.remappedSelection(
+                selectedTags, into: target, from: sources
+            )
+            await loadHistory()
+        } catch {
+            Logger.error("Tag merge failed: \(error.localizedDescription)")
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func clearFilters() {
         searchQuery = ""
         selectedTags = []

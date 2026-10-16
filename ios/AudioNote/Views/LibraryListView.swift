@@ -7,6 +7,7 @@ struct LibraryListView: View {
     @State private var recordToDelete: TranscriptionRecord?
     @State private var searchInput: String = ""
     @State private var searchDebounceTask: Task<Void, Never>?
+    @State private var mergeTarget: MergeTagTarget?
     @StateObject private var actionsViewModel = RecordActionsViewModel()
 
     var body: some View {
@@ -31,6 +32,9 @@ struct LibraryListView: View {
                         viewModel: viewModel
                     )
                 }
+            }
+            .sheet(item: $mergeTarget) { target in
+                MergeTagsView(target: target.name, viewModel: viewModel)
             }
             .alert("History.Delete.Confirm".localized, isPresented: $showDeleteConfirmation) {
                 Button("Action.Cancel".localized, role: .cancel) {
@@ -140,6 +144,14 @@ struct LibraryListView: View {
             .cornerRadius(16)
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            // Long-press rather than a visible affordance: folding tags is a
+            // repair action for a library that has drifted, not something to
+            // offer on every chip on every screen.
+            Button("Library.MergeTags.Action".localized) {
+                mergeTarget = MergeTagTarget(name: tag)
+            }
+        }
     }
 
     /// Archive lives in the navigation bar rather than as a banner above the

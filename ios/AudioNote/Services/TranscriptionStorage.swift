@@ -73,6 +73,22 @@ actor TranscriptionStorage {
         try await saveAll(records)
     }
 
+    /// Fold near-synonym tags into one across the **whole** library,
+    /// archived records included. The rewrite itself is `TagMerger`'s, and
+    /// is pure; this is the single write.
+    ///
+    /// Deliberately not a loop over `save(_:)`. `save` re-reads the entire
+    /// file and re-encodes all of it on every call, so a merge touching 400
+    /// records would be 400 full read-modify-write cycles — and a failure
+    /// halfway through would leave a half-merged library that still parses
+    /// and still looks intact. `saveAll` writes `.atomic`, so the rewrite
+    /// either lands whole or not at all.
+    func mergeTags(into target: String, from sources: [String]) async throws {
+        guard !sources.isEmpty else { return }
+        let records = try await loadAll()
+        try await saveAll(TagMerger.merge(records: records, into: target, from: sources))
+    }
+
     func get(id: UUID) async throws -> TranscriptionRecord? {
         guard await jsonURLOrNil() != nil else { return nil }
         let records = try await loadAll()
