@@ -14,8 +14,9 @@
 3. A record carrying two of the merged tags is rewritten **once**, and the
    confirmation headline count is the number of distinct records affected —
    not the sum of per-source counts.
-4. Merging while a merged-away tag is selected leaves the visible list
-   **unchanged** (spec §3).
+4. Merging while a merged-away tag is selected leaves every previously
+   visible record visible — a **superset**, not an unchanged count, since the
+   target's own records now legitimately belong to the same filter (spec §3).
 5. No tag chip for a merged-away spelling survives anywhere, by `TagIdentity`
    identity — the library has no state that contradicts itself.
 6. `xcodebuild` succeeds for iphonesimulator and iphoneos; manual smoke on
@@ -245,9 +246,11 @@ Manual smoke on the device, in this order:
 
 1. Long-press a chip → the sheet opens, showing other tags with counts,
    count-descending.
-2. **Filter by a tag, then merge that very tag away.** The visible list must
-   stay exactly as it was. This is the §3 trap — the only automated coverage
-   of its logic is Task 3, and this is the end-to-end proof.
+2. **Filter by a tag, then merge that very tag away.** The records that were
+   on screen must still be on screen, and the list must not be empty. It may
+   legitimately show **more** — the target's own records now belong to the
+   same filter. This is the §3 trap — the only automated coverage of its
+   logic is Task 3, and this is the end-to-end proof.
 3. Confirm a merge → check `transcriptions.json` that both spellings are gone
    from `tags`, including on archived records.
 4. Switch to archive mode → the merged-away chip is **not** there.

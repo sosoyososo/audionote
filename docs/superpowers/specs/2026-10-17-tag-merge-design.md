@@ -130,6 +130,14 @@ matches a source key is replaced by `target`. Because `selectedTags` is a
 `Set<String>`, remapping can collapse two entries into one — which is
 correct: those filters were always equivalent.
 
+**What the user sees afterwards is not "the same list".** Filtering `工作项`
+shows only records spelled that way; filtering `工作` afterwards legitimately
+shows those *plus* the records already spelled `工作`, because after the merge
+they are the same tag. The visible set may therefore **grow**. The guarantee
+is a superset — nothing that was on screen disappears, and the list is never
+empty — not an unchanged count. Keeping the target's own records hidden would
+be the bug, not the fix.
+
 The remap lives in the ViewModel, not storage. Storage does not know what the
 UI has selected, and must not acquire that dependency.
 
@@ -215,7 +223,7 @@ single atomic write with no branches of its own.
 
 | Case | Assertion |
 |---|---|
-| selected source is merged away | `displayedRecords.count` is **unchanged** by the merge — the §3 trap |
+| selected source is merged away | visible-after is a **superset** of visible-before, and non-empty — the §3 trap |
 | nothing selected | filter state untouched |
 | selected target | still selected, filter unchanged |
 | no sources / no matches | storage not called |
