@@ -29,9 +29,35 @@ enum LLMStatus: String, Codable {
 /// A tag with a relevance score produced by the LLM. `score` is in `[0.0, 1.0]`,
 /// higher means more relevant to the underlying transcription. The LLM is
 /// instructed to return tags sorted by score descending.
+///
+/// `name` is normalized on decode. This type is the **only** way a tag enters
+/// the app — both LLM responses (`LLMOptimizeAndProcessResult.tags`) and
+/// on-disk records decode through it — so trimming here fixes every path at
+/// once instead of needing a fix at each reader. It matters because a leading
+/// space is invisible in every rendering (`# Work` looks fine), yet it makes a
+/// tag a different identity from `Work`: two chips, each matching only its own
+/// spelling. `encode(to:)` stays synthesized, so records written by this build
+/// store the trimmed form and the dirt stops reproducing.
 struct TaggedItem: Codable, Hashable, Equatable {
     let name: String
     let score: Double
+
+    init(name: String, score: Double) {
+        self.name = TagIdentity.normalized(name)
+        self.score = score
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            name: try c.decode(String.self, forKey: .name),
+            score: try c.decode(Double.self, forKey: .score)
+        )
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case name, score
+    }
 }
 
 struct TranscriptionRecord: Codable, Identifiable, Equatable {

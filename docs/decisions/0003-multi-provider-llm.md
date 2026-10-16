@@ -114,14 +114,31 @@ launches.
   profile.id.uuidString`).
 - `LLMService.optimizeAndProcess(text, profile:, apiKey:)` and
   `LLMService.ping(profile:, apiKey:)` public signatures.
+  - **Amended 2026-10-17.** `optimizeAndProcess` gained an
+    `existingTags: [String] = []` parameter, defaulted so every existing
+    call site keeps compiling unchanged. What stays locked is the
+    required shape and the gating: a caller must still supply text,
+    profile and apiKey, and the tag vocabulary is an *input*, never a
+    prompt override.
 - The 4-field JSON schema of `LLMOptimizeAndProcessResult` (per ADR-0002).
 - The 3 pre-call gates (profile → network → HTTP).
 - The retry policy (3× exponential backoff for 5xx + `.networkError`;
   everything else is not retried).
 - The `extractFirstJSONObject` markdown-fence fallback for
   `optimizeAndProcess`.
-- Prompt text — **not** user-configurable. Stays as private constants
-  inside `LLMService` to keep the 4-field schema intact.
+- Prompt text — **not** user-configurable. Lives inside `LLMService`
+  to keep the 4-field schema intact.
+  - **Amended 2026-10-17.** "Stays as private constants" is relaxed to
+    "stays internal, never user-configurable". `optimizeAndProcessPrompt`
+    is now a static *function* taking the library's existing tag
+    vocabulary (`TranscriptionViewModel.existingTagVocabulary`) rather
+    than a bare `let`, so the model is told which spellings already
+    exist instead of inventing a near-synonym per record.
+    `findRelatedPrompt` was already internal for the same reason — so a
+    test can pin it. What this does **not** relax: no user-facing
+    prompt override, no provider-specific variant, and the 4-field
+    response schema is untouched (`TagHygieneTests` pins the schema line
+    and its position relative to the injected block).
 - Exactly one active profile at a time. Multi-profile **with auto
   fallback** is intentionally out of scope.
 

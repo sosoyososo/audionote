@@ -59,9 +59,13 @@ picks casing per record, so `availableTags` groups by `TagIdentity.key`
 | Chip order | by max score across the whole group desc; ties alphabetical |
 | Count | sums **all** spellings — read via `tagCount(for:)`, since `tagCounts` is keyed by identity |
 | Match | case-insensitive everywhere; a record spelled either way is found by the one chip |
+| Blank | a whitespace-only tag is dropped, not rendered — it would be an invisible pill the user cannot tap off |
 
-Chinese tags are unaffected — CJK has no case, so `lowercased()` is a no-op
-for them.
+Chinese tags are unaffected by the case axis — CJK has no case, so
+`lowercased()` is a no-op for them. Their dirty-data source is **vocabulary**
+drift (`工作` / `工作项` / `工作会议`), which chip merging cannot fix because
+those are genuinely different strings; that is what the LLM prompt's
+vocabulary hint (`existingTagVocabulary`) addresses at the source.
 
 ## §2. Row visual conventions
 

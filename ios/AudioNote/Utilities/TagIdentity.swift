@@ -13,15 +13,29 @@ import Foundation
 /// CJK has no case, so `lowercased()` is a no-op for it: a Chinese-only library
 /// behaves exactly as before. Only Latin-script tags are affected.
 ///
-/// Deliberately *not* normalized any further — `" Work"` and `"Work"` are the
-/// same unreported problem with a different cause, and trimming here would
-/// change stored tag display for reasons outside this fix.
+/// Two axes, deliberately separate. **Case** folds in `key` (the comparison)
+/// but not in `normalized` (the display form) — a chip shows one spelling for
+/// an identity, and which spelling is a separate, deliberately-visible
+/// decision. **Whitespace** folds in both, because leading/trailing spaces are
+/// never intentional in a tag and are invisible on screen; folding them in
+/// `key` also keeps identity whitespace-insensitive for a record written
+/// before `TaggedItem` started trimming on decode.
 enum TagIdentity {
+
+    /// The canonical stored form of a tag name: whitespace trimmed.
+    ///
+    /// `TaggedItem.init(from:)` already applies this to everything decoded —
+    /// LLM results and on-disk records alike — so this exists for values built
+    /// in memory without a decode round-trip, and to name the invariant in one
+    /// place rather than repeating `trimmingCharacters` at each call site.
+    static func normalized(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     /// The comparison key for a tag name. This is also the shape `Set`
     /// membership should use when testing many tags at once.
     static func key(_ name: String) -> String {
-        name.lowercased()
+        normalized(name).lowercased()
     }
 
     /// Lowercases a whole selection once, so a filter loop tests membership

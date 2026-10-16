@@ -133,8 +133,10 @@ struct RelatedNotesService {
         // record are one tag, not two — otherwise a note could double-count a
         // tag it carries under two spellings.
         var currentTags: [String: Double] = [:]
-        for tag in current.tags ?? [] where currentTags[TagIdentity.key(tag.name)] == nil {
-            currentTags[TagIdentity.key(tag.name)] = tag.score
+        for tag in current.tags ?? [] where !TagIdentity.normalized(tag.name).isEmpty {
+            let key = TagIdentity.key(tag.name)
+            guard currentTags[key] == nil else { continue }
+            currentTags[key] = tag.score
         }
         guard !currentTags.isEmpty else { return [] }
 
@@ -150,7 +152,7 @@ struct RelatedNotesService {
             else { return nil }
 
             var candidateKeys: Set<String> = []
-            for tag in candidate.tags ?? [] {
+            for tag in candidate.tags ?? [] where !TagIdentity.normalized(tag.name).isEmpty {
                 candidateKeys.insert(TagIdentity.key(tag.name))
             }
             let sharedKeys = candidateKeys.intersection(currentKeys)

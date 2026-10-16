@@ -180,27 +180,70 @@ actor LLMService {
     /// Used by the merged `optimizeAndProcess` entry point. Kept here (not
     /// inlined) so a future code review can see the full system prompt
     /// without grepping through call sites.
-    private static let optimizeAndProcessPrompt = """
-    你是一个语音转录文本优化助手和笔记组织助手。原始文本由 iOS Speech SDK 生成，可能存在以下问题：
+    ///
+    /// Parameterized by the library's existing tags — see
+    /// `existingTagVocabulary`. The rules themselves are unconditional: two
+    /// notes from the same user should agree on whether `Work` is `Work` or
+    /// `work`, and a leading space should never survive. The vocabulary block
+    /// is the part that only pays off once a library exists.
+    ///
+    /// Internal rather than private so a test can pin it — the same reason
+    /// `findRelatedPrompt` is. ADR-0003 freezes the wording from being
+    /// user-configurable; it does not freeze it from being asserted.
+    static func optimizeAndProcessPrompt(existingTagVocabulary: [String]) -> String {
+        var prompt = """
+        你是一个语音转录文本优化助手和笔记组织助手。原始文本由 iOS Speech SDK 生成，可能存在以下问题：
 
-    - 标点缺失或错误
-    - 同音/近音词错误（例如 "语音" → "200题"、"摘要" → "简要"、"转录" → "转入"、"会议" → "回议"）
-    - 重复词、无意义语气词（"嗯"、"那个"、"然后那个"等）
+        - 标点缺失或错误
+        - 同音/近音词错误（例如 "语音" → "200题"、"摘要" → "简要"、"转录" → "转入"、"会议" → "回议"）
+        - 重复词、无意义语气词（"嗯"、"那个"、"然后那个"等）
 
-    请完成以下任务：
+        请完成以下任务：
 
-    1. 优化转录文本：
-       - 修正明显的标点和同音词错误，根据上下文推断正确用词
-       - 不要翻译，保留原始语言（中文录音保持中文）
-       - 不要过度修改用户措辞；不确定的内容保留原文
-       - 保留原始语义和口语化风格
-    2. 为笔记提取标题（简短明了，8-20 字）
-    3. 生成 50-100 字摘要
-    4. 提取 3-5 个标签，每个标签附带 0.0-1.0 相关性分数（1.0=高度相关，0.0=边缘相关），按分数从高到低排序
+        1. 优化转录文本：
+           - 修正明显的标点和同音词错误，根据上下文推断正确用词
+           - 不要翻译，保留原始语言（中文录音保持中文）
+           - 不要过度修改用户措辞；不确定的内容保留原文
+           - 保留原始语义和口语化风格
+        2. 为笔记提取标题（简短明了，8-20 字）
+        3. 生成 50-100 字摘要
+        4. 提取 3-5 个标签，每个标签附带 0.0-1.0 相关性分数（1.0=高度相关，0.0=边缘相关），按分数从高到低排序
 
-    请严格按照以下 JSON 格式返回，不要添加任何解释或 markdown 标记：
-    {"optimizedText": "...", "title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
-    """
+        标签必须严格遵守：
+        - 不要首尾空格，标签两端干净
+        - 中文标签保持原样，不要翻译
+        - 英文标签一律用小写（如 "Work"、"WORK"、"work" 统一写成 "work"）
+        - 同一主题在整个文库中使用同一个写法，不要因为换一条笔记就换个说法
+        """
+
+        // Only present when the library already has tags. On a cold library the
+        // prompt is byte-identical to one without vocabulary, so there is no
+        // token cost and no behavior change for a first note.
+        if !existingTagVocabulary.isEmpty {
+            prompt += """
+
+            【已有标签】
+            \(existingTagVocabulary.joined(separator: "、"))
+
+            提取标签时：如果上面已有能准确概括本条的标签，直接复用它的写法；
+            只有在确实没有合适的已有标签时，才新造一个新标签。
+            不要为了凑数给本条贴上不相关的已有标签。
+            """
+        }
+
+        prompt += """
+
+        请严格按照以下 JSON 格式返回，不要添加任何解释或 markdown 标记：
+        {"optimizedText": "...", "title": "...", "summary": "...", "tags": [{"name": "...", "score": 0.0}, ...]}
+        """
+        return prompt
+    }
+
+    /// How many existing tags are worth showing the model. The list competes
+    /// for the model's attention with the transcription itself, so it stays
+    /// short and ordered by how much of the library actually uses each tag —
+    /// the head of the distribution is where reuse pays off.
+    static let maxTagVocabulary = 30
 
     /// Internal rather than private so a test can pin the interpolated
     /// prompt against this exact text. ADR-0003 freezes the wording, not the
@@ -301,10 +344,14 @@ actor LLMService {
     /// Optimize and organize a transcription in one round-trip. Returns the
     /// 4-field schema consumed by `TranscriptionViewModel` / detail view.
     /// Retries transient failures.
+    /// `existingTags` is the library's tag vocabulary (see
+    /// `TranscriptionViewModel.existingTagVocabulary`), already trimmed,
+    /// deduped and capped by the caller. Pass `[]` for a cold library.
     func optimizeAndProcess(
         _ text: String,
         profile: LLMProviderProfile,
-        apiKey: String?
+        apiKey: String?,
+        existingTags: [String] = []
     ) async throws -> LLMOptimizeAndProcessResult {
         try validateProfile(profile, apiKey: apiKey)
 
@@ -315,7 +362,12 @@ actor LLMService {
                 APIRequest(
                     model: profile.model,
                     messages: [
-                        APIRequest.Message(role: "system", content: Self.optimizeAndProcessPrompt),
+                        APIRequest.Message(
+                            role: "system",
+                            content: Self.optimizeAndProcessPrompt(
+                                existingTagVocabulary: existingTags
+                            )
+                        ),
                         APIRequest.Message(role: "user", content: text),
                     ]
                 )

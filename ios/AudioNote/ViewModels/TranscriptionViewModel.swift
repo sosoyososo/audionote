@@ -473,7 +473,12 @@ final class TranscriptionViewModel: ObservableObject {
         // 5xx + network errors). This view-model layer only handles the
         // success/fail outcome and the offline edge case.
         do {
-            let result = try await llmService.optimizeAndProcess(originalText, profile: profile, apiKey: apiKey)
+            let result = try await llmService.optimizeAndProcess(
+                originalText,
+                profile: profile,
+                apiKey: apiKey,
+                existingTags: existingTagVocabulary
+            )
             Logger.info("LLM processWithLLM succeeded")
 
             if var record = try? await storage.get(id: recordId) {
@@ -782,10 +787,15 @@ final class TranscriptionViewModel: ObservableObject {
             // within one of them.
             var spellingsThisRecord: [String: Set<String>] = [:]
             for tag in record.tags ?? [] {
-                let identity = TagIdentity.key(tag.name)
-                spellingsThisRecord[identity, default: []].insert(tag.name)
+                // A tag that is nothing but whitespace normalizes to empty, and
+                // an empty chip is an invisible pill the user cannot tap off.
+                // Dropped here rather than rendered.
+                let spelling = TagIdentity.normalized(tag.name)
+                guard !spelling.isEmpty else { continue }
+                let identity = TagIdentity.key(spelling)
+                spellingsThisRecord[identity, default: []].insert(spelling)
                 var group = maxScores[identity] ?? [:]
-                group[tag.name] = max(group[tag.name] ?? -.infinity, tag.score)
+                group[spelling] = max(group[spelling] ?? -.infinity, tag.score)
                 maxScores[identity] = group
             }
             for (identity, spellings) in spellingsThisRecord {
@@ -843,6 +853,36 @@ final class TranscriptionViewModel: ObservableObject {
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
             .map(\.name)
+    }
+
+    /// The tag names already in the library, most-used first, capped at
+    /// `LLMService.maxTagVocabulary`. Handed to the LLM so a new record reuses
+    /// an existing spelling instead of inventing a near-synonym — the only
+    /// defence against `工作` / `工作项` / `工作会议` drifting apart, which
+    /// chip merging cannot address because those are genuinely different
+    /// strings.
+    ///
+    /// Whole library, not the live half: an archived record's tags are just as
+    /// worth reusing. Casing is **not** unified here — the prompt asks for one
+    /// spelling, and folding case would hide from the model the very drift it
+    /// is being asked to avoid.
+    var existingTagVocabulary: [String] {
+        var counts: [String: Int] = [:]
+        for record in historyRecords {
+            for name in record.tagNames {
+                let spelling = TagIdentity.normalized(name)
+                guard !spelling.isEmpty else { continue }
+                counts[spelling, default: 0] += 1
+            }
+        }
+        return counts
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .map(\.key)
+            .prefix(LLMService.maxTagVocabulary)
+            .map { $0 }
     }
 
     /// Per-tag-identity count of in-scope records that also match the current

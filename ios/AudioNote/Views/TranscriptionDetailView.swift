@@ -523,7 +523,12 @@ struct TranscriptionDetailView: View {
             let llmService = LLMService()
 
             do {
-                let result = try await llmService.optimizeAndProcess(originalText, profile: profile, apiKey: apiKey)
+                let result = try await llmService.optimizeAndProcess(
+                    originalText,
+                    profile: profile,
+                    apiKey: apiKey,
+                    existingTags: await MainActor.run { viewModel.existingTagVocabulary }
+                )
                 let updatedRecord = TranscriptionRecord(
                     id: baseRecord.id,
                     content: result.optimizedText,
