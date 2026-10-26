@@ -94,3 +94,10 @@ picker, which is what actually produces access.
   empty case, the round trip, the name-is-the-last-path-component
   derivation, the blank name, the overwrite, and the forget.
 - Full suite: 237 tests, 0 failures.
+
+### On device
+
+Verified on an iPhone Air (iOS 26.3): after uninstalling and
+reinstalling, the onboarding screen named the folder — "your data is
+still in the **AudioNote** folder in the Files app" — instead of asking
+the user to remember which folder it was.

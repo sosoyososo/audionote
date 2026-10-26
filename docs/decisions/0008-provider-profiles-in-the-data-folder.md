@@ -157,3 +157,15 @@ it; the tests supply a stub.
 - Full suite: 231 tests, 0 failures.
 - Red-verified: a migration that regenerates the ids fails 6 of the 8
   store tests.
+
+### On device
+
+Verified on an iPhone Air (iOS 26.3), by uninstalling the app and
+installing it again:
+
+- The provider came back with its API key. No re-typing.
+- Every record, every relation, every extracted tag and every audio file
+  was still there.
+- A **new** recording then went through the LLM and came back with a
+  title, a summary and tags — so the key was not merely present, it
+  worked.
