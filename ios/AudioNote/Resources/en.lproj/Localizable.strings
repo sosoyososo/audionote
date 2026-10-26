@@ -101,7 +101,6 @@
 "Library.Tags.Done" = "Done";
 "Library.Tags.NoMatch" = "No matching tags";
 "Library.NoTags" = "No tags yet — analyze records to enable filtering";
-"Library.ArchiveModeTitle" = "Archive · %d";
 "Library.ArchiveEmpty" = "No archived records";
 "Library.ClearFilters" = "Clear filters";
 
@@ -188,3 +187,8 @@
 "Library.LoadFailed.Retry" = "Retry";
 "Library.OrphanedAudio.Title" = "Records File Is Missing";
 "Library.OrphanedAudio.Hint" = "%d recording file(s) are still in the AudioNote folder in the Files app, but the records file is gone. The recordings weren't lost — the app just can't read them any more.";
+"Library.Filter.Count" = "%d of %d";
+"Settings.Storage.RecordCount.Label" = "Notes";
+"Settings.Storage.RecordCount" = "%d total";
+"Library.ArchiveModeTitle.Plain" = "Archive";
+"Library.Count.Subtitle" = "%d notes";

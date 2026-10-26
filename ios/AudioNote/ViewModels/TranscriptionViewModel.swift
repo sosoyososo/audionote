@@ -917,9 +917,10 @@ final class TranscriptionViewModel: ObservableObject {
     /// the higher-scored one, then alphabetically, so the choice is
     /// deterministic rather than whatever happened to be iterated first.
     ///
-    /// Order across chips is by the maximum relevance score across all records
-    /// carrying the tag (descending), so the most "important" tags surface
-    /// first; ties break alphabetically.
+    /// Order across chips is by how many records carry the tag (descending),
+    /// then the maximum relevance score, then alphabetically. The count is the
+    /// primary key on purpose — see the ordering comment at the bottom of this
+    /// property for why a score-first order is wrong.
     var availableTags: [String] {
         struct ScoredTag { let name: String; let maxScore: Double; let count: Int }
 
@@ -1095,6 +1096,47 @@ final class TranscriptionViewModel: ObservableObject {
     var archivedRecordCount: Int {
         historyRecords.reduce(into: 0) { total, record in
             if record.archived { total += 1 }
+        }
+    }
+
+    /// Records on the current side of the archive split, unfiltered — the size
+    /// of the library the user is looking at, before the search box and the tag
+    /// filter narrow it. This is the number the navigation title shows: it
+    /// must not change when a filter is applied, because the title says how
+    /// big this side is, not how many rows happen to be on screen.
+    var recordCountInScope: Int {
+        historyRecords.reduce(into: 0) { total, record in
+            if record.archived == isArchiveMode { total += 1 }
+        }
+    }
+
+    /// Every record, both sides of the archive split, unfiltered. The one
+    /// number that is not about "the list you are looking at" — so it belongs
+    /// in settings, where there is no list to contradict it.
+    var totalRecordCount: Int {
+        historyRecords.count
+    }
+
+    /// Records in scope that match the search query, ignoring the tag filter.
+    /// The denominator of "5 of 8": the population the tag filter narrows, so
+    /// the number does not claim the tags are hiding records the search
+    /// already hid. With no search it is simply the scope count.
+    var searchMatchedCountInScope: Int {
+        recordsInScope.reduce(into: 0) { total, record in
+            if Self.matchesSearch(record, query: searchQuery) { total += 1 }
+        }
+    }
+
+    /// How many records the current filters leave, counted without sorting
+    /// them. The filter bar wants a number, not a sorted array.
+    var filteredRecordCount: Int {
+        let selected = TagIdentity.matchingKeys(selectedTags)
+        return recordsInScope.reduce(into: 0) { total, record in
+            guard Self.matchesSearch(record, query: searchQuery) else { return }
+            if selected.isEmpty
+                || TagIdentity.matchCount(ofNames: record.tagNames, in: selected) > 0 {
+                total += 1
+            }
         }
     }
 

@@ -101,7 +101,6 @@
 "Library.Tags.Done" = "完成";
 "Library.Tags.NoMatch" = "没有匹配的标签";
 "Library.NoTags" = "暂无标签 — 分析记录后可启用筛选";
-"Library.ArchiveModeTitle" = "归档 · %d";
 "Library.ArchiveEmpty" = "归档里还没有记录";
 "Library.ClearFilters" = "清除筛选";
 
@@ -188,3 +187,8 @@
 "Library.LoadFailed.Retry" = "重试";
 "Library.OrphanedAudio.Title" = "记录文件不见了";
 "Library.OrphanedAudio.Hint" = "在「文件」App 的 AudioNote 文件夹里还留着 %d 个录音文件,但记录文件已不在。录音本身没有丢,只是 App 读不到它们了。";
+"Library.Filter.Count" = "%d / %d 条";
+"Settings.Storage.RecordCount.Label" = "笔记数量";
+"Settings.Storage.RecordCount" = "共 %d 条";
+"Library.ArchiveModeTitle.Plain" = "归档";
+"Library.Count.Subtitle" = "%d 条";

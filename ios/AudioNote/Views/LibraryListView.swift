@@ -21,6 +21,7 @@ struct LibraryListView: View {
                 content
             }
             .navigationTitle(navigationTitle)
+            .navigationCountSubtitle(navigationSubtitle, title: navigationTitle)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     archiveToggle
@@ -137,6 +138,19 @@ struct LibraryListView: View {
                             }
                         }
                     }
+
+                    // How many of the records the search already matched
+                    // survive the tag filter — "5 of 8", Mail's way. The
+                    // denominator is the *search* scope, not the whole
+                    // library: the tags are not what hid the other three,
+                    // the search box was, and a number that mixed the two
+                    // would blame the wrong control.
+                    Text(String(format: "Library.Filter.Count".localized,
+                                viewModel.filteredRecordCount,
+                                viewModel.searchMatchedCountInScope))
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                        .monospacedDigit()
 
                     // Pinned outside the scroll, like the "all tags" button:
                     // the one thing that must always be reachable is the
@@ -279,14 +293,29 @@ struct LibraryListView: View {
         .badge(viewModel.archivedRecordCount)
     }
 
+    /// The title names the list; the subtitle sizes it.
+    ///
     /// The title doubles as the archive-mode indicator — it is the one element
     /// guaranteed to be on screen whenever the list looks different from usual.
+    ///
+    /// The count used to be inline — "思录 · 32" — which gives the number the
+    /// same weight as the name, and the name is the thing being read. As a
+    /// subtitle the number is a caption on the title.
+    ///
+    /// The count is the *unfiltered* size of this side of the library: the
+    /// title says how big this side is, not how many rows happen to be on
+    /// screen, so it does not jump when a filter is applied. The filtered
+    /// count lives in the filter bar right below, where it can be read
+    /// together with the tags that caused it.
     private var navigationTitle: String {
-        if viewModel.isArchiveMode {
-            return String(format: "Library.ArchiveModeTitle".localized,
-                          viewModel.archivedRecordCount)
-        }
-        return "Tab.Library".localized
+        viewModel.isArchiveMode
+            ? "Library.ArchiveModeTitle.Plain".localized
+            : "Tab.Library".localized
+    }
+
+    private var navigationSubtitle: String {
+        String(format: "Library.Count.Subtitle".localized,
+               viewModel.recordCountInScope)
     }
 
     // MARK: - Content (list / empty / no-results)
@@ -599,6 +628,35 @@ struct RecordRowView: View {
         let remaining = String(record.content[start...])
         let slice = String(remaining.prefix(50))
         return slice.isEmpty ? record.preview : slice + (remaining.count > 50 ? "…" : "")
+    }
+}
+
+private extension View {
+    /// A caption under the navigation title.
+    ///
+    /// iOS 26 has a slot for exactly this. Below that the same two lines are
+    /// drawn by hand in a principal toolbar item — and a principal item
+    /// *replaces* the title rather than sitting under it, so it has to carry
+    /// both lines itself. The fallback is why the title is passed along: the
+    /// title on screen must be the same text in both paths, and there is one
+    /// source for it.
+    @ViewBuilder
+    func navigationCountSubtitle(_ subtitle: String, title: String) -> some View {
+        if #available(iOS 26.0, *) {
+            navigationSubtitle(Text(subtitle))
+        } else {
+            toolbar {
+                ToolbarItem(placement: .principal) {
+                    VStack(spacing: 0) {
+                        Text(title)
+                            .font(.headline)
+                        Text(subtitle)
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
     }
 }
 

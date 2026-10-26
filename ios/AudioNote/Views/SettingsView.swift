@@ -7,6 +7,11 @@ import SwiftUI
 struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @EnvironmentObject private var languageManager: LanguageManager
+    /// The records, for the one number that is about the library as a whole
+    /// rather than about the list on the other tab. `ContentView` puts the
+    /// same instance in the environment that the library list uses, so this
+    /// is the live count, not a second load.
+    @EnvironmentObject private var transcriptionViewModel: TranscriptionViewModel
     @ObservedObject private var store = ProviderProfileStore.shared
     @ObservedObject private var storage = StorageCoordinator.shared
 
@@ -74,6 +79,19 @@ struct SettingsView: View {
                         Text("Settings.Storage.Location".localized)
                         Spacer()
                         Text(storage.folderName ?? "—")
+                            .foregroundColor(.secondary)
+                    }
+                    // The one number that is not about the list you are
+                    // looking at: every record, both sides of the archive
+                    // split. The library title shows the size of the side you
+                    // are on and the filter bar shows what is left of it
+                    // after filtering — neither is the total, and there is no
+                    // list here to contradict it.
+                    HStack {
+                        Text("Settings.Storage.RecordCount.Label".localized)
+                        Spacer()
+                        Text(String(format: "Settings.Storage.RecordCount".localized,
+                                    transcriptionViewModel.totalRecordCount))
                             .foregroundColor(.secondary)
                     }
                     Button {
@@ -210,4 +228,5 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .environmentObject(LanguageManager.shared)
+        .environmentObject(TranscriptionViewModel())
 }
