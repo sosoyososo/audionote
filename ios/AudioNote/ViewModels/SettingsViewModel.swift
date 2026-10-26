@@ -42,25 +42,25 @@ final class SettingsViewModel: ObservableObject {
 
     // MARK: - Profile CRUD (delegated)
 
-    func upsert(_ profile: LLMProviderProfile, apiKey: String?) {
+    func upsert(_ profile: LLMProviderProfile, apiKey: String?) async {
         do {
-            try store.upsert(profile, apiKey: apiKey)
+            try await store.upsert(profile, apiKey: apiKey)
         } catch {
             Logger.error("SettingsViewModel.upsert failed: \(error.localizedDescription)")
         }
     }
 
-    func delete(_ id: UUID) {
+    func delete(_ id: UUID) async {
         do {
-            try store.delete(id)
+            try await store.delete(id)
         } catch {
             Logger.error("SettingsViewModel.delete failed: \(error.localizedDescription)")
         }
     }
 
-    func setActive(_ id: UUID) {
+    func setActive(_ id: UUID) async {
         do {
-            try store.setActive(id)
+            try await store.setActive(id)
         } catch {
             Logger.error("SettingsViewModel.setActive failed: \(error.localizedDescription)")
         }

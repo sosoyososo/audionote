@@ -17,9 +17,24 @@ import XCTest
 /// archived note's edges so unarchiving restores them for free.
 final class RelatedNotesCleanupTests: XCTestCase {
 
+/// A provider profile handed to the service directly.
+///
+/// The service takes its profile by injection now, so a test no longer
+/// has to mutate the shared store to get one — which also means the
+/// tests no longer depend on each other's order, and no longer write
+/// into whatever folder the store points at.
+private struct StubProfileSource: RelatedNotesProfileSource {
+    let profile: LLMProviderProfile
+
+    func prepare() async {}
+    @MainActor func activeProfile() -> LLMProviderProfile? { profile }
+    @MainActor func apiKey(for id: UUID) -> String? { nil }
+}
+
+
     private var tmpDir: URL!
     private var relations: RelatedNotesStorage!
-    private var testProfileID: UUID!
+    private var profileSource: StubProfileSource!
 
     private let a = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
     private let b = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
@@ -42,18 +57,10 @@ final class RelatedNotesCleanupTests: XCTestCase {
             model: "test-model",
             requiresAPIKey: false
         )
-        testProfileID = profile.id
-        try await MainActor.run {
-            try ProviderProfileStore.shared.upsert(profile, apiKey: nil)
-        }
+        profileSource = StubProfileSource(profile: profile)
     }
 
     override func tearDown() async throws {
-        if let testProfileID {
-            await MainActor.run {
-                try? ProviderProfileStore.shared.delete(testProfileID)
-            }
-        }
         try? FileManager.default.removeItem(at: tmpDir)
         try await super.tearDown()
     }
@@ -74,7 +81,8 @@ final class RelatedNotesCleanupTests: XCTestCase {
         RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: records),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
     }
 
@@ -178,7 +186,8 @@ final class RelatedNotesCleanupTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
         llm.setHook { [service] in
             let probe = Task {
@@ -233,7 +242,8 @@ final class RelatedNotesCleanupTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [one, two, x, y, z]),
-            llm: StubLLM(returns: [RelatedNoteMatch(id: x.id, score: 0.9)])
+            llm: StubLLM(returns: [RelatedNoteMatch(id: x.id, score: 0.9)]),
+            profileSource: profileSource
         )
 
         await withTaskGroup(of: Void.self) { group in

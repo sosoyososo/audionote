@@ -9,9 +9,24 @@ import XCTest
 /// installs one and removes it again (see `setUp` / `tearDown`).
 final class RelatedNotesLinkTests: XCTestCase {
 
+/// A provider profile handed to the service directly.
+///
+/// The service takes its profile by injection now, so a test no longer
+/// has to mutate the shared store to get one — which also means the
+/// tests no longer depend on each other's order, and no longer write
+/// into whatever folder the store points at.
+private struct StubProfileSource: RelatedNotesProfileSource {
+    let profile: LLMProviderProfile
+
+    func prepare() async {}
+    @MainActor func activeProfile() -> LLMProviderProfile? { profile }
+    @MainActor func apiKey(for id: UUID) -> String? { nil }
+}
+
+
     private var tmpDir: URL!
     private var relations: RelatedNotesStorage!
-    private var testProfileID: UUID!
+    private var profileSource: StubProfileSource!
 
     override func setUp() async throws {
         try await super.setUp()
@@ -31,18 +46,10 @@ final class RelatedNotesLinkTests: XCTestCase {
             model: "test-model",
             requiresAPIKey: false
         )
-        testProfileID = profile.id
-        try await MainActor.run {
-            try ProviderProfileStore.shared.upsert(profile, apiKey: nil)
-        }
+        profileSource = StubProfileSource(profile: profile)
     }
 
     override func tearDown() async throws {
-        if let testProfileID {
-            await MainActor.run {
-                try? ProviderProfileStore.shared.delete(testProfileID)
-            }
-        }
         try? FileManager.default.removeItem(at: tmpDir)
         try await super.tearDown()
     }
@@ -70,7 +77,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -96,7 +104,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -141,7 +150,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, already, fresh, third, fourth]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -178,7 +188,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, tagless, y, z]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -209,7 +220,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, other, y, z]),
-            llm: StubLLM(returns: [RelatedNoteMatch(id: other.id, score: 0.9)])
+            llm: StubLLM(returns: [RelatedNoteMatch(id: other.id, score: 0.9)]),
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -240,7 +252,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: StubLLM(returns: [RelatedNoteMatch(id: x.id, score: 0.8)])
+            llm: StubLLM(returns: [RelatedNoteMatch(id: x.id, score: 0.8)]),
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -269,7 +282,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id) // must not throw
@@ -293,7 +307,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, live, alsoLive, thirdLive, archived]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)
@@ -325,7 +340,8 @@ final class RelatedNotesLinkTests: XCTestCase {
         let service = RelatedNotesService(
             storage: relations,
             records: InMemoryRecords(all: [current, x, y, z]),
-            llm: llm
+            llm: llm,
+            profileSource: profileSource
         )
 
         await service.link(for: current.id)

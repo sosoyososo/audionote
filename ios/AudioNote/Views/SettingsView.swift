@@ -18,7 +18,9 @@ struct SettingsView: View {
             Form {
                 // MARK: Provider profiles
                 Section {
-                    if store.profiles.isEmpty {
+                    if !store.isLoaded {
+                        loadingState
+                    } else if store.profiles.isEmpty {
                         emptyState
                     } else {
                         ForEach(store.profiles) { profile in
@@ -111,9 +113,30 @@ struct SettingsView: View {
                 }
             }
         }
+        .task {
+            // The profiles live in the data folder now, so the read is
+            // asynchronous. Everything that reads `store.profiles` waits
+            // for this.
+            await store.ensureLoaded()
+        }
     }
 
     // MARK: - Row UI
+
+    /// The profiles are read from the data folder, which can be slow.
+    /// Show a placeholder rather than the "no providers" empty state,
+    /// which would otherwise flash at a user who has already set
+    /// everything up.
+    private var loadingState: some View {
+        HStack(spacing: 6) {
+            ProgressView()
+                .scaleEffect(0.7)
+            Text("Settings.LLM.ProviderProfiles.Loading".localized)
+                .font(.callout)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
 
     private var emptyState: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -148,7 +171,7 @@ struct SettingsView: View {
                 Spacer()
                 if profile.id != store.activeProfileId {
                     Button("Settings.LLM.Profile.SetActive".localized) {
-                        viewModel.setActive(profile.id)
+                        Task { await viewModel.setActive(profile.id) }
                     }
                     .font(.caption)
                     .buttonStyle(.bordered)
@@ -161,7 +184,8 @@ struct SettingsView: View {
 
     private func deleteProfiles(at offsets: IndexSet) {
         for idx in offsets {
-            viewModel.delete(store.profiles[idx].id)
+            let id = store.profiles[idx].id
+            Task { await viewModel.delete(id) }
         }
     }
 

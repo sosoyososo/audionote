@@ -66,6 +66,21 @@ actor Gate {
 
 /// Owns prescreen → LLM → sanitize → persist for related notes.
 /// Knows nothing about SwiftUI. `link(for:)` never throws.
+/// Where `RelatedNotesService` gets the active provider profile from.
+///
+/// The service already takes its storage, its records and its LLM by
+/// injection. The profile was the one thing it reached for globally, and
+/// reaching for a global meant the tests had to mutate a singleton to
+/// exercise the service at all — which made them order-dependent, and
+/// meant a test run wrote into whatever folder the store happened to
+/// point at.
+protocol RelatedNotesProfileSource: Sendable {
+    /// Make sure the profiles are loaded before they are read.
+    func prepare() async
+    @MainActor func activeProfile() -> LLMProviderProfile?
+    @MainActor func apiKey(for id: UUID) -> String?
+}
+
 struct RelatedNotesService {
 
     /// Upper bound on candidates handed to the LLM.
@@ -86,17 +101,23 @@ struct RelatedNotesService {
     private let records: RecordsSource
     private let llm: RelatedNotesLLM
 
+    /// Where the active provider profile comes from. `nil` means the
+    /// shared store, resolved at the moment it is needed.
+    private let profileSource: RelatedNotesProfileSource?
+
     /// Serializes the read-modify-write on `relatedNotes.json`.
     private let gate = Gate()
 
     init(
         storage: RelatedNotesStorage = .shared,
         records: RecordsSource = TranscriptionStorage.shared,
-        llm: RelatedNotesLLM = LLMService()
+        llm: RelatedNotesLLM = LLMService(),
+        profileSource: RelatedNotesProfileSource? = nil
     ) {
         self.storage = storage
         self.records = records
         self.llm = llm
+        self.profileSource = profileSource
     }
 
     // MARK: - Prescreen (pure, local, free)
@@ -341,11 +362,20 @@ struct RelatedNotesService {
                 // `ProviderProfileStore` is main-actor isolated, so hop for the
                 // read. No active profile means the LLM path is off entirely —
                 // same silent skip `processWithLLM` does.
-                guard let profile = await MainActor.run(body: { ProviderProfileStore.shared.active }) else {
+                // `??` would not do: its right-hand side is an autoclosure,
+                // and an autoclosure cannot be async.
+                let source: RelatedNotesProfileSource
+                if let injected = profileSource {
+                    source = injected
+                } else {
+                    source = await MainActor.run(body: { ProviderProfileStore.shared })
+                }
+                await source.prepare()
+                guard let profile = await MainActor.run(body: { source.activeProfile() }) else {
                     Logger.info("Related notes skipped for \(recordId): no active provider profile")
                     return
                 }
-                let apiKey = await MainActor.run(body: { ProviderProfileStore.shared.apiKey(for: profile.id) })
+                let apiKey = await MainActor.run(body: { source.apiKey(for: profile.id) })
 
                 let payload = candidates.map {
                     RelatedNoteCandidate(id: $0.id, title: $0.title ?? "", summary: $0.summary ?? "")

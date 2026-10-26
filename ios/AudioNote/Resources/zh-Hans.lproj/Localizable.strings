@@ -115,6 +115,7 @@
 "Settings.LLM.ProviderProfiles.Add" = "添加 Provider";
 "Settings.LLM.ProviderProfiles.NoneActive" = "尚未配置 — 添加一个 Provider 后才能启用 LLM 优化";
 "Settings.LLM.ProviderProfiles.Footer" = "支持 OpenAI、DeepSeek、Groq、Ollama 等 OpenAI 兼容端点";
+"Settings.LLM.ProviderProfiles.Loading" = "正在读取配置…";
 "Settings.LLM.Status.NotSet" = "未配置";
 "Settings.LLM.Status" = "状态";
 "Settings.LLM.Migration.Toast" = "LLM 设置已迁移:请配置 Provider";

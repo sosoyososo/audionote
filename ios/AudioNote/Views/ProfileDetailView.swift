@@ -138,7 +138,7 @@ struct ProfileDetailView: View {
                     Button("Settings.LLM.Profile.Cancel".localized) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Settings.LLM.Profile.Save".localized) { save() }
+                    Button("Settings.LLM.Profile.Save".localized) { Task { await save() } }
                         .disabled(!canSave)
                 }
             }
@@ -154,7 +154,7 @@ struct ProfileDetailView: View {
 
     // MARK: - Actions
 
-    private func save() {
+    private func save() async {
         guard let url = URL(string: baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)) else {
             validationError = "Settings.LLM.Profile.Error.InvalidURL".localized
             return
@@ -175,7 +175,7 @@ struct ProfileDetailView: View {
         }
         let keyToWrite: String? = requiresAPIKey && !apiKey.isEmpty ? apiKey : nil
         do {
-            try store.upsert(profile, apiKey: keyToWrite)
+            try await store.upsert(profile, apiKey: keyToWrite)
             dismiss()
         } catch {
             validationError = error.localizedDescription

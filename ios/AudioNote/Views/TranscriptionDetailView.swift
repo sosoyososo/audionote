@@ -510,8 +510,11 @@ struct TranscriptionDetailView: View {
                 return
             }
 
-            // Pull the active profile + key from the store. If no profile
-            // is configured, surface that as a status without throwing.
+            // Pull the active profile + key from the store. The profiles
+            // live in the data folder now, so the read is asynchronous.
+            await ProviderProfileStore.shared.ensureLoaded()
+            // If no profile is configured, surface that as a status
+            // without throwing.
             guard let profile = ProviderProfileStore.shared.active else {
                 Logger.warning("LLM reprocess skipped: no active profile")
                 await MainActor.run {

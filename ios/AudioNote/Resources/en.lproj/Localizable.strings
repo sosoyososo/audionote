@@ -115,6 +115,7 @@
 "Settings.LLM.ProviderProfiles.Add" = "Add Provider";
 "Settings.LLM.ProviderProfiles.NoneActive" = "Not configured — add a provider to enable LLM optimization";
 "Settings.LLM.ProviderProfiles.Footer" = "Supports OpenAI, DeepSeek, Groq, Ollama and any OpenAI-compatible endpoint";
+"Settings.LLM.ProviderProfiles.Loading" = "Loading configuration…";
 "Settings.LLM.Status.NotSet" = "Not configured";
 "Settings.LLM.Status" = "Status";
 "Settings.LLM.Migration.Toast" = "LLM settings migrated: please configure a provider";

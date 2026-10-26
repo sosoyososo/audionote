@@ -368,6 +368,17 @@ final class StorageCoordinator: ObservableObject {
         rootURL.appendingPathComponent("relatedNotes.json")
     }
 
+    /// The LLM provider profiles file.
+    ///
+    /// Lives in the data folder rather than in `UserDefaults` because a
+    /// profile's `id` is the Keychain account its API key is stored
+    /// under: a profile that did not come back after a reinstall left
+    /// its key orphaned in the Keychain, and the user had to re-type it.
+    /// See `ProviderProfileStorage` and ADR-0008.
+    nonisolated var providerProfilesURL: URL {
+        rootURL.appendingPathComponent("profiles.json")
+    }
+
     // MARK: - Scene phase
 
     /// Release/re-acquire security-scoped resource based on scene phase.

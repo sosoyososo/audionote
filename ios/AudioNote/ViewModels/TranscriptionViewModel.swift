@@ -533,8 +533,13 @@ final class TranscriptionViewModel: ObservableObject {
         isLLMProcessing = true
         llmProcessingFailed = false
 
-        // Pull the active profile + its API key from the store. If the user
-        // hasn't configured one yet, skip silently — the LLM path is opt-in.
+        // Pull the active profile + its API key from the store. The
+        // profiles live in the data folder now, so the read is
+        // asynchronous — without awaiting it, the first LLM call of a
+        // session would find an empty list and skip itself.
+        await ProviderProfileStore.shared.ensureLoaded()
+        // If the user hasn't configured one yet, skip silently — the LLM
+        // path is opt-in.
         guard let profile = ProviderProfileStore.shared.active else {
             Logger.warning("LLM processWithLLM skipped: no active profile")
             isLLMProcessing = false
