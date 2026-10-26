@@ -29,7 +29,8 @@ Introduce a single Phase-2 dispatcher `TranscriptionViewModel.assessAndEnhance` 
 
 - The three-case dispatch shape — **don't add branches per language or per LLM provider without a new entry.** New `RecognitionMode` cases MUST extend this switch.
 - The network gate: any code path that reaches the LLM MUST call `NetworkMonitor.shared.checkConnectivity()` first. No exceptions.
-- The check-then-call pattern in `assessAndEnhance` is single-shot, not retried inside — retries live in `AIProcessingService.processPendingRecords`.
+- The check-then-call pattern in `assessAndEnhance` is single-shot, not retried inside — retries live in the recovery sweep, `TranscriptionViewModel.networkDidRecover` (ADR-0005).
+  - **Amended 2026-10-22.** This line used to name `AIProcessingService.processPendingRecords`. That actor was deleted in `a421f63` (2026-09-24) as dead code, and it was dead in the stricter sense too: `processPendingRecords()` had **no caller at the moment it was deleted** — its only reference was the `processRecord` call inside itself. The launch-time sweep it was written for never actually ran. `networkDidRecover` is the only recovery path that exists, and it is triggered solely by a disconnected→connected transition, so it does not run at app launch. See ADR-0005 and the "Touch this when" note there.
 
 ## Free to change without new ADR
 

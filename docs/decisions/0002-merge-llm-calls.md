@@ -64,7 +64,7 @@ The legacy two-call path (`callOptimizeAPI` + `callAPI`) is **kept as fallback o
 | Result struct | `ios/AudioNote/Services/LLMService.swift:31` |
 | Merged HTTP call | `ios/AudioNote/Services/LLMService.swift:271` |
 | Caller (detail view) | `ios/AudioNote/Views/TranscriptionDetailView.swift` |
-| Background caller | `ios/AudioNote/Services/AIProcessingService.swift:7` |
+| Background caller | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:554` (`networkDidRecover`) — **Amended 2026-10-22:** this used to be `ios/AudioNote/Services/AIProcessingService.swift:7`, a file deleted in `a421f63` (2026-09-24) as dead code |
 
 ## Test coverage expected
 
