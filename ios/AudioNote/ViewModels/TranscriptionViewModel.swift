@@ -921,15 +921,22 @@ final class TranscriptionViewModel: ObservableObject {
     /// carrying the tag (descending), so the most "important" tags surface
     /// first; ties break alphabetically.
     var availableTags: [String] {
-        struct ScoredTag { let name: String; let maxScore: Double }
+        struct ScoredTag { let name: String; let maxScore: Double; let count: Int }
 
         // Identity key -> spelling -> (best score on it, records carrying it).
         // Two dictionaries rather than one so a chip can be assembled from all
         // its spellings; both are keyed the same way and kept in step.
         var maxScores: [String: [String: Double]] = [:]
         var recordCounts: [String: [String: Int]] = [:]
+        // Records per identity — the number the chip's badge shows, so the
+        // order and the badge are the same number and cannot disagree.
+        var identityCounts: [String: Int] = [:]
 
-        for record in recordsInScope {
+        // The search query narrows the chips, exactly as it already narrows
+        // their badges. A chip that no matching record carries is a chip at
+        // count 0; showing it next to a chip at count 12 and ordering them
+        // by something else is how a row of chips stops meaning anything.
+        for record in recordsInScope where Self.matchesSearch(record, query: searchQuery) {
             // Counted per record, so a record carrying both `Work` and `work`
             // contributes to each spelling's count without being counted twice
             // within one of them.
@@ -947,6 +954,9 @@ final class TranscriptionViewModel: ObservableObject {
                 maxScores[identity] = group
             }
             for (identity, spellings) in spellingsThisRecord {
+                // Once per record, not once per spelling: a record carrying
+                // both `Work` and `work` is one record.
+                identityCounts[identity, default: 0] += 1
                 for spelling in spellings {
                     recordCounts[identity, default: [:]][spelling, default: 0] += 1
                 }
@@ -977,7 +987,8 @@ final class TranscriptionViewModel: ObservableObject {
             }) else { continue }
             chips.append(ScoredTag(
                 name: winner,
-                maxScore: maxScores[identity]?[winner] ?? -.infinity
+                maxScore: maxScores[identity]?[winner] ?? -.infinity,
+                count: identityCounts[identity] ?? 0
             ))
         }
 
@@ -991,12 +1002,25 @@ final class TranscriptionViewModel: ObservableObject {
             for name in selectedTags {
                 let identity = TagIdentity.key(name)
                 guard !chips.contains(where: { TagIdentity.key($0.name) == identity }) else { continue }
-                chips.append(ScoredTag(name: name, maxScore: -.infinity))
+                chips.append(ScoredTag(name: name, maxScore: -.infinity, count: 0))
             }
         }
 
+        // Order by how many records carry the tag, descending. The score is
+        // a tiebreak, not the primary key: a tag on one record with score
+        // 0.95 is not more important than a tag on two hundred records with
+        // score 0.3, and legacy string tags carry *pseudo* scores (1.0,
+        // 0.75, 0.5, …) whose first tag is always 1.0 — so a score-first
+        // order puts one legacy record's first tag above every tag the user
+        // actually uses often.
+        //
+        // The count also makes the row *stable*: it moves only when records
+        // are added or removed, where a max-score order moved whenever any
+        // record's score changed — shifting chips out from under a finger
+        // that was on its way to tap one.
         return chips
             .sorted { lhs, rhs in
+                if lhs.count != rhs.count { return lhs.count > rhs.count }
                 if lhs.maxScore != rhs.maxScore { return lhs.maxScore > rhs.maxScore }
                 return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
@@ -1140,6 +1164,13 @@ final class TranscriptionViewModel: ObservableObject {
 
     func clearFilters() {
         searchQuery = ""
+        selectedTags = []
+    }
+
+    /// Clear the tag selection but keep the search query. The tag picker
+    /// clears tags and nothing else — clearing the search box out from
+    /// under someone who opened it to pick a tag would be rude.
+    func clearTagSelection() {
         selectedTags = []
     }
 

@@ -6,6 +6,7 @@ struct LibraryListView: View {
     @State private var showDeleteConfirmation = false
     @State private var recordToDelete: TranscriptionRecord?
     @State private var searchInput: String = ""
+    @State private var isTagPickerPresented = false
     @State private var searchDebounceTask: Task<Void, Never>?
     @State private var mergeTarget: MergeTagTarget?
     @StateObject private var actionsViewModel = RecordActionsViewModel()
@@ -35,6 +36,9 @@ struct LibraryListView: View {
             }
             .sheet(item: $mergeTarget) { target in
                 MergeTagsView(target: target.name, viewModel: viewModel)
+            }
+            .sheet(isPresented: $isTagPickerPresented) {
+                TagPickerSheet(viewModel: viewModel)
             }
             .alert("History.Delete.Confirm".localized, isPresented: $showDeleteConfirmation) {
                 Button("Action.Cancel".localized, role: .cancel) {
@@ -105,14 +109,36 @@ struct LibraryListView: View {
                     .padding(.vertical, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.availableTags, id: \.self) { tag in
-                            tagChip(tag)
+                HStack(spacing: 0) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(viewModel.availableTags, id: \.self) { tag in
+                                tagChip(tag)
+                            }
                         }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+
+                    // Pinned **outside** the scroll. A button at the end of
+                    // the scroll would be the one thing the user cannot
+                    // reach — which is the whole problem. This one is always
+                    // in the same place, and it says how many tags are over
+                    // there, so the row no longer hides what it has.
+                    Button {
+                        isTagPickerPresented = true
+                    } label: {
+                        Text(String(format: "Library.Tags.All".localized, viewModel.availableTags.count))
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Color.accentColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.accentColor.opacity(0.15))
+                            .clipShape(Capsule())
+                            .padding(.trailing, 16)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.plain)
                 }
             }
         }

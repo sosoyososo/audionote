@@ -68,3 +68,17 @@ enum TagIdentity {
         return candidates.filter { selectedKeys.contains(key($0)) }
     }
 }
+
+extension TagIdentity {
+    /// Whether a tag matches what the user typed.
+    ///
+    /// Case-insensitive substring, not prefix: "议" should find "会议记录",
+    /// and a Chinese user searching by the middle of a word is the normal
+    /// way to type. An empty query matches everything, so the caller does
+    /// not need a special case.
+    static func contains(_ tag: String, query: String) -> Bool {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return true }
+        return tag.localizedCaseInsensitiveContains(trimmed)
+    }
+}

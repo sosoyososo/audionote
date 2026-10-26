@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 63;
+	objectVersion = 77;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -54,6 +54,7 @@
 		ADF9E2C8468BEEFB8878068B /* LaunchRecoverySweepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BD9D0BA79FF1B7F0BA9B38 /* LaunchRecoverySweepTests.swift */; };
 		B7CA9597751083C5AAD759A8 /* MergeTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A357FD6836D64884A25F699 /* MergeTagsView.swift */; };
 		BED61F70E21A3664F3F2EDD0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B979954BF5DD75B200033DC /* KeychainStore.swift */; };
+		C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8371A54AFD59688EF313871C /* TagChipOrderTests.swift */; };
 		CA3A46E6D4A7E387090B978E /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */; };
 		D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */; };
 		D4CD0207DFF15BD3B7897B16 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012369EA9DDAC70389CD813F /* RecordingView.swift */; };
@@ -66,6 +67,7 @@
 		EB66EBF0B75C46D3CC54D705 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */; };
 		F35A858E6E57C1C00EB3BA41 /* AudioNoteApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 735C55B04244C142BD1F8263 /* AudioNoteApp.swift */; };
 		F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6920F5B0A73125B1371FF04D /* TagMergerTests.swift */; };
+		F74E1193956F872E39B5C538 /* TagPickerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFE07A041AA20BE6BE8FC16D /* TagPickerSheet.swift */; };
 		F8DA3504993398F2D8893FC1 /* FindRelatedParsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D8AAE5FD7146C620FA23B52 /* FindRelatedParsingTests.swift */; };
 		FA1AD37D7F926F0CF299E896 /* FindRelatedPromptTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F23BD0E39D8D879554C972A2 /* FindRelatedPromptTests.swift */; };
 		FC4C81FDBC1852690ADD00DB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E9C4F7F7D7281FEAAD7BCD /* OnboardingView.swift */; };
@@ -120,6 +122,7 @@
 		7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStorage.swift; sourceTree = "<group>"; };
 		7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageFolderHintTests.swift; sourceTree = "<group>"; };
 		7EBE49AC5CF2E29547354250 /* TagCaseInsensitivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagCaseInsensitivityTests.swift; sourceTree = "<group>"; };
+		8371A54AFD59688EF313871C /* TagChipOrderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagChipOrderTests.swift; sourceTree = "<group>"; };
 		87E98AD129F21ED062E91BFF /* LibraryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryListView.swift; sourceTree = "<group>"; };
 		8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
 		8B979954BF5DD75B200033DC /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
@@ -127,7 +130,7 @@
 		9A357FD6836D64884A25F699 /* MergeTagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeTagsView.swift; sourceTree = "<group>"; };
 		A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesPrescreenTests.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
-		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDAF3BD54005E31BC43582DF /* UpdateRecordMergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRecordMergeTests.swift; sourceTree = "<group>"; };
 		BF3214FE237AB13413336F8A /* LibraryArchiveModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryArchiveModeTests.swift; sourceTree = "<group>"; };
 		C27A05976893E36E23155678 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
@@ -140,6 +143,7 @@
 		D9EEC9316C25B0B5D8233415 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
 		DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		DEEDD48C8B3B117406715DBB /* FlowPackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowPackingTests.swift; sourceTree = "<group>"; };
+		DFE07A041AA20BE6BE8FC16D /* TagPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPickerSheet.swift; sourceTree = "<group>"; };
 		E6E9C4F7F7D7281FEAAD7BCD /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		E9C65AFC2AAE556702D23321 /* NoteRelationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRelationTests.swift; sourceTree = "<group>"; };
 		EEA9FE19E7F88A212478178E /* PermissionsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsManager.swift; sourceTree = "<group>"; };
@@ -193,6 +197,7 @@
 				2C957D559BFA47374FF1CDF5 /* SmokeTests.swift */,
 				7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */,
 				7EBE49AC5CF2E29547354250 /* TagCaseInsensitivityTests.swift */,
+				8371A54AFD59688EF313871C /* TagChipOrderTests.swift */,
 				EF0CA39964FE5D2D76CCDE4E /* TagHygieneTests.swift */,
 				6920F5B0A73125B1371FF04D /* TagMergerTests.swift */,
 				5B2638DDD77737DEF97707EF /* TranscriptionStorageTests.swift */,
@@ -287,6 +292,7 @@
 				012369EA9DDAC70389CD813F /* RecordingView.swift */,
 				1CF9484CDD6FCB4724E31513 /* SettingsView.swift */,
 				C27A05976893E36E23155678 /* SharedComponents.swift */,
+				DFE07A041AA20BE6BE8FC16D /* TagPickerSheet.swift */,
 				29C7909478FB6C95105DD1E4 /* TranscriptionDetailView.swift */,
 			);
 			path = Views;
@@ -356,6 +362,7 @@
 						ProvisioningStyle = Automatic;
 					};
 					8D0EE74616E156E4C9C1D118 = {
+						DevelopmentTeam = 25FH23Q3GA;
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -371,6 +378,7 @@
 			);
 			mainGroup = A9D344E48523A55813F66EBB;
 			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -415,6 +423,7 @@
 				544911B8FB0AD817E9C860A2 /* SmokeTests.swift in Sources */,
 				D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */,
 				0E561F61B3E145ED0924E1C0 /* TagCaseInsensitivityTests.swift in Sources */,
+				C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */,
 				08DF803CC4111B94C2214363 /* TagHygieneTests.swift in Sources */,
 				F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */,
 				2D871F9F064B199861887F64 /* TranscriptionStorageTests.swift in Sources */,
@@ -460,6 +469,7 @@
 				E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */,
 				2C9F4340487472FED0B95505 /* TagIdentity.swift in Sources */,
 				E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */,
+				F74E1193956F872E39B5C538 /* TagPickerSheet.swift in Sources */,
 				0BC728380DCA544890AB0CEE /* TranscriptionDetailView.swift in Sources */,
 				44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */,
 				85CC2307EC35E04425B21FD2 /* TranscriptionStorage.swift in Sources */,
