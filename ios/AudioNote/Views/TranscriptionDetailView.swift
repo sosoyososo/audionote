@@ -327,7 +327,7 @@ struct TranscriptionDetailView: View {
 
     @ViewBuilder
     private var llmStatusView: some View {
-        if isProcessing || viewModel.isLLMProcessing {
+        if isProcessing || viewModel.isAwaitingUserLLMResult {
             // Currently processing - show disabled button with spinner
             HStack {
                 ProgressView()

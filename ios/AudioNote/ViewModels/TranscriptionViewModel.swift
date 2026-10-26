@@ -44,6 +44,41 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var recognitionMode: RecognitionMode = .online
     @Published var isEnhancing: Bool = false
 
+    /// True while a recovery sweep is running.
+    ///
+    /// The launch sweep and the network-recovery sweep can overlap — the
+    /// app launches offline, the network comes back mid-sweep — and the
+    /// same record processed twice means two LLM calls and two writes.
+    private var isRecovering = false
+
+    /// True while a **background** recovery sweep is running.
+    ///
+    /// `processWithLLM` is the single LLM choke point, so a sweep sets
+    /// `isLLMProcessing` and `llmProcessingFailed`. Those are UI signals
+    /// meaning "you asked for this, here is the outcome" — but they are
+    /// global, not per record. A sweep processing record #37 would
+    /// replace the recording screen's transcript area with a spinner about
+    /// somebody else's record, and replace the detail view's LLM button
+    /// with a disabled one. The app would be reporting its own
+    /// housekeeping as the user's request.
+    @Published private(set) var isBackgroundRecovery: Bool = false
+
+    /// Whether the user is waiting on an LLM result they asked for.
+    ///
+    /// The views read this instead of `isLLMProcessing`, so a background
+    /// sweep does not take the UI hostage.
+    var isAwaitingUserLLMResult: Bool {
+        isLLMProcessing && !isBackgroundRecovery
+    }
+
+    /// Whether an LLM failure the user should hear about has happened.
+    ///
+    /// The flag itself is sticky, so a failure raised during a sweep
+    /// surfaces once the sweep ends — it is not swallowed, only delayed.
+    var hasUserFacingLLMFailure: Bool {
+        llmProcessingFailed && !isBackgroundRecovery
+    }
+
     // MARK: - Library filter state (思录)
     @Published var searchQuery: String = ""
     @Published var selectedTags: Set<String> = []
@@ -98,6 +133,32 @@ final class TranscriptionViewModel: ObservableObject {
             loadSavedLanguage()
         }
         setupNetworkMonitor()
+        observeStorageReadiness()
+    }
+
+    /// Run the launch recovery sweep as soon as the data folder is
+    /// reachable.
+    ///
+    /// The sweep is triggered by the storage becoming ready rather than by
+    /// a timer or by the view appearing, because "ready" is the only
+    /// moment the records are actually loadable — and it covers the case
+    /// a timer would miss: the user reinstalls the app, picks the same
+    /// folder, and the records stranded in it should recover right then,
+    /// not at some future launch.
+    ///
+    /// `removeDuplicates()` matters: `bootstrap()` can run twice (the
+    /// view's `onAppear` and `loadHistory` both call it), and two sweeps
+    /// would process two batches of records per launch instead of one.
+    private func observeStorageReadiness() {
+        StorageCoordinator.shared.$state
+            .removeDuplicates()
+            .sink { [weak self] state in
+                guard state == .ready else { return }
+                Task { @MainActor in
+                    await self?.recoverStrandedRecords()
+                }
+            }
+            .store(in: &cancellables)
     }
 
     private func setupNetworkMonitor() {
@@ -577,34 +638,105 @@ final class TranscriptionViewModel: ObservableObject {
     /// Called when network transitions from disconnected → connected (debounced)
     func networkDidRecover() async {
         Logger.info("Network recovered — processing pending items")
+        // No LLM cap here. The user is present for this one, and a
+        // backlog they are waiting on should clear in one go; capping it
+        // would mean toggling the network once per batch. The launch
+        // sweep, which nobody is waiting for, is the one that is capped.
+        await runRecoverySweep(includeOnDeviceUpgrade: true, llmLimit: nil)
+    }
+
+    /// Recover what the previous session left unfinished.
+    ///
+    /// A `.pending` record (audio on disk, no transcript) or a record
+    /// whose LLM pass failed while the app was offline used to wait
+    /// indefinitely: the only trigger for recovery was a
+    /// disconnected→connected transition, so a record stranded yesterday
+    /// was still stranded today unless the user happened to toggle the
+    /// network during this session. Relaunching with a working network
+    /// did nothing at all.
+    ///
+    /// This is the missing trigger. It runs the same steps as the
+    /// network sweep — from the same candidate function, so the two
+    /// cannot drift — minus the on-device upgrade (step 2), which is an
+    /// improvement rather than a recovery.
+    func recoverStrandedRecords() async {
+        Logger.info("Launch recovery — sweeping for stranded records")
+        await runRecoverySweep(
+            includeOnDeviceUpgrade: false,
+            llmLimit: PendingRecognitionPolicy.launchLLMLimit
+        )
+    }
+
+    /// The shared body of the two recovery sweeps.
+    ///
+    /// - Parameters:
+    ///   - includeOnDeviceUpgrade: step 2, which re-recognizes on-device
+    ///     records online. The network sweep does it; the launch sweep
+    ///     does not — an on-device record already has a transcript, so
+    ///     upgrading it is an improvement rather than a recovery, and it
+    ///     would put an online recognition request on every launch.
+    ///   - llmLimit: cap on the records sent to the LLM in this sweep.
+    ///     `nil` means no cap.
+    private func runRecoverySweep(
+        includeOnDeviceUpgrade: Bool,
+        llmLimit: Int?
+    ) async {
+        // Two sweeps must never run at once. The launch sweep can still
+        // be in flight when the network comes back and the network sweep
+        // starts, and the same record processed twice means two LLM calls
+        // and two writes.
+        guard !isRecovering else { return }
+        isRecovering = true
+        defer { isRecovering = false }
+
+        // The data directory has to be reachable. A `.unreachable` state
+        // can leave a stale `resolvedRoot` behind, and recovering against
+        // a folder the user is no longer using is worse than not
+        // recovering at all (ADR-0007).
+        guard StorageCoordinator.shared.state == .ready else {
+            Logger.warning("Recovery sweep skipped: storage is not ready")
+            return
+        }
+        // Every step below needs the network.
+        guard NetworkMonitor.shared.checkConnectivity() else { return }
+
+        isBackgroundRecovery = true
+        defer { isBackgroundRecovery = false }
+
         let records = (try? await storage.loadAll()) ?? []
+        let candidates = PendingRecognitionPolicy.recoveryCandidates(
+            from: records,
+            llmLimit: llmLimit
+        )
 
         // 1. Process records never LLM-processed
-        for record in PendingRecognitionPolicy.llmQueue(from: records)
-        where record.llmProcessingStatus == nil {
+        for record in candidates.neverProcessed {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             let text = PendingRecognitionPolicy.llmInputText(for: record)
             await processWithLLM(recordId: record.id, originalText: text)
         }
 
-        // 2. Upgrade on-device recognitions
-        let onDeviceRecords = records.filter {
-            $0.recognitionMode == .onDevice && $0.audioFileName != nil
-        }
-        for record in onDeviceRecords {
-            guard NetworkMonitor.shared.checkConnectivity() else { return }
-            await enhanceRecognition(recordId: record.id)
+        // 2. Upgrade on-device recognitions (network sweep only)
+        if includeOnDeviceUpgrade {
+            let onDeviceRecords = records.filter {
+                $0.recognitionMode == .onDevice && $0.audioFileName != nil
+            }
+            for record in onDeviceRecords {
+                guard NetworkMonitor.shared.checkConnectivity() else { return }
+                await enhanceRecognition(recordId: record.id)
+            }
         }
 
         // 3. Retry failed and never-completed recognitions
-        for record in PendingRecognitionPolicy.recognitionRetryQueue(from: records) {
+        for record in candidates.recognitionRetry {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             await retryRecognitionFromFile(recordId: record.id)
         }
 
-        // 4. Retry failed LLM (that failed due to offline)
-        for record in PendingRecognitionPolicy.llmQueue(from: records)
-        where record.llmProcessingStatus == .failed {
+        // 4. Retry LLM passes that failed (offline) or never finished
+        //    (the app was killed mid-call, leaving the status at
+        //    `.processing`)
+        for record in candidates.unfinishedLLM {
             guard NetworkMonitor.shared.checkConnectivity() else { return }
             let text = PendingRecognitionPolicy.llmInputText(for: record)
             await processWithLLM(recordId: record.id, originalText: text)

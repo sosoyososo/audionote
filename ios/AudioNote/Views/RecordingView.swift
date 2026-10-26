@@ -258,7 +258,7 @@ struct RecordingView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                } else if viewModel.isLLMProcessing {
+                } else if viewModel.isAwaitingUserLLMResult {
                     HStack(spacing: 6) {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
@@ -268,7 +268,7 @@ struct RecordingView: View {
                             .foregroundColor(.secondary)
                     }
                     Spacer()
-                } else if viewModel.llmProcessingFailed {
+                } else if viewModel.hasUserFacingLLMFailure {
                     HStack(spacing: 6) {
                         Image(systemName: "exclamationmark.triangle")
                             .foregroundColor(.orange)
@@ -333,7 +333,7 @@ struct RecordingView: View {
                 } else if isEditing {
                     // Editable text editor
                     editingTextView
-                } else if viewModel.isLLMProcessing {
+                } else if viewModel.isAwaitingUserLLMResult {
                     // LLM processing loading
                     VStack {
                         ProgressView()
@@ -345,7 +345,7 @@ struct RecordingView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .textCard()
-                } else if viewModel.llmProcessingFailed {
+                } else if viewModel.hasUserFacingLLMFailure {
                     // Show original text with retry option
                     VStack {
                         Image(systemName: "exclamationmark.triangle")

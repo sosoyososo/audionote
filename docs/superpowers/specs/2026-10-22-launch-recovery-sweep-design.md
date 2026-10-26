@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | PROPOSED |
+| **Status** | IMPLEMENTED (2026-10-22) — 见文末「实现说明」 |
 | **Date** | 2026-10-22 |
 | **Supersedes** | — |
 | **Author** | — |
@@ -166,3 +166,41 @@ private func runFailedLLM(records: [TranscriptionRecord]) async             // �
 1. **LLM 上限 10 条**——这个数字是我定的，理由见 §3.3。太小则积压清得慢，太大则单次启动的账单失控。可以在实现后调整，改一个常量即可。
 2. **启动 sweep 是否也该跑第 2 步**——我按「不属于两条 queue、且不是恢复」排除了。若希望启动时也顺手把 on-device 记录升级成在线识别，把 `runOnDeviceUpgrade` 加进启动 sweep 即可。
 3. **网络恢复 sweep 的无上限突发**（§3.4）——已知问题，本次不改。是否单独处理由用户定。
+
+---
+
+## 实现说明（2026-10-22）
+
+实现过程中相对本 spec 的偏离与补充，理由都在 ADR-0006 里。
+
+### 候选函数收口成 `recoveryCandidates(from:llmLimit:)`
+
+spec 里原本设想「一个共享的纯函数返回第 1/3/4 步要处理什么」。落地时收得更紧：**候选函数同时接受 LLM 上限**（`llmLimit`），一步到位把「选谁」和「选几个」都算完，两个 sweep 各调一次即可。
+
+原因：上限如果留在外面，每个调用点都要记得传，漏传一个就等于没有上限——而「没有上限」恰好是那种**不会报错、只会 quietly 变贵**的失败。
+
+### 新增了 `.processing` 状态
+
+spec 原本只提 `nil` 和 `.failed`。实现时发现 `llmProcessingStatus == .processing` 是一个**终态**：app 在 LLM 调用中途被杀，状态写了 `.processing` 但没有进程会再写回结果，app 里没有任何队列会碰它。不收它，这类记录的标题和摘要就永远补不上。
+
+安全性由 `isHandEdited` 兜底：如果那次 LLM 其实成功了、只是状态写丢了，这条记录有 `optimizedContent`，本来就被排除。
+
+### 触发条件是「存储就绪」，不是「启动」
+
+spec 原本写的是「`TranscriptionViewModel.init` 之后触发」。实现改成订阅 `StorageCoordinator.$state`，在变成 `.ready` 时触发。
+
+原因：**重装场景**。用户重装 app、手动选回同一个文件夹——init 那一刻还没 ready，sweep 被跳过；等用户选完文件夹，sweep 也没机会再跑。那批记录要等到「下次启动」。订阅 `.ready` 覆盖了这个场景：用户选完文件夹，当场就恢复。
+
+`removeDuplicates()` 是必须的：`bootstrap()` 可能跑两次（`onAppear` 和 `loadHistory` 各一次），两次就意味着每次启动处理两批（20 条）而不是一批。
+
+### UI 契约：后台 sweep 不得占用「用户在等」的信号
+
+spec §4.4 写的是「spinner 闪一下可以接受」。实现时发现比这严重：`isLLMProcessing` 是**全局**标志而不是 per-record，后台 sweep 处理第 37 条记录时，录音页的**转写文本整个会被换成转圈**，详情页的 LLM 按钮也会被一个 disabled 的转圈顶掉——用户在看的记录和 app 正在处理的记录根本不是同一条。
+
+所以加了 `isAwaitingUserLLMResult` / `hasUserFacingLLMFailure`，视图改读它们。
+
+### 没做的事
+
+- **没有把第 1 步和第 4 步合并。** 两者代码完全一样，看起来是个显然的简化。但第 2 步会替换 `content`（在线识别覆盖设备端文本）而不动 LLM 元数据，所以「先跑 LLM 再跑第 2 步」会让标题和摘要描述**旧文本**。第 4 步排在第 2 步之后正是为了让它看到最终文本。合并会把这个问题悄悄带回来。
+- **没有调整网络 sweep 的步骤顺序。** 第 1 步排在第 2 步之前，同样存在「元数据描述旧文本」的偏斜——但那是既有行为，且本次不动。启动 sweep 不跑第 2 步，所以它没有这个问题。
+- **没有给网络 sweep 加上限。** 用户在场，一次清完比让人反复切网强。它的无上限突发是**既有问题**，记录在案，本次不改。

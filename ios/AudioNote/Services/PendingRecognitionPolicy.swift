@@ -171,6 +171,94 @@ extension PendingRecognitionPolicy {
         }
     }
 
+    // MARK: - Recovery candidates
+
+    /// The records a recovery sweep should act on, split by the step that
+    /// acts on them.
+    ///
+    /// One source for both sweeps — the launch sweep and the
+    /// network-recovery sweep. Two sweeps that computed their own
+    /// candidates would drift, and the drift would be invisible: the
+    /// network sweep would keep looking right while the launch sweep
+    /// quietly skipped (or double-processed) something.
+    struct RecoveryCandidates: Equatable {
+        /// Records whose LLM pass was never attempted.
+        let neverProcessed: [TranscriptionRecord]
+        /// Records whose LLM pass did not finish: it failed, or it was
+        /// interrupted — the app was killed mid-call, leaving the status
+        /// at `.processing` with nothing in flight to finish it.
+        let unfinishedLLM: [TranscriptionRecord]
+        /// Records whose transcript is missing or failed, and whose audio
+        /// is still on disk.
+        let recognitionRetry: [TranscriptionRecord]
+
+        /// Every record that wants an LLM pass, in the order the sweep
+        /// should visit them.
+        var llmWork: [TranscriptionRecord] { neverProcessed + unfinishedLLM }
+    }
+
+    /// How many records the launch-time recovery sweep sends to the LLM in
+    /// one launch.
+    ///
+    /// The launch sweep is unattended, so its cost has to be bounded. A
+    /// network recovery happens while the user is sitting there waiting
+    /// for the result, and an unbounded sweep there is a surprise they
+    /// can see coming; at launch there is nobody to see it.
+    static let launchLLMLimit = 10
+
+    /// The candidates for one recovery sweep.
+    ///
+    /// - Parameter llmLimit: cap on the number of records sent to the LLM
+    ///   in this sweep. `nil` means no cap. The cap does **not** apply to
+    ///   `recognitionRetry`: re-recognition is Apple's speech service, not
+    ///   a paid API, and ADR-0005 §4.6 requires retries to be unlimited.
+    static func recoveryCandidates(
+        from records: [TranscriptionRecord],
+        llmLimit: Int? = nil
+    ) -> RecoveryCandidates {
+        let pool = llmPool(from: records, limit: llmLimit)
+        return RecoveryCandidates(
+            neverProcessed: pool.filter { $0.llmProcessingStatus == nil },
+            unfinishedLLM: pool.filter {
+                $0.llmProcessingStatus == .failed || $0.llmProcessingStatus == .processing
+            },
+            recognitionRetry: recognitionRetryQueue(from: records)
+        )
+    }
+
+    /// The records waiting for an LLM pass: never attempted, failed, or
+    /// interrupted.
+    ///
+    /// All three are the same kind of work — "this record still needs its
+    /// LLM pass" — so a cap treats them as one pool.
+    ///
+    /// `.processing` is in the pool because it is a status nothing will
+    /// ever move again: the app was killed between writing `.processing`
+    /// and writing the outcome, and no queue in the app looks at it. Left
+    /// out, that record's title and summary would never be filled in.
+    /// The `isHandEdited` exclusion covers the case where the LLM call
+    /// actually *did* succeed and only the status write was lost — such a
+    /// record has `optimizedContent` set, so it is excluded anyway.
+    ///
+    /// `limit == nil` returns the pool in input order. That is the
+    /// network-recovery sweep's existing behaviour and it must not shift.
+    /// A limit sorts oldest-first: the records that have been waiting
+    /// longest go first, and the ones the cap skips are the most recent —
+    /// the ones the user is most likely to still care about, and most
+    /// likely to be picked up by the next launch anyway.
+    static func llmPool(
+        from records: [TranscriptionRecord],
+        limit: Int?
+    ) -> [TranscriptionRecord] {
+        let pending = llmQueue(from: records).filter {
+            $0.llmProcessingStatus == nil
+                || $0.llmProcessingStatus == .failed
+                || $0.llmProcessingStatus == .processing
+        }
+        guard let limit else { return pending }
+        return Array(pending.sorted { $0.createdAt < $1.createdAt }.prefix(limit))
+    }
+
     /// Whether `record.content` has diverged from the text it was derived
     /// from.
     ///
