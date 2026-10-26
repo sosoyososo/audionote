@@ -112,6 +112,37 @@ that point; the switch above is the current behaviour.
   being unprotected. This invariant is not a target to enforce. It is a
   consequence of *who writes the field*, and the writer is status-independent by
   design.
+- **An update MUST NOT delete LLM metadata the caller did not restate.**
+  - **Amended 2026-10-22.** `updateRecord` used to take `title`, `summary`,
+    `tags` and `llmProcessingStatus` straight from the incoming record. The
+    detail view's `saveEditing` restates all four, so it was unaffected — but
+    `RecordingView.saveEditedText` builds a record out of the text alone, so
+    editing a transcript on the recording screen deleted the note's title,
+    summary, tags and 「优化后」 badge.
+  - The loss was **unrecoverable, not cosmetic**. `handEditMarker` puts the
+    pre-edit text into `optimizedContent`, so the edited record satisfies
+    `isHandEdited` and is **permanently excluded from `llmQueue`** — no
+    automatic sweep would ever put the metadata back. Only a manual 重试 would.
+  - The rule now: the whole derivation lives in
+    `PendingRecognitionPolicy.mergedRecord(incoming:existing:)`, and every
+    optional field is `incoming ?? existing`. A caller that states a value
+    wins; a caller that omits one is **not** asking for it to be cleared. It
+    is a pure static precisely so this is testable — `updateRecord` reaches
+    `TranscriptionStorage` through a private singleton and cannot be
+    constructed in a unit test.
+  - `archived` is the one exception to the `??` shape: a `Bool` cannot be
+    "unstated", so it is `incoming.archived || existing.archived`.
+    Un-archiving is `unarchiveRecord`, which writes straight to storage and
+    does not go through here.
+  - **This was the second instance of the shape this ADR already warns
+    about, and the first was nearly missed by a comment.** The 2026-09-24 fix
+    (`531ef68`) added the `?? existingRecord?.xxx` fallback for
+    `audioFileName` / `optimizedContent` / `archived` / `archivedAt` — and
+    put a `// Preserve LLM fields` comment above `title: record.title`, which
+    preserves nothing. The design-system doc then recorded the bug as fixed
+    and nobody looked again for a month. A comment is not a behaviour. The
+    behaviour is what `mergedRecord` now states and `UpdateRecordMergeTests`
+    pins.
 - **A hand-edited pending record keeps `recognitionMode == .pending`.** Advancing
   it would be a new `RecognitionMode` case, which ADR-0001 §30 makes locked. The
   visible cost is accepted: the detail page shows the 待识别 badge above text the
@@ -163,53 +194,64 @@ that point; the switch above is the current behaviour.
 
 ## Code anchors
 
-All verified against the working tree as of this commit. The
-`PendingRecognitionPolicy.swift` anchors account for the expanded `llmQueue`
-doc comment landed in the same change that corrected the invariant below; the
-code beneath it is unchanged since `759276a`.
+All verified against the working tree. **Re-verified 2026-10-22** against the
+`mergedRecord` change, which moved the update-path derivation out of
+`updateRecord` and into the policy — the `PendingRecognitionPolicy.swift` line
+numbers below shifted with it, and the `TranscriptionViewModel.swift` ones had
+already drifted since `759276a`.
 
 | Symbol | Path:line |
 |---|---|
 | `RecognitionMode.pending` | `ios/AudioNote/Models/TranscriptionRecord.swift:19` |
-| `optimizedContent` field | `ios/AudioNote/Models/TranscriptionRecord.swift:50` |
-| Offline gate (refuse to record) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:330` |
+| `optimizedContent` field | `ios/AudioNote/Models/TranscriptionRecord.swift:76` |
+| Offline gate (refuse to record) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:403` |
 | Gate call site | `ios/AudioNote/Services/SpeechRecognizer.swift:137` |
 | `PendingRecognitionPolicy.Outcome` | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:25` |
 | `classify` (discard vs `.pending`) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:54` |
-| `classify` call site | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:203` |
+| `classify` call site | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:210` |
 | LLM-queue filter (excludes `.pending`) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:136` |
 | Recognition-retry-queue filter | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:158` |
 | Hand-edit predicate | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:192` |
 | LLM input resolution | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:225` |
-| Hand-edit marker derivation | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:250` |
-| Empty-text guard (pre-dates this ADR) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:300` |
-| Dispatcher | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:261` |
-| `.pending` switch arm | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:283` |
-| `enhanceRecognition` hand-edit guard | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:313` |
-| `retryRecognitionFromFile` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:362` |
-| `processWithLLM` (the LLM choke point) | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:416` |
-| Success: writes `optimizedContent` + `.completed` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:473`, `:478` |
-| Failure branches: `.failed`, marker untouched | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:459`, `:516`, `:527`, `:535` |
-| `networkDidRecover` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:542` |
-| LLM input resolved at steps 1 and 4 | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:550`, `:573` |
-| `retryLLM` (manual route) | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:592` |
-| Marker write on update | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:672` (`optimizedContent: marker` itself at `:689`) |
-| `saveEditing` — passes `llmProcessingStatus` through, no marker | `ios/AudioNote/Views/TranscriptionDetailView.swift:540`, `:552` |
-| `updateRecord` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:649` |
-| Manual LLM route (bypasses `processWithLLM`) | `ios/AudioNote/Views/TranscriptionDetailView.swift:444`, `:478` |
-| `llmCandidateText` | `ios/AudioNote/Views/TranscriptionDetailView.swift:341` |
-| 优化后 badge, gated on `.completed` | `ios/AudioNote/Views/TranscriptionDetailView.swift:188` |
+| Hand-edit marker derivation | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:259` |
+| **Update-path derivation (the whole record)** | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:313` |
+| Empty-text guard (pre-dates this ADR) | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:373` |
+| Dispatcher | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:268` |
+| `.pending` switch arm | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:290` |
+| `enhanceRecognition` hand-edit guard | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:320` |
+| `retryRecognitionFromFile` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:369` |
+| `processWithLLM` (the LLM choke point) | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:423` |
+| Success: writes `optimizedContent` + `.completed` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:485`, `:490` |
+| Failure branches: `.failed`, marker untouched | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:466`, `:528`, `:539`, `:547` |
+| `networkDidRecover` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:554` |
+| LLM input resolved at steps 1 and 4 | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:562`, `:585` |
+| `retryLLM` (manual route) | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:602` |
+| Marker write on update | `ios/AudioNote/Services/PendingRecognitionPolicy.swift:328` (`optimizedContent: marker`, inside `mergedRecord`) |
+| `saveEditing` — passes `llmProcessingStatus` through, no marker | `ios/AudioNote/Views/TranscriptionDetailView.swift:572`, `:584` |
+| `updateRecord` | `ios/AudioNote/ViewModels/TranscriptionViewModel.swift:661` (calls `mergedRecord` at `:664`) |
+| **The lossy call site — a text-only record** | `ios/AudioNote/Views/RecordingView.swift:495` (`saveEditedText`) |
+| Manual LLM route (bypasses `processWithLLM`) | `ios/AudioNote/Views/TranscriptionDetailView.swift:471`, `:475` |
+| `llmCandidateText` | `ios/AudioNote/Views/TranscriptionDetailView.swift:368` (`llmInputText` at `:369`, used at `:339`) |
+| 优化后 badge, gated on `.completed` | `ios/AudioNote/Views/TranscriptionDetailView.swift:187` |
 | Retry button → `llmInputText` | `ios/AudioNote/Views/RecordingView.swift:284` |
 
-The five sites that resolve LLM input through `llmInputText(for:)`:
-`TranscriptionViewModel.swift:550`, `:573`, `:592`;
-`TranscriptionDetailView.swift:448` (via `llmCandidateText`, `:341`);
+The **six** sites that resolve LLM input through `llmInputText(for:)`:
+`TranscriptionViewModel.swift:562`, `:585`, `:604`;
+`TranscriptionDetailView.swift:369` (inside `llmCandidateText`, used at `:339`)
+and `:475` (`reprocessRecord`);
 `RecordingView.swift:284`.
+
+There were five when this ADR was written. `reprocessRecord` was the sixth: it
+used to resolve its own input with an inline expression and was later collapsed
+onto `llmInputText(for:)`, which made the inline expression a constant-false
+test. An audit of "where is empty text kept out of the LLM?" has to find all
+six.
 
 ## Test coverage
 
-**37** tests in `ios/AudioNoteTests/PendingRecognitionTests.swift`, **106** in the
-full suite. The policy functions are pure statics precisely so they are reachable
+**37** tests in `ios/AudioNoteTests/PendingRecognitionTests.swift` and **13** in
+`ios/AudioNoteTests/UpdateRecordMergeTests.swift`, **194** in the full suite.
+The policy functions are pure statics precisely so they are reachable
 from a unit test — `TranscriptionViewModel` wires its collaborators as `private
 let` singletons and `SpeechRecognizer` constructs `SFSpeechRecognizer` directly,
 so neither can be instantiated with a controlled environment.
@@ -218,6 +260,13 @@ Covered: `classify`'s discard / `.pending` split; `shouldRefuseToRecord`'s truth
 table; both queue filters; `isHandEdited`'s two halves; `handEditMarker`'s three
 precedence terms; `llmInputText` on hand-edited, LLM-processed and untouched
 records; `isLLMEligible`'s whitespace cases.
+
+`UpdateRecordMergeTests` covers `mergedRecord`: that an edit does not wipe the
+stored LLM metadata (the regression it was written for), that a caller which
+states a value wins, that each LLM field is carried independently, that an empty
+tag list is a stated value rather than an absence, that `createdAt` /
+`audioFileName` / `archived` / `recognitionMode` survive an edit, and that an
+edited record is still excluded from `llmQueue`.
 
 **One claim is documented but NOT tested:** that no `processWithLLM` failure
 branch writes `optimizedContent`. There is no seam on `processWithLLM` — it

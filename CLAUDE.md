@@ -30,6 +30,7 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 - `optimizedContent != content` ⇒ auto-enhance and every automatic recovery pass MUST skip. Note the predicate is overloaded: it is true for LLM-written text too, so `isHandEdited` means "content diverged from its source", not "a human typed this". See ADR-0005.
 - A `RecognitionMode.pending` record (audio, no transcript) MUST be excluded from every LLM path. See ADR-0005.
 - A bare `record.optimizedContent ?? record.content` at a new LLM call site is a bug — it silently sends the user's pre-edit text to the model. Resolve input through `PendingRecognitionPolicy.llmInputText(for:)` instead. See ADR-0005.
+- An update MUST NOT delete LLM metadata the caller did not restate. `TranscriptionViewModel.updateRecord` derives the stored record through `PendingRecognitionPolicy.mergedRecord(incoming:existing:)`, where every optional field is `incoming ?? existing` — a caller that omits a field is not asking for it to be cleared. Do not hand-build a `TranscriptionRecord` at a call site and pass it to `updateRecord` without restating the fields it means to keep. See ADR-0005.
 
 ## Don't do these
 
@@ -44,11 +45,11 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 ```
 ios/AudioNote/
   App/           // entry point
-  Models/        // TranscriptionRecord, RecognitionMode, RecognitionLanguage
-  Services/      // AudioRecorder, SpeechRecognizer, LLMService, TranscriptionStorage, AIProcessingService
-  Utilities/     // NetworkMonitor, PermissionsManager, LanguageManager, Logger
+  Models/        // TranscriptionRecord, RecognitionMode, RecognitionLanguage, NoteRelation, LLMProviderProfile
+  Services/      // AudioRecorder, SpeechRecognizer, LLMService, TranscriptionStorage, StorageCoordinator, KeychainStore, ProviderProfileStore, RelatedNotesService/Storage, TagMerger, PendingRecognitionPolicy, AudioPlayerManager
+  Utilities/     // NetworkMonitor, PermissionsManager, LanguageManager, Logger, TagIdentity, FlowLayout, GradientView, LanguageSelectorView
   ViewModels/    // TranscriptionViewModel, SettingsViewModel
-  Views/         // ContentView, RecordingView, HistoryListView, TranscriptionDetailView, SettingsView, SharedComponents
+  Views/         // ContentView, RecordingView, LibraryListView, TranscriptionDetailView, SettingsView, MergeTagsView, OnboardingView, ProfileDetailView, SharedComponents
 ```
 
 ## How to add a new feature

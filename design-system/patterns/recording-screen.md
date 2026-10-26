@@ -107,8 +107,18 @@ each with a different layout — see `MASTER.md §5` and
    non-optional switch (matches `RecognitionMode`'s actual cases).
 5. `saveEditedText` reconstructs `TranscriptionRecord` but did not preserve
    `audioFileName`, `optimizedContent`, `archived`, `archivedAt`, `tags`,
-   `summary`, `title` — drops LLM fields silently. Fixed in commit
-   `531ef68` (out of scope here).
+   `summary`, `title` — drops LLM fields silently. **Half-fixed in commit
+   `531ef68`** (2026-09-24): that commit added the `?? existingRecord?.xxx`
+   fallback for `audioFileName` / `optimizedContent` / `archived` /
+   `archivedAt`, and put a `// Preserve LLM fields` comment above
+   `title` / `summary` / `tags` / `llmProcessingStatus` — but the code under
+   that comment was `title: record.title`, which preserves nothing. The LLM
+   fields were still taken from the incoming record, so a caller that did not
+   restate them wiped them, and this file's "Fixed in commit `531ef68`" claim
+   was wrong for them. **Fixed 2026-10-22**: the derivation moved to
+   `PendingRecognitionPolicy.mergedRecord(incoming:existing:)`, where every
+   optional field is `incoming ?? existing`. `RecordingView.swift` was not
+   touched by that fix — the choke point was. See ADR-0005.
 6. ~~Header strip's inline `modeLabel` pill~~ — **resolved** by `ModeBadge`.
 
 ### Net change

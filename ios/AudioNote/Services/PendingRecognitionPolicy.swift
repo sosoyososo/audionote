@@ -1,7 +1,8 @@
 import Foundation
 
 /// The decisions that stand between a recording and its transcript, each
-/// extracted as a pure static so it can be unit-tested. Four of them:
+/// extracted as a pure static so it can be unit-tested. The ones that matter
+/// most:
 ///
 /// - `classify` — whether a finished recording is discarded, saved as
 ///   `.pending`, or saved with the recognizer's own mode (spec §4.2).
@@ -11,6 +12,11 @@ import Foundation
 ///   the device is offline (spec §4.1).
 /// - `isLLMEligible` — the empty-text guard; pre-dates this work, see the
 ///   2026-04-09 skip-empty-transcription design.
+/// - `mergedRecord` — the record `updateRecord` writes, which carries
+///   forward every field the caller did not restate.
+///
+/// The hand-edit family — `isHandEdited`, `llmInputText`, `handEditMarker` —
+/// is the other half of the same namespace; see ADR-0005.
 ///
 /// Every one of them is a pure static on purpose.
 /// `TranscriptionViewModel` wires its collaborators as `private let`
@@ -228,6 +234,15 @@ extension PendingRecognitionPolicy {
 
     /// The `optimizedContent` a record should carry after `updateRecord`.
     ///
+    /// A record the user has hand-typed into has to stay that way. This
+    /// derivation is the only thing that makes the `optimizedContent !=
+    /// content` rule fire for a hand edit, and it used to carry
+    /// `optimizedContent` forward only — a pending record has empty
+    /// `content` and `nil optimizedContent`, so after the user typed into
+    /// the detail page both were still nil, the rule could not fire, and
+    /// the next network recovery overwrote what they wrote. Stashing the
+    /// *pre-edit* content as the marker is what makes the rule fire.
+    ///
     /// Extracted as a pure static for the same reason as `classify`:
     /// `updateRecord` reaches `TranscriptionStorage` and `loadHistory`
     /// through the view model's collaborators, so the view model cannot be
@@ -257,6 +272,70 @@ extension PendingRecognitionPolicy {
         if incoming.content != previousContent { return previousContent }
 
         return existing?.optimizedContent
+    }
+
+    /// The record `updateRecord` should write for `incoming`.
+    ///
+    /// Extracted as a pure static for the same reason as `classify` and
+    /// `handEditMarker`: `updateRecord` reaches `TranscriptionStorage`
+    /// through the view model's private singleton, so the *decision* has to
+    /// be separated from the write to be testable at all. Everything the
+    /// derivation decides lives here; the view model only performs the write.
+    ///
+    /// Two rules, and they apply per field:
+    ///
+    /// - **Believe the caller** for the fields it states. `content` is
+    ///   always taken from `incoming` — the caller is describing the text,
+    ///   and the text is the point of the update. `duration` and `language`
+    ///   are taken from `incoming` too, for the same reason; neither is
+    ///   carried forward, because no caller states a duration it does not
+    ///   mean.
+    /// - **Carry forward** what the caller does not state. Every optional
+    ///   field is `incoming ?? existing`: `createdAt`, `audioFileName`,
+    ///   `recognitionMode`, `archivedAt`, and the LLM fields. These are
+    ///   facts about the *record*, not about the edit, and a caller that
+    ///   only knows about the text does not carry them. Dropping
+    ///   `createdAt` reorders the library; dropping `audioFileName` breaks
+    ///   playback; dropping `archivedAt` un-dates the archive.
+    ///
+    /// `archived` is the one exception to the `??` shape, because a `Bool`
+    /// cannot be "unstated": `false` is a value, and treating it as one
+    /// would make it impossible to un-archive through this path. It is
+    /// `incoming.archived || existing.archived` instead — either side may
+    /// archive, and un-archiving is `unarchiveRecord`, which writes
+    /// straight to storage rather than through here.
+    ///
+    /// The LLM fields — `title`, `summary`, `tags`, `llmProcessingStatus` —
+    /// are what this function exists for. A caller that re-sends the text
+    /// without re-sending the metadata is not asking for the metadata to be
+    /// deleted; it simply does not know about it.
+    ///
+    /// Why this matters more than it looks: `handEditMarker` puts the
+    /// pre-edit text into `optimizedContent`, so an edited record satisfies
+    /// `isHandEdited` and is **permanently excluded from `llmQueue`**. No
+    /// automatic sweep will ever restore a title or a tag that was dropped
+    /// at write time. The loss is therefore not cosmetic and not
+    /// self-healing — the only way back is the user tapping 重试 by hand.
+    static func mergedRecord(incoming: TranscriptionRecord,
+                             existing: TranscriptionRecord?) -> TranscriptionRecord {
+        let marker = handEditMarker(incoming: incoming, existing: existing)
+
+        return TranscriptionRecord(
+            id: incoming.id,
+            content: incoming.content,
+            createdAt: existing?.createdAt ?? incoming.createdAt,
+            duration: incoming.duration,
+            language: incoming.language,
+            audioFileName: incoming.audioFileName ?? existing?.audioFileName,
+            title: incoming.title ?? existing?.title,
+            summary: incoming.summary ?? existing?.summary,
+            tags: incoming.tags ?? existing?.tags,
+            llmProcessingStatus: incoming.llmProcessingStatus ?? existing?.llmProcessingStatus,
+            optimizedContent: marker,
+            recognitionMode: incoming.recognitionMode ?? existing?.recognitionMode,
+            archived: incoming.archived || (existing?.archived ?? false),
+            archivedAt: incoming.archivedAt ?? existing?.archivedAt
+        )
     }
 }
 

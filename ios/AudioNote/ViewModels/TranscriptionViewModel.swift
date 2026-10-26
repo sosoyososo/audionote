@@ -659,49 +659,15 @@ final class TranscriptionViewModel: ObservableObject {
     }
 
     func updateRecord(_ record: TranscriptionRecord) async throws {
-        // Preserve the original createdAt timestamp + audioFileName + archived
-        // state when updating. The caller's input may not carry these fields
-        // (e.g. TranscriptionDetailView.reprocessRecord / saveEditing only set a subset),
-        // and dropping them was causing playback + archive state to silently disappear
-        // after the user clicked Analyze or Save in the detail view.
-        //
-        // `optimizedContent` is NOT preserved — it is derived below, and it is
-        // the one field here whose handling decides whether a hand edit survives.
+        // The derivation — which fields are carried forward, which are
+        // believed, and how the hand-edit marker is derived — lives in
+        // `PendingRecognitionPolicy.mergedRecord`, next to the other
+        // decisions this class cannot be tested around. This method only
+        // reads the stored record and performs the write.
         let existingRecord = try await storage.get(id: record.id)
-
-        // A record the user has hand-typed into has to stay that way. This
-        // function is the only write path for a pending record's text, and
-        // it used to carry `optimizedContent` forward only — a pending
-        // record has empty `content` and `nil optimizedContent`, so after
-        // the user typed into the detail page both were still nil, the
-        // `optimizedContent != content` rule could not fire, and the next
-        // network recovery overwrote what they wrote. Stashing the
-        // *pre-edit* content as the marker is what makes the rule fire.
-        //
-        // The derivation itself lives in `PendingRecognitionPolicy` with the
-        // rest of this feature's decisions, so it can be unit-tested — this
-        // class has no seam for it.
-        let marker = PendingRecognitionPolicy.handEditMarker(
+        let updatedRecord = PendingRecognitionPolicy.mergedRecord(
             incoming: record,
             existing: existingRecord
-        )
-
-        let updatedRecord = TranscriptionRecord(
-            id: record.id,
-            content: record.content,
-            createdAt: existingRecord?.createdAt ?? record.createdAt,
-            duration: record.duration,
-            language: record.language,
-            audioFileName: record.audioFileName ?? existingRecord?.audioFileName,
-            // Preserve LLM fields
-            title: record.title,
-            summary: record.summary,
-            tags: record.tags,
-            llmProcessingStatus: record.llmProcessingStatus,
-            optimizedContent: marker,
-            recognitionMode: record.recognitionMode ?? existingRecord?.recognitionMode,
-            archived: record.archived || (existingRecord?.archived ?? false),
-            archivedAt: record.archivedAt ?? existingRecord?.archivedAt
         )
         try await storage.save(updatedRecord)
         await loadHistory()
