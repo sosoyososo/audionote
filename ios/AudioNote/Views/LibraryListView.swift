@@ -181,12 +181,43 @@ struct LibraryListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if !viewModel.hasRecordsInScope {
+        if let failure = viewModel.recordsLoadFailure {
+            recordsLoadFailureState(failure)
+        } else if !viewModel.hasRecordsInScope {
             scopeEmptyState
         } else if viewModel.displayedRecords.isEmpty {
             noResultsState
         } else {
             recordsListView
+        }
+    }
+
+    /// The library file is there but could not be read.
+    ///
+    /// This is deliberately NOT the empty state. "没有记录" and "读不出来"
+    /// render identically on screen, and the user reads the first one as
+    /// "my data is gone" — which, in the corrupted case, it is not. The
+    /// audio files are still sitting in the folder, and saying so is the
+    /// difference between "recoverable" and "give up".
+    @ViewBuilder
+    private func recordsLoadFailureState(_ failure: RecordsLoadFailure) -> some View {
+        switch failure {
+        case .corrupted:
+            EmptyState(
+                systemImage: "exclamationmark.triangle",
+                title: "Library.LoadFailed.Corrupted.Title".localized,
+                subtitle: "Library.LoadFailed.Corrupted.Hint".localized,
+                actionTitle: "Library.LoadFailed.Retry".localized,
+                action: { Task { await viewModel.loadHistory() } }
+            )
+        case .unreadable(let message):
+            EmptyState(
+                systemImage: "exclamationmark.triangle",
+                title: "Library.LoadFailed.Unreadable.Title".localized,
+                subtitle: message,
+                actionTitle: "Library.LoadFailed.Retry".localized,
+                action: { Task { await viewModel.loadHistory() } }
+            )
         }
     }
 

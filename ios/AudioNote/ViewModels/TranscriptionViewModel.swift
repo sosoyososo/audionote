@@ -2,6 +2,22 @@ import Foundation
 import Combine
 import SwiftUI
 
+/// Why the library has no records to show, when the reason is not
+/// "the library is empty".
+///
+/// A library that has never been written is a normal state and renders
+/// as the ordinary empty state. A library whose file exists but cannot be
+/// parsed is a *failure*, and it must not be rendered the same way: the
+/// two look identical on screen, but only one of them means "your data
+/// is gone".
+enum RecordsLoadFailure: Equatable {
+    /// `transcriptions.json` is there but could not be decoded.
+    case corrupted
+    /// The file could not be read at all (permissions, I/O, a provider
+    /// that isn't answering).
+    case unreadable(String)
+}
+
 @MainActor
 final class TranscriptionViewModel: ObservableObject {
     @Published var isRecording = false
@@ -12,6 +28,9 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var currentRecordId: UUID?
     @Published var authorizationStatus: PermissionStatus = .notDetermined
     @Published var errorMessage: String?
+    /// Set when the library could not be read. `nil` means "read fine"
+    /// — including the case of a library that is simply empty.
+    @Published var recordsLoadFailure: RecordsLoadFailure?
     @Published var selectedLanguage: RecognitionLanguage = .chinese
     @Published var isOptimizing: Bool = false
     @Published var isLLMProcessing: Bool = false
@@ -616,13 +635,23 @@ final class TranscriptionViewModel: ObservableObject {
         // a successful re-pick will reach the body below.
         guard StorageCoordinator.shared.isReady else { return }
         Logger.debug("Loading history")
-        do {
-            let records = try await storage.loadAll()
+        switch await storage.loadOutcome() {
+        case .noFile:
+            // Nothing has ever been written. A genuinely empty library —
+            // the empty state in the list is the honest rendering.
+            historyRecords = []
+            recordsLoadFailure = nil
+        case .records(let records):
             historyRecords = records
+            recordsLoadFailure = nil
             Logger.info("Loaded \(records.count) records")
-        } catch {
-            Logger.error("Failed to load history: \(error.localizedDescription)")
-            errorMessage = error.localizedDescription
+        case .corrupted(let error):
+            // The file is there but unreadable. This is NOT an empty
+            // library, and rendering it as one is how the user ends up
+            // believing their data is gone. Say so instead.
+            historyRecords = []
+            recordsLoadFailure = .corrupted
+            Logger.error("Records file is corrupted: \(error.localizedDescription)")
         }
     }
 

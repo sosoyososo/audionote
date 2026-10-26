@@ -162,3 +162,17 @@
 "History.PendingSummary" = "Recording awaiting recognition";
 "History.Untitled" = "Untitled";
 "Detail.Pending.Hint" = "This recording hasn't been transcribed yet. It will be processed automatically once you're back online.";
+
+/* Storage state (2026-10-22 data-layer architecture, P0) */
+"Onboarding.Title" = "Storage Location";
+"Onboarding.Body" = "Choose a folder for your recordings and transcripts. Uninstalling the app keeps the data, and you can reach it through the Files app.\n\nAfter reinstalling, pick the same folder again — your records will all come back.";
+"Onboarding.Unreachable.Title" = "Storage Location Unreachable";
+"Onboarding.Unreachable.Hint" = "Your data may still be in the Files app. Pick the folder you used before and the records will come back.";
+"Storage.Unreachable.BookmarkInvalid" = "Couldn't find the folder you used last time.";
+"Storage.Unreachable.FolderMissing" = "The folder you used last time is no longer where it was — it may have been moved, renamed, or deleted.";
+"Storage.Unreachable.AccessDenied" = "Couldn't access the folder you used last time. Access may have been revoked, or the files may not have finished downloading.";
+"Storage.Unreachable.NotSecurityScoped" = "The access credential for your storage location is no longer valid. Please pick the folder again.";
+"Library.LoadFailed.Corrupted.Title" = "Records File Unreadable";
+"Library.LoadFailed.Corrupted.Hint" = "The records file is corrupted, but your audio files are still in the folder — nothing has been lost. Open transcriptions.json in the Files app to check it, or try again later.";
+"Library.LoadFailed.Unreadable.Title" = "Couldn't Read Records";
+"Library.LoadFailed.Retry" = "Retry";

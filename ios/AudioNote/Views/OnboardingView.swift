@@ -12,10 +12,10 @@ struct OnboardingView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
 
-            Text("存储位置设置")
+            Text(onboardingTitle)
                 .font(.title2.weight(.semibold))
 
-            Text("请选择一个文件夹用于保存录音转写数据。卸载 App 后数据仍会保留,并可通过“文件”App 查看。")
+            Text(onboardingSubtitle)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -53,7 +53,7 @@ struct OnboardingView: View {
                     .foregroundColor(.secondary)
             }
 
-            if let err = storage.errorMessage {
+            if let err = storage.errorMessage, !isUnreachable {
                 Text(err)
                     .font(.caption)
                     .foregroundColor(.orange)
@@ -75,6 +75,41 @@ struct OnboardingView: View {
                 }
             }
         }
+    }
+
+    /// Title + body copy for the current storage state.
+    ///
+    /// The reinstall case is the one that matters most. After an
+    /// uninstall the data is still sitting in the Files app, but the app
+    /// has no memory of where it was — the bookmark lived in
+    /// UserDefaults, which dies with the app. So the user has to pick the
+    /// same folder again. Saying that is the difference between "my
+    /// records came back" and "my records are gone", because picking a
+    /// *different* folder produces a working app with an empty library,
+    /// and nothing in the app would explain why.
+    private var onboardingTitle: String {
+        switch storage.state {
+        case .unreachable:
+            return "Onboarding.Unreachable.Title".localized
+        case .unconfigured, .ready:
+            return "Onboarding.Title".localized
+        }
+    }
+
+    private var onboardingSubtitle: String {
+        switch storage.state {
+        case .unreachable(let reason):
+            return reason.message + "\n\n" + "Onboarding.Unreachable.Hint".localized
+        case .unconfigured, .ready:
+            return "Onboarding.Body".localized
+        }
+    }
+
+    /// True when the folder can't be reached. The reason is already in
+    /// the subtitle, so the small error line below would repeat it.
+    private var isUnreachable: Bool {
+        if case .unreachable = storage.state { return true }
+        return false
     }
 }
 

@@ -26,37 +26,94 @@ enum StorageError: LocalizedError {
 actor TranscriptionStorage {
     static let shared = TranscriptionStorage()
 
+    /// The outcome of reading the records file.
+    ///
+    /// The distinction that matters: a library that has never been written
+    /// (`noFile`) is a normal empty state, while a file that exists but
+    /// cannot be parsed (`corrupted`) is a failure the user has to be told
+    /// about. Collapsing them into "no records" is how a corrupted
+    /// library starts looking like a deleted one.
+    enum LoadOutcome {
+        /// `transcriptions.json` does not exist — nothing has been saved
+        /// yet, or it was removed outside the app.
+        case noFile
+        /// The file exists and parsed.
+        case records([TranscriptionRecord])
+        /// The file exists but could not be read or decoded.
+        case corrupted(Error)
+    }
+
+    /// Test seam. When set, every read and write goes to this exact file
+    /// URL instead of the user-picked folder. Mirrors the seam
+    /// `RelatedNotesStorage` already has, for the same reason: the
+    /// storage layer is where data is won and lost, so it is the layer
+    /// that most needs to be testable.
+    private let fileURLOverride: URL?
+
     /// Resolve the JSON URL via the main-actor `StorageCoordinator`. Hop to
     /// main, then return the cached URL. Returns `nil` when storage has not
     /// been bootstrapped yet (first launch, before the user picks a folder
     /// via OnboardingView). Callers treat `nil` as "no records".
     private func jsonURLOrNil() async -> URL? {
-        await MainActor.run {
+        if let fileURLOverride { return fileURLOverride }
+        return await MainActor.run {
             StorageCoordinator.shared.isReady
                 ? StorageCoordinator.shared.jsonURL
                 : nil
         }
     }
 
-    private init() {}
+    private init() { fileURLOverride = nil }
 
-    func loadAll() async throws -> [TranscriptionRecord] {
-        guard let url = await jsonURLOrNil() else { return [] }
+    /// Test seam — see `fileURLOverride`.
+    init(fileURL: URL) { fileURLOverride = fileURL }
+
+    /// Read the records file, distinguishing "not there yet" from "there
+    /// but broken".
+    ///
+    /// `loadAll()` (below) collapses both into an empty array or a thrown
+    /// error. The view model needs the distinction, because a corrupted
+    /// file rendered as an empty list is indistinguishable from a library
+    /// the user never filled — and the user's reaction to the second is
+    /// "where did my data go?", which is exactly the wrong conclusion.
+    func loadOutcome() async -> LoadOutcome {
+        guard let url = await jsonURLOrNil() else { return .noFile }
 
         let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: url.path) else { return [] }
+        guard fileManager.fileExists(atPath: url.path) else { return .noFile }
 
         do {
             let data = try Data(contentsOf: url)
             let records = try JSONDecoder().decode([TranscriptionRecord].self, from: data)
-            return records.sorted { $0.createdAt > $1.createdAt }
+            return .records(records.sorted { $0.createdAt > $1.createdAt })
         } catch {
+            return .corrupted(error)
+        }
+    }
+
+    func loadAll() async throws -> [TranscriptionRecord] {
+        switch await loadOutcome() {
+        case .noFile:
+            return []
+        case .records(let records):
+            return records
+        case .corrupted:
+            // Preserved: the throwing contract is what every existing
+            // caller relies on to tell "read failed" from "empty".
             throw StorageError.decodingFailed
         }
     }
 
     func save(_ record: TranscriptionRecord) async throws {
-        var records = (try? await loadAll()) ?? []
+        // NOT `(try? await loadAll()) ?? []`.
+        //
+        // A read failure is not an empty library. Swallowing it here
+        // meant that one corrupt file turned the next save into a
+        // one-record file written over the whole library — total data
+        // loss, with a symptom (an empty app) that looks exactly like the
+        // user deleted everything themselves. The write must fail loudly
+        // instead, so the library is left as it was and the user is told.
+        var records = try await loadAll()
 
         if let index = records.firstIndex(where: { $0.id == record.id }) {
             records[index] = record

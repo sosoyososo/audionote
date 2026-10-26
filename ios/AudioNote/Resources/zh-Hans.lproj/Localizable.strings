@@ -162,3 +162,17 @@
 "History.PendingSummary" = "录音待联网识别";
 "History.Untitled" = "无标题";
 "Detail.Pending.Hint" = "此录音尚未识别，联网后会自动补识别";
+
+/* Storage state (2026-10-22 data-layer architecture, P0) */
+"Onboarding.Title" = "存储位置设置";
+"Onboarding.Body" = "请选择一个文件夹用于保存录音转写数据。卸载 App 后数据仍会保留,并可通过“文件”App 查看。\n\n重新安装后,请再次选择同一个文件夹,之前的记录会全部回来。";
+"Onboarding.Unreachable.Title" = "无法访问存储位置";
+"Onboarding.Unreachable.Hint" = "你的数据可能还在“文件”App 里。请重新选择之前使用过的那个文件夹,记录就会回来。";
+"Storage.Unreachable.BookmarkInvalid" = "无法找到上次使用的文件夹。";
+"Storage.Unreachable.FolderMissing" = "上次使用的文件夹已不在原处——它可能被移动、改名或删除了。";
+"Storage.Unreachable.AccessDenied" = "无法访问上次使用的文件夹,可能是访问权限被撤销,或文件尚未下载完成。";
+"Storage.Unreachable.NotSecurityScoped" = "存储位置的访问凭证已失效,请重新选择一次文件夹。";
+"Library.LoadFailed.Corrupted.Title" = "记录文件无法读取";
+"Library.LoadFailed.Corrupted.Hint" = "记录文件已损坏,但音频文件仍然保存在文件夹中,并没有丢失。可以用“文件”App 打开 transcriptions.json 检查内容,或稍后重试。";
+"Library.LoadFailed.Unreadable.Title" = "无法读取记录";
+"Library.LoadFailed.Retry" = "重试";
