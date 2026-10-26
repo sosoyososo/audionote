@@ -16,6 +16,7 @@ struct LibraryListView: View {
             VStack(spacing: 0) {
                 searchBar
                 tagChipsRow
+                filterStatusBar
 
                 content
             }
@@ -97,6 +98,91 @@ struct LibraryListView: View {
         .cornerRadius(10)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+    }
+
+    /// The filters that are in effect, in one place, always visible.
+    ///
+    /// The chip row is a *picker*: it shows every tag and highlights the
+    /// selected ones. That is enough to change a filter and not enough
+    /// to *see* one — the selected chip can be a long way down a
+    /// horizontal scroll, and a tag whose records the search does not
+    /// match is not in the row at all, so the filter is silently applied
+    /// and invisible.
+    ///
+    /// This bar is the state the picker edits: the selected tags, each
+    /// removable, and one button to clear them all. It appears only when
+    /// something is selected, so it costs no space the rest of the time.
+    ///
+    /// It sits **below** the tag row, directly above the list. Two reasons,
+    /// and the second is the one that decided it:
+    ///
+    /// It keeps the two filter *controls* — the search field and the tag
+    /// row — one unbroken block at the top. Putting the bar between them
+    /// made three things out of two, and the state appeared *above* the
+    /// control it belongs to, so a selection you had just made popped up
+    /// somewhere you were not looking.
+    ///
+    /// And down here it reads as what it is: a caption on the results.
+    /// "The list below is filtered by these" is what it says, and it says
+    /// it by being right above the list. It also appears under the finger
+    /// that just made the selection.
+    private var filterStatusBar: some View {
+        Group {
+            if !viewModel.selectedTags.isEmpty {
+                HStack(spacing: 8) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(sortedSelectedTags, id: \.self) { tag in
+                                activeFilterChip(tag)
+                            }
+                        }
+                    }
+
+                    // Pinned outside the scroll, like the "all tags" button:
+                    // the one thing that must always be reachable is the
+                    // one thing that cancels everything.
+                    Button {
+                        viewModel.clearTagSelection()
+                    } label: {
+                        Text("Library.Tags.Clear".localized)
+                            .font(.subheadline.weight(.medium))
+                            .foregroundColor(Color.accentColor)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(Color(.systemGray6).opacity(0.5))
+            }
+        }
+    }
+
+    /// `selectedTags` is a `Set`, so its order is whatever the hash
+    /// happens to be — which would make the bar reshuffle between two
+    /// renders of the same selection.
+    private var sortedSelectedTags: [String] {
+        viewModel.selectedTags.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+    }
+
+    private func activeFilterChip(_ tag: String) -> some View {
+        Button {
+            viewModel.toggleTag(tag)
+        } label: {
+            HStack(spacing: 4) {
+                Text(tag)
+                    .font(.subheadline)
+                    .lineLimit(1)
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundColor(Color.accentColor.opacity(0.6))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(Color.accentColor.opacity(0.15))
+            .foregroundColor(Color.accentColor)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var tagChipsRow: some View {
