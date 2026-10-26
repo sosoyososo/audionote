@@ -24,14 +24,22 @@ struct MergeTagsView: View {
     /// Every tag except the target's own identity, filtered by the search
     /// box, in pinyin/alphabetical order.
     ///
-    /// **Not** the chip row's order. `availableTags` sorts by max score
-    /// desc — a *discovery* ranking for a horizontal strip, where the point
-    /// is that the most important tags float into view. This screen is a
-    /// *lookup* surface: the job is "find the misspelling, tick it". What
-    /// makes a grid findable is a position you can predict, and a score
-    /// ranking has none — you would read every cell to decide whether to
-    /// stop. In a single column count-desc could still work (scan down,
-    /// stop when it gets small); once the cells sit side by side it cannot.
+    /// **Not** the chip row's order. The chip row sorts by how many records
+    /// carry the tag, desc — a *discovery* ranking for a horizontal strip,
+    /// where the point is that the tags worth noticing float into view.
+    /// This screen is a *lookup* surface: the job is "find the misspelling,
+    /// tick it". What makes a grid findable is a position you can predict,
+    /// and a count ranking has none — you would read every cell to decide
+    /// whether to stop. In a single column count-desc could still work
+    /// (scan down, stop when it gets small); once the cells sit side by
+    /// side it cannot.
+    ///
+    /// (The chip row used to sort by max relevance score desc. It sorts by
+    /// count now — a tag on one record with score 0.95 is not more
+    /// important than a tag on two hundred records with score 0.3, and
+    /// legacy string tags carry pseudo-scores whose first tag is always
+    /// 1.0 — but the conclusion here is unchanged either way: a ranking
+    /// and a lookup are different jobs.)
     ///
     /// `localizedStandardCompare` rather than `localizedCaseInsensitiveCompare`
     /// so Chinese collates by pinyin, English ignores case, and `Apple2`
