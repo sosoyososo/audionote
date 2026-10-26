@@ -8,6 +8,7 @@ struct SettingsView: View {
     @StateObject private var viewModel = SettingsViewModel()
     @EnvironmentObject private var languageManager: LanguageManager
     @ObservedObject private var store = ProviderProfileStore.shared
+    @ObservedObject private var storage = StorageCoordinator.shared
 
     @State private var editingProfile: LLMProviderProfile? = nil
     @State private var isCreatingNew: Bool = false
@@ -69,6 +70,12 @@ struct SettingsView: View {
 
                 // MARK: Storage location
                 Section {
+                    HStack {
+                        Text("Settings.Storage.Location".localized)
+                        Spacer()
+                        Text(storage.folderName ?? "—")
+                            .foregroundColor(.secondary)
+                    }
                     Button {
                         isPickerPresented = true
                     } label: {
@@ -77,6 +84,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Settings.Storage.Title".localized)
                 } footer: {
+                    Text("Settings.Storage.Location.Hint".localized)
                     Text("Settings.Storage.Footer".localized)
                 }
             }

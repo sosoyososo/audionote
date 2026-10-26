@@ -55,10 +55,12 @@
 		B7CA9597751083C5AAD759A8 /* MergeTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A357FD6836D64884A25F699 /* MergeTagsView.swift */; };
 		BED61F70E21A3664F3F2EDD0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B979954BF5DD75B200033DC /* KeychainStore.swift */; };
 		CA3A46E6D4A7E387090B978E /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */; };
+		D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */; };
 		D4CD0207DFF15BD3B7897B16 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012369EA9DDAC70389CD813F /* RecordingView.swift */; };
 		D769C1CA07FDD1CA9FFB8904 /* LibraryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E98AD129F21ED062E91BFF /* LibraryListView.swift */; };
 		D8DD3B1E8205064D27444A9A /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */; };
 		DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */; };
+		E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F54E2D99C3BBE456B4A7B28 /* StorageFolderHint.swift */; };
 		E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D722B3322464C8C3AB35FC35 /* TagMerger.swift */; };
 		E86B03FAFF210D553B0F55D8 /* RelatedNotesSanitizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49606B977B90E3AF57807808 /* RelatedNotesSanitizeTests.swift */; };
 		EB66EBF0B75C46D3CC54D705 /* LanguageManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */; };
@@ -95,6 +97,7 @@
 		351C2F72483542782CC71CBB /* ProviderProfileStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProviderProfileStorage.swift; sourceTree = "<group>"; };
 		3A0CC0D206E57BBC1BCB42E9 /* RelatedNotesStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesStorage.swift; sourceTree = "<group>"; };
 		3B75604D49E9DD9F139E8023 /* RelatedNotesStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesStorageTests.swift; sourceTree = "<group>"; };
+		3F54E2D99C3BBE456B4A7B28 /* StorageFolderHint.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageFolderHint.swift; sourceTree = "<group>"; };
 		4809CE80311A7BC8E5147009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorderService.swift; sourceTree = "<group>"; };
 		49606B977B90E3AF57807808 /* RelatedNotesSanitizeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesSanitizeTests.swift; sourceTree = "<group>"; };
@@ -115,6 +118,7 @@
 		78ACAA09C404E3AA1EB2B6BF /* TagIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagIdentity.swift; sourceTree = "<group>"; };
 		78BA671DCA8B93226BA5AB87 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionStorage.swift; sourceTree = "<group>"; };
+		7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageFolderHintTests.swift; sourceTree = "<group>"; };
 		7EBE49AC5CF2E29547354250 /* TagCaseInsensitivityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagCaseInsensitivityTests.swift; sourceTree = "<group>"; };
 		87E98AD129F21ED062E91BFF /* LibraryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryListView.swift; sourceTree = "<group>"; };
 		8A34AB0F85198EF82FD67ED6 /* LanguageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageManager.swift; sourceTree = "<group>"; };
@@ -162,6 +166,7 @@
 				3A0CC0D206E57BBC1BCB42E9 /* RelatedNotesStorage.swift */,
 				FEA600B89562F57EE6D7CC1E /* SpeechRecognizer.swift */,
 				1DD1B9C4379E797DE03FB0B1 /* StorageCoordinator.swift */,
+				3F54E2D99C3BBE456B4A7B28 /* StorageFolderHint.swift */,
 				D722B3322464C8C3AB35FC35 /* TagMerger.swift */,
 				7D8D2B2F19F6159EF531734F /* TranscriptionStorage.swift */,
 			);
@@ -186,6 +191,7 @@
 				49606B977B90E3AF57807808 /* RelatedNotesSanitizeTests.swift */,
 				3B75604D49E9DD9F139E8023 /* RelatedNotesStorageTests.swift */,
 				2C957D559BFA47374FF1CDF5 /* SmokeTests.swift */,
+				7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */,
 				7EBE49AC5CF2E29547354250 /* TagCaseInsensitivityTests.swift */,
 				EF0CA39964FE5D2D76CCDE4E /* TagHygieneTests.swift */,
 				6920F5B0A73125B1371FF04D /* TagMergerTests.swift */,
@@ -409,6 +415,7 @@
 				E86B03FAFF210D553B0F55D8 /* RelatedNotesSanitizeTests.swift in Sources */,
 				81B4CA46B6A7F109096EEE31 /* RelatedNotesStorageTests.swift in Sources */,
 				544911B8FB0AD817E9C860A2 /* SmokeTests.swift in Sources */,
+				D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */,
 				0E561F61B3E145ED0924E1C0 /* TagCaseInsensitivityTests.swift in Sources */,
 				08DF803CC4111B94C2214363 /* TagHygieneTests.swift in Sources */,
 				F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */,
@@ -452,6 +459,7 @@
 				22119CA9A83C3B68897D4B43 /* SharedComponents.swift in Sources */,
 				5683090D34B4B61F60CDB84D /* SpeechRecognizer.swift in Sources */,
 				0D9773E2D1612D267098F501 /* StorageCoordinator.swift in Sources */,
+				E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */,
 				2C9F4340487472FED0B95505 /* TagIdentity.swift in Sources */,
 				E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */,
 				0BC728380DCA544890AB0CEE /* TranscriptionDetailView.swift in Sources */,

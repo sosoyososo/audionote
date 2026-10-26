@@ -149,6 +149,8 @@
 "ProfileDetail.DataFlow.Body" = "Once you save this Provider, transcribed text from your recordings will be sent to it for optimization (text cleanup, title, summary, tags).\n\nRaw audio continues to be processed only by Apple (on-device or Apple Cloud recognition) and is never sent to this Provider.\n\nIf you do not want text to leave the device, do not configure a Provider — recordings will still be saved with only local recognition applied.";
 
 /* Settings — Storage location (2026-09-24 files-app migration) */
+"Settings.Storage.Location" = "Data location";
+"Settings.Storage.Location.Hint" = "Your recordings and transcripts live in this folder in the Files app. Deleting the app does not delete them.";
 "Settings.Storage.Title" = "Storage Location";
 "Settings.Storage.Change" = "Change Storage Location";
 "Settings.Storage.Footer" = "After changing, new data is written to the new location. Existing data at the old location will not be migrated.";
@@ -166,6 +168,7 @@
 
 /* Storage state (2026-10-22 data-layer architecture, P0) */
 "Onboarding.Title" = "Storage Location";
+"Onboarding.Body.Reinstall" = "Your data is still in the %@ folder in the Files app. After a reinstall, pick that folder again and your records will all come back.";
 "Onboarding.Body" = "Choose a folder for your recordings and transcripts. Uninstalling the app keeps the data, and you can reach it through the Files app.\n\nAfter reinstalling, pick the same folder again — your records will all come back.";
 "Onboarding.Unreachable.Title" = "Storage Location Unreachable";
 "Onboarding.Unreachable.Hint" = "Your data may still be in the Files app. Pick the folder you used before and the records will come back.";

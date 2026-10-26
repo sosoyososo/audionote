@@ -149,6 +149,8 @@
 "ProfileDetail.DataFlow.Body" = "保存该 Provider 后,录音转成的文本将发送给该 Provider 用于优化（文本整理、标题、摘要、标签）。\n\n原始音频始终只与 Apple 通讯（设备本地识别或 Apple Cloud 识别），不会发送给该 Provider。\n\n如不希望文本离开本机,请不要配置 Provider —— 此时录音文本仅做本地识别与保存。";
 
 /* Settings — Storage location (2026-09-24 files-app migration) */
+"Settings.Storage.Location" = "数据位置";
+"Settings.Storage.Location.Hint" = "你的录音和转写都存在「文件」App 的这个文件夹里。删除 App 不会删掉它们。";
 "Settings.Storage.Title" = "存储位置";
 "Settings.Storage.Change" = "更换存储位置";
 "Settings.Storage.Footer" = "更换后,新的数据将写入新位置,旧位置数据不会被迁移";
@@ -166,6 +168,7 @@
 
 /* Storage state (2026-10-22 data-layer architecture, P0) */
 "Onboarding.Title" = "存储位置设置";
+"Onboarding.Body.Reinstall" = "你的数据还在「文件」App 里的 %@ 文件夹中。重新安装后，请再次选择这个文件夹,之前的记录会全部回来。";
 "Onboarding.Body" = "请选择一个文件夹用于保存录音转写数据。卸载 App 后数据仍会保留,并可通过“文件”App 查看。\n\n重新安装后,请再次选择同一个文件夹,之前的记录会全部回来。";
 "Onboarding.Unreachable.Title" = "无法访问存储位置";
 "Onboarding.Unreachable.Hint" = "你的数据可能还在“文件”App 里。请重新选择之前使用过的那个文件夹,记录就会回来。";

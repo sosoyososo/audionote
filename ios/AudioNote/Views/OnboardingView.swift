@@ -100,7 +100,15 @@ struct OnboardingView: View {
         switch storage.state {
         case .unreachable(let reason):
             return reason.message + "\n\n" + "Onboarding.Unreachable.Hint".localized
-        case .unconfigured, .ready:
+        case .unconfigured:
+            // A previous install used a folder. Name it — "pick the same
+            // folder again" is only actionable if the user knows which
+            // folder that was.
+            if let name = StorageFolderHint.lastKnownFolderName() {
+                return String(format: "Onboarding.Body.Reinstall".localized, name)
+            }
+            return "Onboarding.Body".localized
+        case .ready:
             return "Onboarding.Body".localized
         }
     }

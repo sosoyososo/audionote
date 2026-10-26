@@ -101,6 +101,9 @@ final class StorageCoordinator: ObservableObject {
     @MainActor
     func setReady(url: URL) {
         resolvedRoot = url
+        // Remember the folder's name where it outlives the app, so a
+        // reinstall can tell the user which folder to pick again.
+        StorageFolderHint.remember(folderName: url.lastPathComponent)
         // Real security-scope acquisition. The previous version only set
         // `didStartAccess = true` without calling `startAccessingSecurityScopedResource`,
         // so AVAudioFile writes to the Files-app folder failed with OSError -54
@@ -334,6 +337,8 @@ final class StorageCoordinator: ObservableObject {
         }
 
         resolvedRoot = url
+        // Remember the folder's name where it outlives the app.
+        StorageFolderHint.remember(folderName: url.lastPathComponent)
         didStartAccess = true
         errorMessage = nil
         state = .ready
@@ -377,6 +382,17 @@ final class StorageCoordinator: ObservableObject {
     /// See `ProviderProfileStorage` and ADR-0008.
     nonisolated var providerProfilesURL: URL {
         rootURL.appendingPathComponent("profiles.json")
+    }
+
+    /// The name of the folder the user picked.
+    ///
+    /// The last component of the path. The rest of it is the Files
+    /// app's internal container location, which means nothing to a user
+    /// and changes on every reinstall — but the name is what they see in
+    /// the Files app, and what they have to pick again after a
+    /// reinstall.
+    var folderName: String? {
+        resolvedRoot?.lastPathComponent
     }
 
     // MARK: - Scene phase
