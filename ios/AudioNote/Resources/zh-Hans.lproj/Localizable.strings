@@ -176,3 +176,5 @@
 "Library.LoadFailed.Corrupted.Hint" = "记录文件已损坏,但音频文件仍然保存在文件夹中,并没有丢失。可以用“文件”App 打开 transcriptions.json 检查内容,或稍后重试。";
 "Library.LoadFailed.Unreadable.Title" = "无法读取记录";
 "Library.LoadFailed.Retry" = "重试";
+"Library.OrphanedAudio.Title" = "记录文件不见了";
+"Library.OrphanedAudio.Hint" = "在「文件」App 的 AudioNote 文件夹里还留着 %d 个录音文件,但记录文件已不在。录音本身没有丢,只是 App 读不到它们了。";

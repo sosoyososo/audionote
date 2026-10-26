@@ -34,9 +34,19 @@ actor TranscriptionStorage {
     /// about. Collapsing them into "no records" is how a corrupted
     /// library starts looking like a deleted one.
     enum LoadOutcome {
-        /// `transcriptions.json` does not exist — nothing has been saved
-        /// yet, or it was removed outside the app.
+        /// `transcriptions.json` does not exist — and no audio is sitting
+        /// in the folder either. Nothing has been saved yet.
         case noFile
+        /// `transcriptions.json` does not exist, but `count` audio files
+        /// are still in `Recordings/`.
+        ///
+        /// The library was removed from outside the app — or the app was
+        /// pointed at a folder whose records file was never written. The
+        /// recordings themselves are still there. Rendering this as an
+        /// empty library would tell the user "you haven't recorded
+        /// anything" while their audio sits in the folder, which is the
+        /// one thing they most need to be told is not the case.
+        case noFileButAudioRemains(count: Int)
         /// The file exists and parsed.
         case records([TranscriptionRecord])
         /// The file exists but could not be read or decoded.
@@ -49,6 +59,9 @@ actor TranscriptionStorage {
     /// storage layer is where data is won and lost, so it is the layer
     /// that most needs to be testable.
     private let fileURLOverride: URL?
+
+    /// Test seam for the recordings directory — see `fileURLOverride`.
+    private let recordingsDirectoryOverride: URL?
 
     /// Resolve the JSON URL via the main-actor `StorageCoordinator`. Hop to
     /// main, then return the cached URL. Returns `nil` when storage has not
@@ -63,10 +76,16 @@ actor TranscriptionStorage {
         }
     }
 
-    private init() { fileURLOverride = nil }
+    private init() {
+        fileURLOverride = nil
+        recordingsDirectoryOverride = nil
+    }
 
     /// Test seam — see `fileURLOverride`.
-    init(fileURL: URL) { fileURLOverride = fileURL }
+    init(fileURL: URL, recordingsDirectory: URL? = nil) {
+        fileURLOverride = fileURL
+        recordingsDirectoryOverride = recordingsDirectory
+    }
 
     /// Read the records file, distinguishing "not there yet" from "there
     /// but broken".
@@ -80,7 +99,13 @@ actor TranscriptionStorage {
         guard let url = await jsonURLOrNil() else { return .noFile }
 
         let fileManager = FileManager.default
-        guard fileManager.fileExists(atPath: url.path) else { return .noFile }
+        guard fileManager.fileExists(atPath: url.path) else {
+            // The records file is gone. Before calling this "empty",
+            // look for the audio it used to point at — the two facts
+            // call for completely different things to say to the user.
+            let orphans = await orphanedAudioCount()
+            return orphans > 0 ? .noFileButAudioRemains(count: orphans) : .noFile
+        }
 
         do {
             let data = try Data(contentsOf: url)
@@ -91,9 +116,34 @@ actor TranscriptionStorage {
         }
     }
 
+    /// How many `.m4a` files are sitting in `Recordings/` with no record
+    /// pointing at them.
+    ///
+    /// Zero when the directory is missing (nothing was ever recorded) or
+    /// when the app has no access to it. Deliberately cheap: it runs only
+    /// on the path where the records file is *absent*, which is the rare
+    /// case.
+    private func orphanedAudioCount() async -> Int {
+        let directory: URL?
+        if let recordingsDirectoryOverride {
+            directory = recordingsDirectoryOverride
+        } else {
+            directory = await MainActor.run { () -> URL? in
+                StorageCoordinator.shared.isReady
+                    ? StorageCoordinator.shared.recordingsDirectoryURL
+                    : nil
+            }
+        }
+        guard let directory else { return 0 }
+        guard let names = try? FileManager.default.contentsOfDirectory(
+            atPath: directory.path
+        ) else { return 0 }
+        return names.filter { $0.hasSuffix(".m4a") }.count
+    }
+
     func loadAll() async throws -> [TranscriptionRecord] {
         switch await loadOutcome() {
-        case .noFile:
+        case .noFile, .noFileButAudioRemains:
             return []
         case .records(let records):
             return records

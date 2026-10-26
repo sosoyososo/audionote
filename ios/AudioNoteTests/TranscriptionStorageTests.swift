@@ -12,6 +12,7 @@ final class TranscriptionStorageTests: XCTestCase {
 
     private var tmpDir: URL!
     private var fileURL: URL!
+    private var recordingsDir: URL!
     private var store: TranscriptionStorage!
 
     private let a = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
@@ -22,7 +23,8 @@ final class TranscriptionStorageTests: XCTestCase {
             .appendingPathComponent("ts-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tmpDir, withIntermediateDirectories: true)
         fileURL = tmpDir.appendingPathComponent("transcriptions.json")
-        store = TranscriptionStorage(fileURL: fileURL)
+        recordingsDir = tmpDir.appendingPathComponent("Recordings", isDirectory: true)
+        store = TranscriptionStorage(fileURL: fileURL, recordingsDirectory: recordingsDir)
     }
 
     override func tearDownWithError() throws {
@@ -61,6 +63,8 @@ final class TranscriptionStorageTests: XCTestCase {
             XCTFail("expected .noFile, got \(records.count) records")
         case .corrupted:
             XCTFail("expected .noFile, got .corrupted")
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .noFile, got .noFileButAudioRemains(\(count))")
         }
     }
 
@@ -75,6 +79,8 @@ final class TranscriptionStorageTests: XCTestCase {
             XCTFail("expected .records, got .noFile")
         case .corrupted:
             XCTFail("expected .records, got .corrupted")
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .records, got .noFileButAudioRemains(\(count))")
         }
     }
 
@@ -88,6 +94,8 @@ final class TranscriptionStorageTests: XCTestCase {
             XCTFail("expected .corrupted, got .noFile")
         case .records(let records):
             XCTFail("expected .corrupted, got \(records.count) records")
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .corrupted, got .noFileButAudioRemains(\(count))")
         }
     }
 
@@ -105,6 +113,76 @@ final class TranscriptionStorageTests: XCTestCase {
             XCTFail("expected .records (empty), got .noFile")
         case .corrupted:
             XCTFail("expected .records (empty), got .corrupted")
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .records (empty), got .noFileButAudioRemains(\(count))")
+        }
+    }
+
+    // MARK: - Orphaned audio
+
+    /// The records file can vanish from outside the app — the user
+    /// deletes it in the Files app, or a sync conflict eats it. The
+    /// `.m4a` files it pointed at are still there.
+    ///
+    /// Rendering that as "you haven't recorded anything" is the single
+    /// most misleading thing this app could do: the user deletes nothing
+    /// else, assumes everything is gone, and never looks in the folder
+    /// where their audio still is.
+    func testLoadOutcomeReportsOrphanedAudioWhenTheRecordsFileIsGone() async throws {
+        try FileManager.default.createDirectory(
+            at: recordingsDir, withIntermediateDirectories: true
+        )
+        try Data().write(to: recordingsDir.appendingPathComponent("abc.m4a"))
+
+        switch await store.loadOutcome() {
+        case .noFileButAudioRemains(let count):
+            XCTAssertEqual(count, 1)
+        case .noFile:
+            XCTFail("expected .noFileButAudioRemains, got .noFile")
+        case .records, .corrupted:
+            XCTFail("expected .noFileButAudioRemains")
+        }
+    }
+
+    func testLoadOutcomeReportsNoFileWhenTheRecordingsDirectoryIsEmpty() async throws {
+        try FileManager.default.createDirectory(
+            at: recordingsDir, withIntermediateDirectories: true
+        )
+
+        switch await store.loadOutcome() {
+        case .noFile:
+            break
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .noFile, got .noFileButAudioRemains(\(count))")
+        case .records, .corrupted:
+            XCTFail("expected .noFile")
+        }
+    }
+
+    func testLoadOutcomeReportsNoFileWhenTheRecordingsDirectoryDoesNotExist() async {
+        // Nothing was ever recorded: the folder was never created.
+        switch await store.loadOutcome() {
+        case .noFile:
+            break
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected .noFile, got .noFileButAudioRemains(\(count))")
+        case .records, .corrupted:
+            XCTFail("expected .noFile")
+        }
+    }
+
+    func testLoadOutcomeIgnoresNonAudioFilesInTheRecordingsDirectory() async throws {
+        try FileManager.default.createDirectory(
+            at: recordingsDir, withIntermediateDirectories: true
+        )
+        try Data().write(to: recordingsDir.appendingPathComponent("notes.txt"))
+        try Data().write(to: recordingsDir.appendingPathComponent("abc.m4a"))
+
+        switch await store.loadOutcome() {
+        case .noFileButAudioRemains(let count):
+            XCTAssertEqual(count, 1, "only .m4a files count as recordings")
+        case .noFile, .records, .corrupted:
+            XCTFail("expected .noFileButAudioRemains(1)")
         }
     }
 
@@ -146,6 +224,8 @@ final class TranscriptionStorageTests: XCTestCase {
             XCTAssertEqual(records.first?.id, b)
         case .noFile, .corrupted:
             XCTFail("expected the repaired library to load")
+        case .noFileButAudioRemains(let count):
+            XCTFail("expected the repaired library to load, got .noFileButAudioRemains(\(count))")
         }
     }
 

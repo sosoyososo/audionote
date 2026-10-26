@@ -181,8 +181,8 @@ struct LibraryListView: View {
 
     @ViewBuilder
     private var content: some View {
-        if let failure = viewModel.recordsLoadFailure {
-            recordsLoadFailureState(failure)
+        if let reason = viewModel.recordsAbsentReason {
+            recordsAbsentState(reason)
         } else if !viewModel.hasRecordsInScope {
             scopeEmptyState
         } else if viewModel.displayedRecords.isEmpty {
@@ -200,8 +200,8 @@ struct LibraryListView: View {
     /// audio files are still sitting in the folder, and saying so is the
     /// difference between "recoverable" and "give up".
     @ViewBuilder
-    private func recordsLoadFailureState(_ failure: RecordsLoadFailure) -> some View {
-        switch failure {
+    private func recordsAbsentState(_ reason: RecordsAbsentReason) -> some View {
+        switch reason {
         case .corrupted:
             EmptyState(
                 systemImage: "exclamationmark.triangle",
@@ -217,6 +217,15 @@ struct LibraryListView: View {
                 subtitle: message,
                 actionTitle: "Library.LoadFailed.Retry".localized,
                 action: { Task { await viewModel.loadHistory() } }
+            )
+        case .orphanedAudio(let count):
+            EmptyState(
+                systemImage: "waveform.badge.exclamationmark",
+                title: "Library.OrphanedAudio.Title".localized,
+                subtitle: String(
+                    format: "Library.OrphanedAudio.Hint".localized,
+                    count
+                )
             )
         }
     }

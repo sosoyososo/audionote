@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | PROPOSED |
+| **Status** | P0 IMPLEMENTED (2026-10-22, `be62b46` + follow-up); P1/P2 pending |
 | **Date** | 2026-10-22 |
 | **Supersedes** | — |
 | **Related ADR** | 待写（ADR-0007） |
@@ -227,7 +227,12 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 | P0-2 | `corrupted` / `unreachable` 在**思录页**显示明确错误，不显示成空列表 | `LibraryListView` + `TranscriptionViewModel` | 消除「静默数据丢失」的错觉 |
 | P0-3 | `bootstrap()` 失败时设 `errorMessage`，别让引导页无声 | `StorageCoordinator:145` | 一行 |
 | P0-4 | `resolveBookmarkSync` 在**瞬时失败**时不要丢弃 bookmark | `StorageCoordinator:78,84,97` | 丢掉的是唯一的访问凭证，丢了用户必须重选 |
-| P0-5 | OnboardingView 文案加「重新安装后请选回同一个文件夹」 | `OnboardingView:18` | 直接命中 A1 |
+| P0-5 | OnboardingView 文案加「重新安装后请选回同一个文件夹」 | `OnboardingView` | 直接命中 A1 |
+| P0-6 | 区分「空库」和「记录文件没了但音频还在」 | `TranscriptionStorage.loadOutcome` → `.noFileButAudioRemains(count)` | 命中 A5。见下 |
+
+**P0-6 是写完代码后补的。** 复查时发现 `loadOutcome()` 的 `.noFile` 仍然把「还没录过」和「文件被外部删了」混在一起——这和规则 1 要消灭的是同一类错误：一个文件夹里有 47 个 `.m4a`、索引没了的用户，被告知「你还没录过任何东西」。`loadOutcome` 现在会数一遍 `Recordings/` 里的 `.m4a`，界面据此说「记录文件不见了，但 N 个录音还在」。
+
+**实现时偏离初稿的地方**：初稿设想的是一个统一的 `StorageState`（含 `.corrupted`）。实现时拆成了两个枚举——`StorageCoordinator.StorageState` 管**访问**（能不能碰到目录），`TranscriptionStorage.LoadOutcome` 管**文件**（能不能解析）。因为两半落在**不同的界面**上（引导页 vs 思录页），而且「JSON 解析失败」是存储层的事，不该让目录协调器去关心。`isReady` 保留为计算属性 `state == .ready`，40 来个既有调用点一行没改。
 
 ### P1：需要一点工作量
 

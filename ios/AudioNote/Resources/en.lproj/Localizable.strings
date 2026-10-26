@@ -176,3 +176,5 @@
 "Library.LoadFailed.Corrupted.Hint" = "The records file is corrupted, but your audio files are still in the folder — nothing has been lost. Open transcriptions.json in the Files app to check it, or try again later.";
 "Library.LoadFailed.Unreadable.Title" = "Couldn't Read Records";
 "Library.LoadFailed.Retry" = "Retry";
+"Library.OrphanedAudio.Title" = "Records File Is Missing";
+"Library.OrphanedAudio.Hint" = "%d recording file(s) are still in the AudioNote folder in the Files app, but the records file is gone. The recordings weren't lost — the app just can't read them any more.";

@@ -347,9 +347,17 @@ final class StorageCoordinator: ObservableObject {
     }
 
     nonisolated func audioURL(for id: UUID) -> URL {
-        rootURL
-            .appendingPathComponent("Recordings", isDirectory: true)
+        recordingsDirectoryURL
             .appendingPathComponent("\(id.uuidString).m4a")
+    }
+
+    /// The folder the `.m4a` files live in.
+    ///
+    /// Exposed because "the records file is gone but the audio is still
+    /// there" is a state the app has to be able to *name* — and spotting
+    /// it means looking at this directory.
+    nonisolated var recordingsDirectoryURL: URL {
+        rootURL.appendingPathComponent("Recordings", isDirectory: true)
     }
 
     nonisolated var jsonURL: URL {

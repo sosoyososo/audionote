@@ -6,16 +6,20 @@ import SwiftUI
 /// "the library is empty".
 ///
 /// A library that has never been written is a normal state and renders
-/// as the ordinary empty state. A library whose file exists but cannot be
-/// parsed is a *failure*, and it must not be rendered the same way: the
-/// two look identical on screen, but only one of them means "your data
-/// is gone".
-enum RecordsLoadFailure: Equatable {
+/// as the ordinary empty state. Every other reason for an empty list
+/// must be rendered differently, because they say completely different
+/// things: "your data is gone" and "your audio is still here" cannot
+/// share a screen.
+enum RecordsAbsentReason: Equatable {
     /// `transcriptions.json` is there but could not be decoded.
     case corrupted
     /// The file could not be read at all (permissions, I/O, a provider
     /// that isn't answering).
     case unreadable(String)
+    /// The records file is gone, but `count` audio files are still in
+    /// `Recordings/`. The library was removed from outside the app; the
+    /// recordings it pointed at are not lost.
+    case orphanedAudio(count: Int)
 }
 
 @MainActor
@@ -28,9 +32,10 @@ final class TranscriptionViewModel: ObservableObject {
     @Published var currentRecordId: UUID?
     @Published var authorizationStatus: PermissionStatus = .notDetermined
     @Published var errorMessage: String?
-    /// Set when the library could not be read. `nil` means "read fine"
-    /// — including the case of a library that is simply empty.
-    @Published var recordsLoadFailure: RecordsLoadFailure?
+    /// Set when the library has no records for a reason other than
+    /// "there are none". `nil` means "read fine" — including the case of
+    /// a library that is simply empty.
+    @Published var recordsAbsentReason: RecordsAbsentReason?
     @Published var selectedLanguage: RecognitionLanguage = .chinese
     @Published var isOptimizing: Bool = false
     @Published var isLLMProcessing: Bool = false
@@ -640,17 +645,24 @@ final class TranscriptionViewModel: ObservableObject {
             // Nothing has ever been written. A genuinely empty library —
             // the empty state in the list is the honest rendering.
             historyRecords = []
-            recordsLoadFailure = nil
+            recordsAbsentReason = nil
+        case .noFileButAudioRemains(let count):
+            // The records file is gone but the audio is not. Saying
+            // "you haven't recorded anything" here would be the single
+            // most misleading thing the app could say.
+            historyRecords = []
+            recordsAbsentReason = .orphanedAudio(count: count)
+            Logger.warning("Records file is missing but \(count) audio file(s) remain")
         case .records(let records):
             historyRecords = records
-            recordsLoadFailure = nil
+            recordsAbsentReason = nil
             Logger.info("Loaded \(records.count) records")
         case .corrupted(let error):
             // The file is there but unreadable. This is NOT an empty
             // library, and rendering it as one is how the user ends up
             // believing their data is gone. Say so instead.
             historyRecords = []
-            recordsLoadFailure = .corrupted
+            recordsAbsentReason = .corrupted
             Logger.error("Records file is corrupted: \(error.localizedDescription)")
         }
     }

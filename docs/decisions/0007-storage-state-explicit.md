@@ -60,6 +60,7 @@ enum StorageState: Equatable {
 ```swift
 enum LoadOutcome {
     case noFile
+    case noFileButAudioRemains(count: Int)
     case records([TranscriptionRecord])
     case corrupted(Error)
 }
@@ -96,6 +97,13 @@ call sites keep working, but it can no longer disagree with `state`.
    again.** The data survived; the bookmark did not. The OnboardingView body
    copy says so, because a user who picks a *different* folder gets a working
    app with an empty library, and nothing else in the app would explain why.
+6. **An empty library MUST be distinguished from an absent one.** The
+   records file can vanish from outside the app — deleted in the Files app,
+   eaten by a sync conflict — while the `.m4a` files it pointed at are still
+   in `Recordings/`. `loadOutcome()` counts them and reports
+   `.noFileButAudioRemains(count:)`, and the library says so. "You haven't
+   recorded anything" is the most misleading sentence the app could say to a
+   user whose recordings are sitting in the folder, untouched.
 
 ### Not locked (deliberately)
 
@@ -135,13 +143,14 @@ call sites keep working, but it can no longer disagree with `state`.
 
 ## Verification
 
-- `ios/AudioNoteTests/TranscriptionStorageTests.swift` — 9 tests. The
+- `ios/AudioNoteTests/TranscriptionStorageTests.swift` — 13 tests. The
   load-outcome cases (missing file / parsed file / corrupt file / empty-but-
-  present file) and the data-loss regression.
+  present file / records file gone but audio left behind) and the data-loss
+  regression.
 - The data-loss test was verified **red** against the old implementation: with
   `(try? await loadAll()) ?? []` restored, 2 of the 9 fail. It is a test of the
   behaviour, not of the compile.
-- Full suite: 203 tests, 0 failures.
+- Full suite: 207 tests, 0 failures.
 - The UI half (OnboardingView's reason text, the library's error state) is
   build-verified only — there is no UI-test target in this project.
 
@@ -149,3 +158,12 @@ call sites keep working, but it can no longer disagree with `state`.
 
 - **2026-10-22.** Original. Written as part of the P0 tranche of
   `2026-10-22-data-layer-architecture-design.md`.
+- **2026-10-22.** Rule 6 added, and the `LoadOutcome` snippet extended with
+  `.noFileButAudioRemains(count:)`. The rule was not in the original draft:
+  reading the code back showed that `loadOutcome()`'s `.noFile` still
+  collapsed "never written" and "removed from outside the app", which is the
+  same class of mistake rule 1 exists to prevent — a user with 47 recordings
+  in the folder and no index would have been told they had recorded nothing.
+  Renamed `RecordsLoadFailure` to `RecordsAbsentReason` to match: it is not
+  only failures, it is "the library is empty for a reason that isn't 'there
+  are none'".
