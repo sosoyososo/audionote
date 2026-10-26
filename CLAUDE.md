@@ -48,6 +48,8 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 - Don't write to `TranscriptionStorage` JSON directly — go through the storage class.
 - Don't store audio file URLs in `TranscriptionRecord` — store the UUID-based filename and reconstruct via `AudioRecorderService.generateFileUrl(for:)`.
 - Don't `grep`-then-Read for symbol discovery. Use `codegraph_explore "SymbolName"` first.
+- **Don't keep a `.bak` copy of `transcriptions.json`.** Decided against on 2026-10-26 — the records file is the user's own file in their own folder, and a second copy inside that folder is a second thing that can go stale. A corrupted records file is already loud rather than silent: `save` refuses to write over a file it could not read (ADR-0007), so the damaged file is preserved for the user to recover by hand instead of being replaced with an empty library. Don't propose a backup copy, a restore UI, or a recovery prompt for this file.
+- **Don't add a shared Keychain access group.** Decided against on 2026-10-26 — the bundle ID `info.karsa.app.ios.audionote` and the team `25FH23Q3GA` are settled, so no key has to cross a bundle-ID boundary. An access group's id carries the signing team's prefix, so it can only bridge bundle IDs *within* one team; it buys nothing here. If the bundle ID is ever changed this becomes a real decision again, and the order matters: migrate the existing items (the LLM API keys and the folder hint) into the shared group **first**, under the current bundle ID — the group's own id changes with the bundle ID, so a group added after the change would not see the old items.
 
 ## File layout
 
