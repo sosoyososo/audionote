@@ -155,6 +155,10 @@ final class TranscriptionViewModel: ObservableObject {
             .sink { [weak self] state in
                 guard state == .ready else { return }
                 Task { @MainActor in
+                    // The profiles first: the sweep's LLM calls need an
+                    // active profile, and the load is what migrates a
+                    // pre-move install's profiles into the folder.
+                    await ProviderProfileStore.shared.ensureLoaded()
                     await self?.recoverStrandedRecords()
                 }
             }
