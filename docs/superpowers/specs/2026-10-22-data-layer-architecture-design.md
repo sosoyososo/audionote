@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | P0 IMPLEMENTED (2026-10-22, `be62b46` + follow-up); P1/P2 pending |
+| **Status** | P0 IMPLEMENTED (2026-10-22, `be62b46` + follow-up); P1-1 IMPLEMENTED (ADR-0008); P1-2 与 P2-1 已否决；仍然开着的 P1/P2 项见 CLAUDE.md「Open work」 |
 | **Date** | 2026-10-22 |
 | **Supersedes** | — |
 | **Related ADR** | 待写（ADR-0007） |
@@ -236,13 +236,13 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 
 ### P1：需要一点工作量
 
-| # | 改动 | 为什么 |
-|---|---|---|
-| P1-1 | **provider profiles 从 UserDefaults 搬到数据文件夹**（`AudioNote/providers.json`） | 让「数据 + 加工它的规则」同生共死。搬完之后卸载重装只需重填 API key，不需要重建 profile |
-| P1-2 | **`transcriptions.json` 写 `.bak`**：写新文件前保留上一版；加载失败回退 | 把「一次损坏 = 全部记录消失」变成「丢最后一次写入」。写入已经是 `.atomic`，所以只需要加一层备份 |
-| P1-3 | Keychain 哨兵值，用来识别「这是重装」 | 支撑 P0-5 的差异化文案 |
-| P1-4 | API key 按**稳定 id**（如 provider 类型）存，不按随机 profile.id | 卸载重装后 key 能直接找回，不用重填 |
-| P1-5 | 设置里显示当前数据目录路径 | 用户可自检 |
+| # | 改动 | 为什么 | 状态（2026-10-26） |
+|---|---|---|---|
+| P1-1 | **provider profiles 从 UserDefaults 搬到数据文件夹**（`AudioNote/providers.json`） | 让「数据 + 加工它的规则」同生共死。搬完之后卸载重装只需重填 API key，不需要重建 profile | **已完成** — ADR-0008 |
+| P1-2 | **`transcriptions.json` 写 `.bak`**：写新文件前保留上一版；加载失败回退 | 把「一次损坏 = 全部记录消失」变成「丢最后一次写入」。写入已经是 `.atomic`，所以只需要加一层备份 | **已否决（2026-10-26）** — 见 CLAUDE.md「Don't do these」 |
+| P1-3 | Keychain 哨兵值，用来识别「这是重装」 | 支撑 P0-5 的差异化文案 | **已被 ADR-0009 覆盖** — 文件夹名提示本身就存在 Keychain 里、跨重装存活，它就是那个「这是重装」的痕迹 |
+| P1-4 | API key 按**稳定 id**（如 provider 类型）存，不按随机 profile.id | 卸载重装后 key 能直接找回，不用重填 | **已完成，机制不同（ADR-0008）** — key 仍按 profile.id 存，但 profile id 现在存在数据文件夹里，不再是随机的，卸载重装后照样找得回 |
+| P1-5 | 设置里显示当前数据目录路径 | 用户可自检 | **未实现** — CLAUDE.md「Open work」 |
 
 ### P2-1 的否决理由（2026-10-22）
 
@@ -258,11 +258,13 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 
 ### P2：可选
 
-| # | 改动 | 为什么 |
-|---|---|---|
-| P2-1 | ~~恢复时扫描 `Recordings/` 找孤儿音频，重建记录~~ | **已否决（2026-10-22）。** 见下 |
-| P2-2 | 记录「音频文件已丢失」状态 | 外部删了音频 |
-| P2-3 | `relatedNotes.json` 也做备份 | 关系永不重算，丢了就永久没了 |
+| # | 改动 | 为什么 | 状态（2026-10-26） |
+|---|---|---|---|
+| P2-1 | ~~恢复时扫描 `Recordings/` 找孤儿音频，重建记录~~ | **已否决（2026-10-22）。** 见下 | 已否决 |
+| P2-2 | 记录「音频文件已丢失」状态 | 外部删了音频 | **未实现** — CLAUDE.md「Open work」 |
+| P2-3 | `relatedNotes.json` 也做备份 | 关系永不重算，丢了就永久没了 | **未实现** — CLAUDE.md「Open work」 |
+
+> **这一节的哪些项还开着，以 CLAUDE.md 的「Open work」为准。** 这里是完整目录（含已完成的、已否决的），那里是当前待办清单。
 
 ### 明确不做
 
@@ -294,10 +296,11 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 | 孤儿音频提示 | 思录页显示「记录文件不见了 / N 个录音还在」 | ✅ 数出 58 个 |
 | 修复 #1（改文本不丢 LLM 元数据） | 详情页 title/summary/tags/「优化后」badge 仍在 | ✅ |
 
-**P0 已验证通过。** P1/P2 未实现。
+**P0 已验证通过。** P1-1 之后也已完成（ADR-0008）；P1-2 与 P2-1 已否决；仍然开着的项见 CLAUDE.md「Open work」。
 
 ## 10. 现在的状态
 
 - **P0 已实现并真机验证**（`be62b46` + `1f05039`），见 §9。
 - 启动 sweep 的 spec（`2026-10-22-launch-recovery-sweep-design.md`）已写，其 §4.1 的四步拆分与本文件无冲突；§4.5 已补上「sweep 只在 `state == .ready` 时跑」的前置条件。
-- 建议顺序：**启动 sweep → P1**。P1-1（profiles 搬进文件夹）会让「卸载重装」这条路彻底通顺，值得单独做一个 ADR。
+- P1-1（profiles 搬进文件夹）已经做完，见 ADR-0008。
+- **仍然开着的**：P1-5、P2-2、P2-3，见 CLAUDE.md「Open work」。（启动 sweep 已于 2026-10-22 实现，见 `2026-10-22-launch-recovery-sweep-design.md` 与 ADR-0006。）

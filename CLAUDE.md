@@ -26,6 +26,19 @@ iOS voice transcription app (SwiftUI, single-target). Records audio, runs recogn
 | `docs/ROADMAP.md` | List of deferred doc types + when to activate them (RISKS / state-machines / contracts / etc.) |
 | `docs/superpowers/specs/<date>-<topic>-design.md` | Adding a new feature or behavior (read the design doc first) |
 
+## Open work
+
+Decided but not done. This is an **index**, not the content — each row says what the item is and where the detail lives.
+
+**Rule:** a row exists only while the item is genuinely open. When it lands, delete the row **and** set the owning spec's `Status` to `IMPLEMENTED` — the index and the spec must never disagree. Items decided *against* belong in "Don't do these" below, not here.
+
+| Open item | Where the detail is |
+|---|---|
+| Tag vocabulary: 158 tags over 40-odd notes. Direction A — reuse existing tags when extracting (the prompt hint exists but the vocabulary is capped at the 30 *most frequent* tags, so the long tail never reaches the model); direction B — LLM-based semantic merging of existing tags | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: IDEA) |
+| Show the current data folder path in Settings | `docs/superpowers/specs/2026-10-22-data-layer-architecture-design.md` §7 (P1-5) |
+| Record a "the audio file is gone" state | same spec, §7 (P2-2) |
+| Back up `relatedNotes.json` | same spec, §7 (P2-3) |
+
 ## Locked decisions (don't change without checking the doc)
 
 - **RecordingViewModel** does not exist. The orchestrator is `TranscriptionViewModel` (`ios/AudioNote/ViewModels/TranscriptionViewModel.swift`). Don't create a parallel one.
@@ -71,3 +84,4 @@ ios/AudioNote/
 4. Write a plan at `docs/superpowers/plans/YYYY-MM-DD-<topic>-plan.md`.
 5. Implement. Update `docs/GLOSSARY.md` if you added new public types.
 6. If the change locks a new decision, write `docs/decisions/NNNN-<topic>.md`.
+7. If the work will not be finished in this session, add a row to **Open work** above (one line, pointing at the doc that holds the detail).

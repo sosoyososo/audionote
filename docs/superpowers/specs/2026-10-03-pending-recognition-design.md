@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | PROPOSED |
+| **Status** | IMPLEMENTED (2026-10-03) — 见 ADR-0005 |
 | **Date** | 2026-10-03 |
 | **Supersedes** | — |
 | **Author** | — |

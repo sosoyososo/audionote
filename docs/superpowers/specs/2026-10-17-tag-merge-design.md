@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | DRAFT — awaiting user review |
+| **Status** | IMPLEMENTED (2026-10-17) — `TagMerger` + `MergeTagsView` 已上线 |
 | **Date** | 2026-10-17 |
 | **Author** | — |
 | **Related** | `docs/decisions/0003-multi-provider-llm.md` (prompt vocabulary), `docs/GLOSSARY.md` (`TagIdentity`) |
