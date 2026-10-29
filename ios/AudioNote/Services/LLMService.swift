@@ -517,14 +517,15 @@ actor LLMService {
     /// each tag. The counts are context the model needs: a tag on one note
     /// and a tag on forty are very different things to merge.
     func proposeTagMerges(
-        tags: [(name: String, count: Int)],
+        groups: [[String]],
+        counts: [String: Int],
         profile: LLMProviderProfile,
         apiKey: String?
     ) async throws -> [TagMergeProposal] {
         try validateProfile(profile, apiKey: apiKey)
-        guard !tags.isEmpty else { return [] }
+        guard !groups.isEmpty else { return [] }
 
-        let knownCounts = Dictionary(uniqueKeysWithValues: tags.map { ($0.name, $0.count) })
+        let knownCounts = counts
 
         return try await retryingRequest(
             profile: profile,
@@ -542,7 +543,7 @@ actor LLMService {
                     messages: [
                         APIRequest.Message(
                             role: "system",
-                            content: Self.tagMergePrompt(tags: tags)
+                            content: Self.tagMergePrompt(groups: groups, counts: counts)
                         ),
                         APIRequest.Message(role: "user", content: "请找出可以合并的标签。"),
                     ]
@@ -562,18 +563,21 @@ actor LLMService {
     /// Internal rather than private so a test can pin the wording against
     /// this exact text — ADR-0010 freezes it, the way ADR-0003 freezes the
     /// other two.
-    static func tagMergePrompt(tags: [(name: String, count: Int)]) -> String {
-        let list = tags
-            .map { "\($0.name)（\($0.count) 条笔记）" }
-            .joined(separator: "、")
+    static func tagMergePrompt(groups: [[String]], counts: [String: Int]) -> String {
+        let list = groups.enumerated().map { index, members in
+            let rendered = members
+                .map { "\($0)（\(counts[$0] ?? 0) 条笔记）" }
+                .joined(separator: "、")
+            return "\(index + 1). \(rendered)"
+        }.joined(separator: "\n")
 
         return """
-        你是一个标签整理助手。下面是这个笔记库里的全部标签，以及每个标签出现在多少条笔记里。
+        你是一个标签整理助手。下面是这个笔记库里**可能同义**的标签组——同一组里的标签彼此字面相似，需要你判断它们是不是真的同一个意思。
 
-        【标签列表】
+        【候选组】
         \(list)
 
-        请找出**语义相同**、应该合并成一个的标签组：
+        请逐组判断，找出**语义相同**、应该合并成一个的标签组：
         - 只合并真正同义的标签（同一个意思的不同写法），例如「工作项」和「工作会议」；
           **不要合并只是相关但不同的标签**，例如「会议」和「会议纪要」不是同一个意思。
         - 每组给出合并后的名字：用这一组里最常用、最准确的那个写法。

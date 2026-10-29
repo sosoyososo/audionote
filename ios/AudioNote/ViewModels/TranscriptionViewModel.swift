@@ -1289,12 +1289,18 @@ final class TranscriptionViewModel: ObservableObject {
         }
         let apiKey = ProviderProfileStore.shared.apiKey(for: profile.id)
 
-        let tags = libraryTagCounts()
-        Logger.info("proposeTagMerges: scanning \(tags.count) tags")
+        let counts = libraryTagCounts()
+        let groups = TagMergeCandidates.groups(counts: counts)
+        let candidates = groups.reduce(0) { $0 + $1.count }
+        Logger.info(
+            "proposeTagMerges: \(counts.count) tags -> \(groups.count) candidate groups "
+                + "(\(candidates) tags)"
+        )
         let started = Date()
 
         let proposals = try await llmService.proposeTagMerges(
-            tags: tags,
+            groups: groups,
+            counts: counts,
             profile: profile,
             apiKey: apiKey
         )
@@ -1311,7 +1317,7 @@ final class TranscriptionViewModel: ObservableObject {
     /// the same rule the chips and the filters use. The displayed spelling
     /// is the most-used one for that identity, which is the spelling a
     /// merge would keep.
-    func libraryTagCounts() -> [(name: String, count: Int)] {
+    func libraryTagCounts() -> [String: Int] {
         var counts: [String: Int] = [:]
         var spellings: [String: [String: Int]] = [:]
 
@@ -1325,13 +1331,16 @@ final class TranscriptionViewModel: ObservableObject {
             }
         }
 
-        return counts.compactMap { key, count in
-            guard let best = spellings[key]?.max(by: { lhs, rhs in
+        // The dictionary is keyed by the *display* spelling — the most-used
+        // one for that identity — because that is the spelling a merge would
+        // keep, and the one the model should see.
+        return counts.reduce(into: [String: Int]()) { result, entry in
+            guard let best = spellings[entry.key]?.max(by: { lhs, rhs in
                 if lhs.value != rhs.value { return lhs.value < rhs.value }
                 return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedDescending
-            }) else { return nil }
-            return (name: best.key, count: count)
-        }.sorted { $0.count > $1.count }
+            }) else { return }
+            result[best.key] = entry.value
+        }
     }
 
     /// Carry out the proposals the user agreed to.
