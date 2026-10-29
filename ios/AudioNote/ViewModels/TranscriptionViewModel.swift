@@ -1224,6 +1224,12 @@ final class TranscriptionViewModel: ObservableObject {
     /// What the model proposed, once it has answered.
     @Published private(set) var mergeProposals: [TagMergeProposal] = []
 
+    /// The model's answer as it arrives. The merge prompt makes the model
+    /// reason out loud before it answers, and that reasoning is the honest
+    /// progress indicator there is: the user can watch which tags it is
+    /// considering, instead of watching a spinner.
+    @Published private(set) var mergeProposalProgress: String = ""
+
     /// The in-flight run. Held here rather than in a view so that closing
     /// the sheet does not cancel the work.
     private var mergeProposalTask: Task<Void, Never>?
@@ -1236,10 +1242,15 @@ final class TranscriptionViewModel: ObservableObject {
     func startTagMergeProposal() {
         guard mergeProposalState != .running else { return }
         mergeProposalState = .running
+        mergeProposalProgress = ""
         mergeProposalTask = Task { [weak self] in
             guard let self else { return }
             do {
-                let proposals = try await self.proposeTagMerges()
+                let proposals = try await self.proposeTagMerges { [weak self] text in
+                    Task { @MainActor in
+                        self?.mergeProposalProgress = text
+                    }
+                }
                 guard !Task.isCancelled else {
                     self.mergeProposalState = .cancelled
                     return
@@ -1281,7 +1292,9 @@ final class TranscriptionViewModel: ObservableObject {
     ///
     /// The model proposes; the user disposes. Nothing is merged here
     /// (ADR-0010).
-    func proposeTagMerges() async throws -> [TagMergeProposal] {
+    func proposeTagMerges(
+        onText: @escaping (String) -> Void = { _ in }
+    ) async throws -> [TagMergeProposal] {
         await ProviderProfileStore.shared.ensureLoaded()
         guard let profile = ProviderProfileStore.shared.active else {
             Logger.warning("LLM proposeTagMerges skipped: no active profile")
@@ -1296,7 +1309,8 @@ final class TranscriptionViewModel: ObservableObject {
         let proposals = try await llmService.proposeTagMerges(
             tags: tags,
             profile: profile,
-            apiKey: apiKey
+            apiKey: apiKey,
+            onText: onText
         )
         Logger.info(
             "proposeTagMerges: model proposed \(proposals.count) groups "

@@ -216,7 +216,7 @@ actor LLMService {
     private struct APIRequest: Encodable {
         let model: String
         let messages: [Message]
-        let stream: Bool = false
+        var stream: Bool = false
 
         struct Message: Encodable {
             let role: String
@@ -519,40 +519,79 @@ actor LLMService {
     func proposeTagMerges(
         tags: [(name: String, count: Int)],
         profile: LLMProviderProfile,
-        apiKey: String?
+        apiKey: String?,
+        onText: @escaping (String) -> Void = { _ in }
     ) async throws -> [TagMergeProposal] {
         try validateProfile(profile, apiKey: apiKey)
         guard !tags.isEmpty else { return [] }
 
         let knownCounts = Dictionary(uniqueKeysWithValues: tags.map { ($0.name, $0.count) })
 
-        return try await retryingRequest(
-            profile: profile,
-            apiKey: apiKey,
-            // The answer is a long generation, and a timeout is not a
-            // transient failure: retrying it pays for the same slow answer
-            // twice. One attempt, and a timeout long enough for it.
-            timeout: 90,
-            maxAttempts: 2,
-            buildRequest: {
-                APIRequest(
-                    model: profile.model,
-                    messages: [
-                        APIRequest.Message(
-                            role: "system",
-                            content: Self.tagMergePrompt(tags: tags)
-                        ),
+        // The answer is a long generation, and a timeout is not a transient
+        // failure: retrying it pays for the same slow answer twice. One
+        // attempt, and a timeout long enough for it.
+        let body = try JSONEncoder().encode(
+            APIRequest(
+                model: profile.model,
+                messages: [
+                    APIRequest.Message(
+                        role: "system",
+                        content: Self.tagMergePrompt(tags: tags)
+                    ),
                         APIRequest.Message(role: "user", content: "请找出可以合并的标签。"),
-                    ]
-                )
-            },
-            sendAndParse: { urlRequest, profile in
-                let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
-                let head = content.prefix(300).replacingOccurrences(of: "\n", with: " ")
-                Logger.info("LLM proposeTagMerges: response \(content.count) chars, head: \(head)")
-                return try Self.parseTagMerges(content: content, knownCounts: knownCounts)
-            }
+                ],
+                stream: true
+            )
         )
+        var request = try buildURLRequest(profile: profile, apiKey: apiKey, body: body)
+        // This one bounds the wait for the *response headers*. The stream
+        // itself is bounded by the session's resource timeout, so a long
+        // generation does not hit a wall — it keeps arriving.
+        request.timeoutInterval = 90
+
+        // Gate #2 — network, same as every other call.
+        guard NetworkMonitor.shared.checkConnectivity() else {
+            Logger.warning("LLM call skipped: device is offline")
+            throw LLMError.offline
+        }
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            Logger.error("LLM proposeTagMerges: HTTP \(http.statusCode)")
+            throw LLMError.httpError(http.statusCode)
+        }
+
+        var content = ""
+        for try await line in bytes.lines {
+            guard let piece = Self.sseContent(in: line) else { continue }
+            content += piece
+            onText(content)
+        }
+
+        let head = content.prefix(300).replacingOccurrences(of: "\n", with: " ")
+        Logger.info("LLM proposeTagMerges: streamed \(content.count) chars, head: \(head)")
+        return try Self.parseTagMerges(content: content, knownCounts: knownCounts)
+    }
+
+    /// The content of one server-sent event, or nil for a line that carries
+    /// none.
+    ///
+    /// The wire format is the OpenAI-compatible one: `data: {...}` lines,
+    /// each carrying a chat-completion chunk whose `delta.content` is the
+    /// piece that arrived. `[DONE]` ends the stream.
+    static func sseContent(in line: String) -> String? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        guard trimmed.hasPrefix("data:") else { return nil }
+        let payload = trimmed.dropFirst("data:".count)
+            .trimmingCharacters(in: .whitespaces)
+        guard payload != "[DONE]", !payload.isEmpty else { return nil }
+        guard let data = payload.data(using: .utf8),
+              let event = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let choices = event["choices"] as? [[String: Any]],
+              let delta = choices.first?["delta"] as? [String: Any],
+              let content = delta["content"] as? String
+        else { return nil }
+        return content
     }
 
     /// The prompt for `proposeTagMerges`.
