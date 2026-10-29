@@ -56,19 +56,19 @@ xcodebuild test -project AudioNote.xcodeproj -scheme AudioNote \
 
 **为什么排第一**：没有基线，改完也说不清有没有用 ✓。这个任务**不改行为** ✓，只加一行日志 ✓。
 
-- [ ] 在 `LLMService.optimizeAndProcess` 里，`existingTagVocabulary` 和 `result` 都在手 ✓，在那里打一行 ✓
-- [ ] 记的内容 ✓（**只有标签和数字** ✓）：
+- [x] 在 `LLMService.optimizeAndProcess` 里，`existingTagVocabulary` 和 `result` 都在手 ✓，在那里打一行 ✓
+- [x] 记的内容 ✓（**只有标签和数字** ✓）：
   - 词表的大小 ✓（`existingTagVocabulary.count` ✓）
   - 模型返回的标签数 ✓（`result.tags.count` ✓）
   - **返回的标签里，有几个是词表给过的** ✓（按 `TagIdentity.normalized` 比较 ✓，只为比较 ✓，不改返回值 ✓）
   - 返回的标签本身（名字 + 分数）✓ —— 只有这几个字，不含正文 ✓
-- [ ] 用 `Logger.info` ✓（DEBUG 下走 `print` ✓，真机 Debug 包可以在控制台看到 ✓）
-- [ ] **不新增测试** ✓ —— 这一步没有可测的纯逻辑 ✓（测「日志打了」没有意义 ✓）
+- [x] 用 `Logger.info` ✓（DEBUG 下走 `print` ✓，真机 Debug 包可以在控制台看到 ✓）
+- [x] **不新增测试** ✓ —— 这一步没有可测的纯逻辑 ✓（测「日志打了」没有意义 ✓）
 
 ### Task 2: `TagVocabularySelector` —— 相关优先，频次补位
 
-- [ ] 新建 `ios/AudioNote/Utilities/TagVocabularySelector.swift` ✓
-- [ ] 纯静态类型 ✓，一个方法 ✓：
+- [x] 新建 `ios/AudioNote/Utilities/TagVocabularySelector.swift` ✓
+- [x] 纯静态类型 ✓，一个方法 ✓：
 
 ```swift
 enum TagVocabularySelector {
@@ -79,29 +79,29 @@ enum TagVocabularySelector {
 }
 ```
 
-- [ ] **相关**的判定 ✓（字面相关 ✓，不是语义等价 ✓）：
+- [x] **相关**的判定 ✓（字面相关 ✓，不是语义等价 ✓）：
   - 标签本身出现在本条文本里 ✓ → 相关 ✓（大小写无关 ✓，空白忽略 ✓）
   - 中文标签与文本**共享一个 2 字子串** ✓ → 相关 ✓（`会议纪要` vs 文本里有「会议」✓）
   - 英文标签与文本**共享一个 ≥3 字母的单词** ✓ → 相关 ✓
-- [ ] **排序** ✓：
+- [x] **排序** ✓：
   1. 相关的在前 ✓，内部按次数降序 ✓、再按字典序 ✓（稳定 ✓）
   2. 不相关的在后 ✓，按次数降序 ✓、再按字典序 ✓（即「高频词补位」✓ —— 头部那批通用词仍然留着 ✓，因为复用最划算的地方在那儿 ✓）
-- [ ] 截断到 `limit` ✓
-- [ ] 边界 ✓：`limit <= 0` → 空数组 ✓；`counts` 为空 → 空数组 ✓；`text` 为空 → 退化成纯频次排序 ✓（**冷启动和空文本都不崩** ✓）
+- [x] 截断到 `limit` ✓
+- [x] 边界 ✓：`limit <= 0` → 空数组 ✓；`counts` 为空 → 空数组 ✓；`text` 为空 → 退化成纯频次排序 ✓（**冷启动和空文本都不崩** ✓）
 
 ### Task 3: 接进调用点
 
-- [ ] `TranscriptionViewModel.existingTagVocabulary` ✓：从无参属性改成函数 ✓，带上文本 ✓
+- [x] `TranscriptionViewModel.existingTagVocabulary` ✓：从无参属性改成函数 ✓，带上文本 ✓
   - **保留它现有的语义** ✓：全库（含归档 ✓）、按 `TagIdentity.normalized` 计数 ✓、**大小写不折叠**（送进 prompt 的写法不变 ✓ —— 这是既有约束 ✓）
   - 排序交给选择器 ✓，但**频次那一段的算法不能变** ✓（次数降序 + 字典序 ✓）
-- [ ] `TranscriptionViewModel.processWithLLM` 的调用点 ✓：传本条的文本 ✓
-- [ ] `TranscriptionDetailView` 的调用点 ✓：传那条记录的文本 ✓
-- [ ] `LLMService.maxTagVocabulary` **保持 30** ✓ —— 它的理由（词表和转写文本抢注意力 ✓）依然成立 ✓；要调等有了 Task 1 的数据再说 ✓
+- [x] `TranscriptionViewModel.processWithLLM` 的调用点 ✓：传本条的文本 ✓
+- [x] `TranscriptionDetailView` 的调用点 ✓：传那条记录的文本 ✓
+- [x] `LLMService.maxTagVocabulary` **保持 30** ✓ —— 它的理由（词表和转写文本抢注意力 ✓）依然成立 ✓；要调等有了 Task 1 的数据再说 ✓
 
 ### Task 4: 测试
 
-- [ ] 新建 `ios/AudioNoteTests/TagVocabularySelectorTests.swift` ✓
-- [ ] 必须盖住的用例 ✓：
+- [x] 新建 `ios/AudioNoteTests/TagVocabularySelectorTests.swift` ✓
+- [x] 必须盖住的用例 ✓：
   - **相关的低频标签能挤掉不相关的高频标签** ✓（本轮的核心 ✓）
   - 完全不相关时，退化成纯频次排序 ✓
   - `limit` 生效 ✓
@@ -113,9 +113,9 @@ enum TagVocabularySelector {
 
 ### Task 5: 文档
 
-- [ ] `docs/GLOSSARY.md` ✓：加 `TagVocabularySelector` 一行 ✓；更新 `TagIdentity` 那一行里关于「词表上限 30 / 长尾到不了模型」的描述 ✓（因为选择方式变了 ✓）
-- [ ] spec 的 §2.2 补一句「选择方式已改，见 plan」✓
-- [ ] `CLAUDE.md` 的 **Open work** ✓：方向 A 的那一行补上进展 ✓（注意：**B 还没做，这行不能删** ✓）
+- [x] `docs/GLOSSARY.md` ✓：加 `TagVocabularySelector` 一行 ✓；更新 `TagIdentity` 那一行里关于「词表上限 30 / 长尾到不了模型」的描述 ✓（因为选择方式变了 ✓）
+- [x] spec 的 §2.2 补一句「选择方式已改，见 plan」✓
+- [x] `CLAUDE.md` 的 **Open work** ✓：方向 A 的那一行补上进展 ✓（注意：**B 还没做，这行不能删** ✓）
 
 ---
 
