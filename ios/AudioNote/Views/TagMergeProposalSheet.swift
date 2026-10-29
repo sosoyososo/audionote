@@ -63,13 +63,6 @@ struct TagMergeProposalSheet: View {
                                     .font(.caption)
                             }
                         }
-                        if !viewModel.mergeProposalProgress.isEmpty {
-                            Text(Self.thinking(from: viewModel.mergeProposalProgress))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .lineLimit(12)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
                     } footer: {
                         Text("Library.Tags.Merge.CanClose".localized)
                     }
@@ -206,20 +199,6 @@ struct TagMergeProposalSheet: View {
                 .foregroundColor(.secondary)
         }
         .padding(.vertical, 4)
-    }
-
-    /// The model's reasoning, with the think markers taken off and the tail
-    /// kept — the useful part of a long thinking block is its end, where
-    /// the candidates it settled on are.
-    static func thinking(from text: String) -> String {
-        guard let open = text.range(of: "<think>") else {
-            return String(text.suffix(600))
-        }
-        let rest = text[open.upperBound...]
-        guard let close = rest.range(of: "</think>") else {
-            return String(rest.suffix(600))
-        }
-        return String(rest[..<close.lowerBound].suffix(600))
     }
 
     // MARK: - Apply
