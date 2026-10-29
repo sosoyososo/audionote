@@ -86,28 +86,8 @@ struct TagPickerSheet: View {
                             .fontWeight(.semibold)
                     }
                 }
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        copyTagList()
-                    } label: {
-                        Text("Library.Tags.Copy".localized)
-                    }
-                }
             }
         }
-    }
-
-    /// Put the whole vocabulary on the clipboard, with the counts.
-    ///
-    /// For looking at the tag list outside the app: deciding what to merge
-    /// by hand, pasting it somewhere to have it looked over, or keeping a
-    /// copy of what the library looked like on some day.
-    private func copyTagList() {
-        let lines = viewModel.libraryTagCounts()
-            .sorted { $0.value > $1.value }
-            .map { "\($0.key)（\($0.value)）" }
-            .joined(separator: "\n")
-        UIPasteboard.general.string = lines
     }
 
     // MARK: - Smart merge
