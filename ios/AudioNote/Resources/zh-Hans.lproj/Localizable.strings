@@ -108,6 +108,7 @@
 "Library.Tags.Merge.Cancel" = "取消";
 "Library.Tags.Merge.Retry" = "重新分析";
 "Library.Tags.Merge.CanClose" = "可以关掉这个面板，分析会继续。";
+"Library.Tags.Merge.Unreachable" = "数据文件夹当前不可访问，合并没有执行。";
 "Library.Tags.Merge.Title" = "合并建议";
 "Library.Tags.Merge.Target" = "合并成";
 "Library.Tags.Merge.Notes" = "%d 条笔记";

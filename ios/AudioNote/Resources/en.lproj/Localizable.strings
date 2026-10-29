@@ -108,6 +108,7 @@
 "Library.Tags.Merge.Cancel" = "Cancel";
 "Library.Tags.Merge.Retry" = "Try again";
 "Library.Tags.Merge.CanClose" = "You can close this sheet — the analysis keeps going.";
+"Library.Tags.Merge.Unreachable" = "The data folder is not reachable, so nothing was merged.";
 "Library.Tags.Merge.Title" = "Merge suggestions";
 "Library.Tags.Merge.Target" = "Merge into";
 "Library.Tags.Merge.Notes" = "%d notes";

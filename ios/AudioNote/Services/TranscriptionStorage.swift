@@ -6,6 +6,10 @@ enum StorageError: LocalizedError {
     case decodingFailed
     case writeFailed(Error)
     case deleteFailed(Error)
+    /// The data folder could not be reached, so the library is unknown —
+    /// **not** empty. ADR-0007: a library that could not be read must never
+    /// be treated as an empty one, by a writer either.
+    case libraryUnreachable
 
     var errorDescription: String? {
         switch self {
@@ -19,6 +23,8 @@ enum StorageError: LocalizedError {
             return "写入失败: \(error.localizedDescription)"
         case .deleteFailed(let error):
             return "删除失败: \(error.localizedDescription)"
+        case .libraryUnreachable:
+            return "数据文件夹当前不可访问"
         }
     }
 }
@@ -213,7 +219,21 @@ actor TranscriptionStorage {
     func mergeTags(_ groups: [TagMergeGroup]) async throws -> TagMergeOutcome {
         guard !groups.isEmpty else { return .empty }
 
+        // A library we cannot read is not an empty library (ADR-0007). The
+        // storage's own load collapses "no folder" into "no file", so the
+        // check has to happen here: without it, an unreachable folder makes
+        // every merge look like there was simply nothing to merge, and the
+        // merge quietly does nothing.
+        // Only when the file comes from the coordinator: an explicit URL
+        // (the test seam) is by definition reachable.
+        if fileURLOverride == nil {
+            let state = await MainActor.run { StorageCoordinator.shared.state }
+            Logger.info("mergeTags: storage state = \(state)")
+            guard state == .ready else { throw StorageError.libraryUnreachable }
+        }
+
         var records = try await loadAll()
+        Logger.info("mergeTags: loaded \(records.count) records")
         var consumed = Set<String>()
         var applied: [TagMergeGroup] = []
         var skipped = 0
@@ -222,13 +242,20 @@ actor TranscriptionStorage {
         for group in groups {
             let sourceKeys = Set(group.sources.map(TagIdentity.key))
             let targetKey = TagIdentity.key(group.target)
-            guard !sourceKeys.isEmpty, !sourceKeys.contains(targetKey) else {
+            guard !sourceKeys.isEmpty else {
+                Logger.info("mergeTags: skipped \(group.target) — no sources")
+                skipped += 1
+                continue
+            }
+            guard !sourceKeys.contains(targetKey) else {
+                Logger.info("mergeTags: skipped \(group.target) — the target is one of its own sources")
                 skipped += 1
                 continue
             }
             // An earlier group already took these tags, or already became
             // this tag's spelling — either way this proposal is stale.
             guard sourceKeys.isDisjoint(with: consumed), !consumed.contains(targetKey) else {
+                Logger.info("mergeTags: skipped \(group.target) — overlaps an earlier group")
                 skipped += 1
                 continue
             }
@@ -237,6 +264,10 @@ actor TranscriptionStorage {
                 record.tagNames.contains { sourceKeys.contains(TagIdentity.key($0)) }
             }
             guard !touched.isEmpty else {
+                Logger.info(
+                    "mergeTags: skipped \(group.target) — no record carries "
+                        + "\(group.sources.joined(separator: ","))"
+                )
                 skipped += 1
                 continue
             }

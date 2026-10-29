@@ -20,6 +20,7 @@ struct TagMergeProposalSheet: View {
     @State private var proposals: [TagMergeProposal] = []
     @State private var excluded = Set<UUID>()
     @State private var isApplying = false
+    @State private var applyError: String?
 
     /// The proposals that will actually be merged.
     private var accepted: [TagMergeProposal] {
@@ -136,6 +137,18 @@ struct TagMergeProposalSheet: View {
             .safeAreaInset(edge: .bottom) {
                 applyBar
             }
+            .alert(
+                "Library.Tags.Merge.Title".localized,
+                isPresented: Binding(
+                    get: { applyError != nil },
+                    set: { if !$0 { applyError = nil } }
+                ),
+                presenting: applyError
+            ) { _ in
+                Button("Action.Cancel".localized, role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
         }
     }
 
@@ -236,6 +249,7 @@ struct TagMergeProposalSheet: View {
                 dismiss()
             } catch {
                 Logger.error("tag merge failed: \(error)")
+                applyError = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
                 isApplying = false
             }
         }

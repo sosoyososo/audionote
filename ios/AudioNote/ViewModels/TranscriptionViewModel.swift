@@ -1244,6 +1244,13 @@ final class TranscriptionViewModel: ObservableObject {
                     self.mergeProposalState = .cancelled
                     return
                 }
+                for proposal in proposals {
+                    Logger.info(
+                        "proposeTagMerges: proposal \(proposal.target) <- "
+                            + proposal.sources.joined(separator: ",")
+                            + " counts=\(proposal.counts)"
+                    )
+                }
                 self.mergeProposals = proposals
                 self.mergeProposalState = .done
             } catch is CancellationError {
@@ -1332,6 +1339,22 @@ final class TranscriptionViewModel: ObservableObject {
     /// One write for all of them — see `TranscriptionStorage.mergeTags`.
     /// The current tag selection follows the merge, or the chips would
     /// point at tags that no longer exist.
+    /// Why a merge could not be carried out. The UI shows it — a merge that
+    /// silently does nothing is the worst outcome of all (ADR-0007).
+    enum TagMergeFailure: LocalizedError {
+        case unreachable
+        case other(String)
+
+        var errorDescription: String? {
+            switch self {
+            case .unreachable:
+                return "Library.Tags.Merge.Unreachable".localized
+            case .other(let message):
+                return message
+            }
+        }
+    }
+
     @discardableResult
     func applyTagMerges(_ proposals: [TagMergeProposal]) async throws -> TagMergeOutcome {
         let groups = proposals
@@ -1339,7 +1362,14 @@ final class TranscriptionViewModel: ObservableObject {
             .map { TagMergeGroup(target: $0.target, sources: $0.sources) }
         guard !groups.isEmpty else { return .empty }
 
-        let outcome = try await storage.mergeTags(groups)
+        let outcome: TagMergeOutcome
+        do {
+            outcome = try await storage.mergeTags(groups)
+        } catch StorageError.libraryUnreachable {
+            throw TagMergeFailure.unreachable
+        } catch {
+            throw TagMergeFailure.other(error.localizedDescription)
+        }
         for group in outcome.applied {
             selectedTags = TagMerger.remappedSelection(
                 selectedTags, into: group.target, from: group.sources
