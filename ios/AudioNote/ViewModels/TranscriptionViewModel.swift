@@ -1053,11 +1053,28 @@ final class TranscriptionViewModel: ObservableObject {
                 counts[spelling, default: 0] += 1
             }
         }
-        return TagVocabularySelector.select(
+        // The old selection — frequency only — kept as the baseline. Without
+        // it there is nothing to compare against: a model that reuses what it
+        // is offered proves nothing on its own, because it would reuse the
+        // frequency head too. What matters is whether the tags the relevance
+        // rule brought in are the ones the model ended up using.
+        let legacy = counts
+            .sorted { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value > rhs.value }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
+            }
+            .map(\.key)
+            .prefix(LLMService.maxTagVocabulary)
+            .map { $0 }
+
+        let selected = TagVocabularySelector.select(
             counts: counts,
             text: text,
             limit: LLMService.maxTagVocabulary
         )
+        let broughtIn = selected.filter { !legacy.contains($0) }
+        Logger.info("vocabulary selection: legacy=\(legacy.count) relevant=\(selected.count) broughtIn=\(broughtIn)")
+        return selected
     }
 
     /// Per-tag-identity count of in-scope records that also match the current
