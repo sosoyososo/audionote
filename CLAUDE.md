@@ -34,7 +34,6 @@ Decided but not done. This is an **index**, not the content — each row says wh
 
 | Open item | Where the detail is |
 |---|---|
-| Tag vocabulary: 158 tags over 43 notes. **A** — extract tags with the library's existing tags passed in, prefer reusing one, create a new tag only when none fits. *Round 1 shipped and measured 2026-10-29*: the vocabulary is now chosen relevance-first (`TagVocabularySelector`) instead of frequency-only. Measured on device: the model reuses 100% of what it is offered (5/5, 4/4, 4/4), and the relevance rule put a cold tag the old selection excluded into the vocabulary — and the model used it. **B is built** (plan `docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-b-plan.md`, ADR-0010) — **next: verify it on the device.** **B** — an "智能合并标签" action on the tag list page: the LLM proposes which tags are equivalent, the user gets a **suggestion list** to accept whole or prune first. No one-tap merge — the model only proposes, the user allows | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: IMPLEMENTED), plans: `...-direction-a-plan.md` / `...-direction-b-plan.md`, `docs/decisions/0010-tag-merge-proposal.md` |
 | Record a "the audio file is gone" state | same spec, §7 (P2-2) |
 | Back up `relatedNotes.json` | same spec, §7 (P2-3) |
 

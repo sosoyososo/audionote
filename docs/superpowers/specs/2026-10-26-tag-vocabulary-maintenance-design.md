@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **IMPLEMENTED（2026-10-29）** — 方向 A 与方向 B 均已实现 ✓。方向 A 已上线并真机测量 ✓（计划：`docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-a-plan.md` ✓）；方向 B 的实现见 `docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-b-plan.md` ✓ 与 **ADR-0010** ✓（模型只提建议，用户拍板 ✓）。**方向 B 尚待真机验证** ✓ |
+| **Status** | **IMPLEMENTED（2026-10-29）** — 方向 A 与方向 B 均已实现 ✓ 并在真机上验证过 ✓。方向 A：抽取时**相关优先**地选词表 ✓，实测模型 100% 复用给它的标签 ✓（5/5、4/4、4/4 ✓），且相关规则把一个旧口径选不中的冷门标签送了进去 ✓、模型用上了它 ✓（计划：`docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-a-plan.md` ✓）。方向 B：标签列表页的「智能合并」✓，模型只提建议、用户逐条拍板 ✓（计划：`docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-b-plan.md` ✓，**ADR-0010** ✓）。**注意：能力交付了，词表本身还没收敛** ✓ —— 2026-10-29 实测时仍有 146 个标签 ✓；收敛要靠用户主动跑一次「智能合并」✓（一次约 90 秒 ✓，可能超时 ✓，见 §3 ✓） |
 | **Date** | 2026-10-26 |
 | **Supersedes** | — |
 | **Author** | — |
