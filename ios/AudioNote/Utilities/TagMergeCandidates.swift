@@ -42,11 +42,6 @@ enum TagMergeCandidates {
             return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
         }
 
-        var groups: [[String]] = []
-        var seen = Set<Set<String>>()
-
-        // One group per shared substring or shared word. The groups are
-        // built from the keys, not from pairs of tags, so nothing chains.
         var byKey: [String: [String]] = [:]
         for (tag, _) in byFrequency {
             for key in sharedKeys(of: tag) {
@@ -54,19 +49,38 @@ enum TagMergeCandidates {
             }
         }
 
-        for (_, members) in byKey.sorted(by: { $0.key < $1.key }) {
-            guard members.count >= 2 else { continue }
-            let identity = Set(members.map(TagIdentity.key))
-            guard seen.insert(identity).inserted else { continue }
-            groups.append(members)
-        }
-
-        // The most-used tags, for the pairs that share no characters at all.
+        // The most-used tags go first, and on their own: they are where
+        // reuse pays off, and a pure synonym (会议 / 研讨) shares no
+        // characters with anything, so similarity alone would never surface
+        // it. They must also survive the cap — appended last, they were the
+        // first thing cut, and the model was left with nothing worth
+        // merging.
+        var groups: [[String]] = []
         let head = byFrequency.prefix(headSize).map(\.key)
         if head.count >= 2 {
             groups.append(head)
         }
 
+        var seen = Set<Set<String>>()
+        var rest: [[String]] = []
+        // One group per shared substring or shared word. The groups are
+        // built from the keys, not from pairs of tags, so nothing chains.
+        for (_, members) in byKey {
+            guard members.count >= 2 else { continue }
+            let identity = Set(members.map(TagIdentity.key))
+            guard seen.insert(identity).inserted else { continue }
+            rest.append(members)
+        }
+
+        // Most-used group first, so the cap keeps the groups that matter.
+        rest.sort { lhs, rhs in
+            let lhsBest = lhs.map { counts[$0] ?? 0 }.max() ?? 0
+            let rhsBest = rhs.map { counts[$0] ?? 0 }.max() ?? 0
+            if lhsBest != rhsBest { return lhsBest > rhsBest }
+            return lhs.sorted().lexicographicallyPrecedes(rhs.sorted())
+        }
+
+        groups.append(contentsOf: rest)
         return Array(groups.prefix(maxGroups))
     }
 

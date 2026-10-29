@@ -22,10 +22,11 @@ final class TagMergeCandidatesTests: XCTestCase {
         // all three in one group; grouping by the shared substring does not.
         let groups = TagMergeCandidates.groups(counts: ["功能反馈": 1, "用户反馈": 1, "功能优化": 1])
 
-        // The last group is the head — the most-used tags, offered together
+        // The first group is the head — the most-used tags, offered together
         // so that a pure synonym (which shares no characters with anything)
-        // can still be found. It is meant to hold unrelated tags.
-        for group in groups.dropLast() {
+        // can still be found. It is meant to hold unrelated tags, and it
+        // comes first so the cap cannot cut it.
+        for group in groups.dropFirst() {
             XCTAssertFalse(group.contains("功能优化") && group.contains("用户反馈"))
         }
         // The two pairs that do share something are each offered.
