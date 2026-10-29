@@ -152,7 +152,9 @@ tag vocabulary: offered=30 returned=4 reused=4 tags=相关度计算,笔记相关
 - **相关规则确实在起作用** ✓ —— 它把旧口径选不中的冷门标签送了进去 ✓，而模型用上了 ✓✓
 - **方向 B 的活是实打实的** ✓ —— 第三条笔记上，模型同时给出了「相关度计算」**和**「笔记相关度」✓：**同一条笔记上出现了两个语义重复的标签** ✓✓。这不是假设，是现场发生的 ✓ —— 「智能合并」要解决的正是这个 ✓
 
-**顺带记一条教训** ✓：真机看日志必须**挂控制台启动**（`devicectl device process launch --console` ✓），因为 `Logger` 现在走 `print` ✓、不进统一日志 ✓，而且 App 已经在跑时 devicectl 会拒绝再启一个实例 ✓（要先 terminate ✓）。`.remember` 里早有这条债 ✓：**`Logger.swift` → `os.Logger`** ✓（一直没做 ✓）。
+**顺带记一条教训** ✓：真机看日志必须**挂控制台启动**（`devicectl device process launch --console` ✓），而且 App 已经在跑时 devicectl 会拒绝再启一个实例 ✓（要先 terminate ✓）—— 更要命的是，**控制台挂上之前打的日志全丢了** ✓（今天就丢过一次 ✓：那次词表测量不得不重做一遍 ✓）。`.remember` 里早有这条债 ✓：**`Logger.swift` → `os.Logger`** ✓。
+
+**2026-10-29：这条债还了** ✓ —— `Logger` 现在同时写**两个出口** ✓：stdout ✓（给命令行实时看 ✓）和**统一日志** ✓（给事后查 ✓，Xcode / Console.app 都能读 ✓，而且**留得住** ✓）。顺带查清一件事实 ✓：**Mac 的 `log show` / `log stream` 只能读 Mac 自己的日志** ✓，`log collect --device-udid` **要 root** ✓ —— 所以从命令行盯一台设备，只有「启动时挂控制台」这一条路 ✓。
 
 ## 6. 动手时必须遵守的约束
 
