@@ -32,6 +32,16 @@ struct Logger {
 
     private static let osLog = os.Logger(subsystem: subsystem, category: category)
 
+    /// stdout is block-buffered when it is a pipe, so a message can sit in
+    /// the buffer for minutes — and a watcher attached to a device sees
+    /// nothing at all until the buffer happens to fill. That is not a
+    /// cosmetic problem: it is the difference between seeing what the app
+    /// is doing and guessing.
+    private static let unbuffered: Bool = {
+        setvbuf(stdout, nil, _IONBF, 0)
+        return true
+    }()
+
     static func log(
         _ message: String,
         level: LogLevel = .info,
@@ -40,6 +50,7 @@ struct Logger {
         line: Int = #line
     ) {
         #if DEBUG
+        _ = unbuffered
         // The file and line stay in the message text: the unified log keeps
         // them as metadata, but `log show` does not print them, and knowing
         // where a message came from is most of what makes it useful.

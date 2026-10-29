@@ -98,6 +98,7 @@
 "Library.Tags.Title" = "标签";
 "Library.Tags.Search" = "搜索标签";
 "Library.Tags.Clear" = "清除";
+"Library.Tags.Copy" = "复制标签";
 "Library.Tags.Done" = "完成";
 "Library.Tags.NoMatch" = "没有匹配的标签";
 "Library.Tags.Merge.Smart" = "智能合并";

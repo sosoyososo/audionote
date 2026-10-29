@@ -552,7 +552,9 @@ actor LLMService {
             sendAndParse: { urlRequest, profile in
                 let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
                 let head = content.prefix(300).replacingOccurrences(of: "\n", with: " ")
+                let tail = content.suffix(700).replacingOccurrences(of: "\n", with: " ")
                 Logger.info("LLM proposeTagMerges: response \(content.count) chars, head: \(head)")
+                Logger.info("LLM proposeTagMerges: tail: \(tail)")
                 return try Self.parseTagMerges(content: content, knownCounts: knownCounts)
             }
         )

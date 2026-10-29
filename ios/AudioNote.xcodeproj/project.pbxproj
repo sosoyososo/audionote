@@ -58,6 +58,7 @@
 		ADF9E2C8468BEEFB8878068B /* LaunchRecoverySweepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BD9D0BA79FF1B7F0BA9B38 /* LaunchRecoverySweepTests.swift */; };
 		AE485B08C2E64B5B8E798518 /* TagMergeBatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBE5CE02DF57891F1D8EFFCF /* TagMergeBatchTests.swift */; };
 		B7CA9597751083C5AAD759A8 /* MergeTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A357FD6836D64884A25F699 /* MergeTagsView.swift */; };
+		B87C37916A47C5F20640E8FA /* TagMergeGoldenPairsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6746491D75DD4F110AC2B78 /* TagMergeGoldenPairsTests.swift */; };
 		BED61F70E21A3664F3F2EDD0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B979954BF5DD75B200033DC /* KeychainStore.swift */; };
 		C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8371A54AFD59688EF313871C /* TagChipOrderTests.swift */; };
 		CA3A46E6D4A7E387090B978E /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */; };
@@ -147,6 +148,7 @@
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AA9F7EF34DB1F6BA058A0939 /* TagMergeProposalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeProposalTests.swift; sourceTree = "<group>"; };
 		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B6746491D75DD4F110AC2B78 /* TagMergeGoldenPairsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeGoldenPairsTests.swift; sourceTree = "<group>"; };
 		BDAF3BD54005E31BC43582DF /* UpdateRecordMergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRecordMergeTests.swift; sourceTree = "<group>"; };
 		BF3214FE237AB13413336F8A /* LibraryArchiveModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryArchiveModeTests.swift; sourceTree = "<group>"; };
 		C27A05976893E36E23155678 /* SharedComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedComponents.swift; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				EF0CA39964FE5D2D76CCDE4E /* TagHygieneTests.swift */,
 				DBE5CE02DF57891F1D8EFFCF /* TagMergeBatchTests.swift */,
 				125AF9AB8FA69703EAB64B7A /* TagMergeCandidatesTests.swift */,
+				B6746491D75DD4F110AC2B78 /* TagMergeGoldenPairsTests.swift */,
 				AA9F7EF34DB1F6BA058A0939 /* TagMergeProposalTests.swift */,
 				6920F5B0A73125B1371FF04D /* TagMergerTests.swift */,
 				9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */,
@@ -455,6 +458,7 @@
 				08DF803CC4111B94C2214363 /* TagHygieneTests.swift in Sources */,
 				AE485B08C2E64B5B8E798518 /* TagMergeBatchTests.swift in Sources */,
 				1294246D2050C7B16735AF14 /* TagMergeCandidatesTests.swift in Sources */,
+				B87C37916A47C5F20640E8FA /* TagMergeGoldenPairsTests.swift in Sources */,
 				D110C2D9C65BCB5A552AD05C /* TagMergeProposalTests.swift in Sources */,
 				F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */,
 				D816AF42DCA382BF6CCA189E /* TagVocabularySelectorTests.swift in Sources */,
