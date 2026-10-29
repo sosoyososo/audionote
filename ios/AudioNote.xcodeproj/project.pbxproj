@@ -28,6 +28,7 @@
 		32ECD129A19020227D5F12C0 /* AudioPlayerManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16968499ABFBC3D1AC4B8CD1 /* AudioPlayerManager.swift */; };
 		38B1D8F9FBDE771CCB7190C2 /* LibraryCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A866E4FD9A1804FF540632 /* LibraryCountTests.swift */; };
 		390B4F25977DE9F2C253BB23 /* RelatedNotesStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A0CC0D206E57BBC1BCB42E9 /* RelatedNotesStorage.swift */; };
+		42089208891C7696081A45A5 /* TagVocabularySelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A84566E2901FF16B04B5734 /* TagVocabularySelector.swift */; };
 		44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */; };
 		4C079BBEB06ACAF53CDDB946 /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B2AFFD402968D835D4582CA /* FlowLayout.swift */; };
 		544911B8FB0AD817E9C860A2 /* SmokeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C957D559BFA47374FF1CDF5 /* SmokeTests.swift */; };
@@ -60,6 +61,7 @@
 		D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */; };
 		D4CD0207DFF15BD3B7897B16 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012369EA9DDAC70389CD813F /* RecordingView.swift */; };
 		D769C1CA07FDD1CA9FFB8904 /* LibraryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E98AD129F21ED062E91BFF /* LibraryListView.swift */; };
+		D816AF42DCA382BF6CCA189E /* TagVocabularySelectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */; };
 		D8DD3B1E8205064D27444A9A /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */; };
 		DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */; };
 		E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F54E2D99C3BBE456B4A7B28 /* StorageFolderHint.swift */; };
@@ -90,6 +92,7 @@
 		0E0C6553862AC35EA0BD3F9C /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		144A777BB064CB5BDBB285DE /* AudioNoteTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AudioNoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		16968499ABFBC3D1AC4B8CD1 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerManager.swift; sourceTree = "<group>"; };
+		1A84566E2901FF16B04B5734 /* TagVocabularySelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagVocabularySelector.swift; sourceTree = "<group>"; };
 		1B2AFFD402968D835D4582CA /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		1CF9484CDD6FCB4724E31513 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		1DD1B9C4379E797DE03FB0B1 /* StorageCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageCoordinator.swift; sourceTree = "<group>"; };
@@ -130,6 +133,7 @@
 		8B979954BF5DD75B200033DC /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
 		9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LanguageSelectorView.swift; sourceTree = "<group>"; };
 		9A357FD6836D64884A25F699 /* MergeTagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeTagsView.swift; sourceTree = "<group>"; };
+		9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagVocabularySelectorTests.swift; sourceTree = "<group>"; };
 		A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesPrescreenTests.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -203,6 +207,7 @@
 				8371A54AFD59688EF313871C /* TagChipOrderTests.swift */,
 				EF0CA39964FE5D2D76CCDE4E /* TagHygieneTests.swift */,
 				6920F5B0A73125B1371FF04D /* TagMergerTests.swift */,
+				9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */,
 				5B2638DDD77737DEF97707EF /* TranscriptionStorageTests.swift */,
 				BDAF3BD54005E31BC43582DF /* UpdateRecordMergeTests.swift */,
 			);
@@ -234,6 +239,7 @@
 				20CA2E25C71ECE4C2C93EFF0 /* NetworkMonitor.swift */,
 				EEA9FE19E7F88A212478178E /* PermissionsManager.swift */,
 				78ACAA09C404E3AA1EB2B6BF /* TagIdentity.swift */,
+				1A84566E2901FF16B04B5734 /* TagVocabularySelector.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -430,6 +436,7 @@
 				C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */,
 				08DF803CC4111B94C2214363 /* TagHygieneTests.swift in Sources */,
 				F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */,
+				D816AF42DCA382BF6CCA189E /* TagVocabularySelectorTests.swift in Sources */,
 				2D871F9F064B199861887F64 /* TranscriptionStorageTests.swift in Sources */,
 				28CCE3848FD997C4D1906BC5 /* UpdateRecordMergeTests.swift in Sources */,
 			);
@@ -474,6 +481,7 @@
 				2C9F4340487472FED0B95505 /* TagIdentity.swift in Sources */,
 				E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */,
 				F74E1193956F872E39B5C538 /* TagPickerSheet.swift in Sources */,
+				42089208891C7696081A45A5 /* TagVocabularySelector.swift in Sources */,
 				0BC728380DCA544890AB0CEE /* TranscriptionDetailView.swift in Sources */,
 				44E8813BD4FA357C1EDA1E91 /* TranscriptionRecord.swift in Sources */,
 				85CC2307EC35E04425B21FD2 /* TranscriptionStorage.swift in Sources */,

@@ -530,7 +530,7 @@ struct TranscriptionDetailView: View {
                     originalText,
                     profile: profile,
                     apiKey: apiKey,
-                    existingTags: await MainActor.run { viewModel.existingTagVocabulary }
+                    existingTags: await MainActor.run { viewModel.existingTagVocabulary(for: originalText) }
                 )
                 let updatedRecord = TranscriptionRecord(
                     id: baseRecord.id,

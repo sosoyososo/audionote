@@ -136,7 +136,7 @@ final class TagHygieneTests: XCTestCase {
             record("丙", tags: [TaggedItem(name: "工作", score: 1.0)])
         ])
 
-        XCTAssertEqual(vm.existingTagVocabulary, ["工作", "会议"])
+        XCTAssertEqual(vm.existingTagVocabulary(for: ""), ["工作", "会议"])
     }
 
     /// Archived records' tags are just as worth reusing — the archive is
@@ -147,7 +147,7 @@ final class TagHygieneTests: XCTestCase {
             record("收起的", tags: [TaggedItem(name: "旧项目", score: 1.0)], archived: true)
         ])
 
-        XCTAssertEqual(vm.existingTagVocabulary, ["工作", "旧项目"])
+        XCTAssertEqual(vm.existingTagVocabulary(for: ""), ["工作", "旧项目"])
     }
 
     func testVocabularyIsCappedAndSkipsBlanks() {
@@ -156,7 +156,7 @@ final class TagHygieneTests: XCTestCase {
         }
         let vm = makeViewModel(many + [record("空", tags: [TaggedItem(name: "  ", score: 1.0)])])
 
-        let vocabulary = vm.existingTagVocabulary
+        let vocabulary = vm.existingTagVocabulary(for: "")
 
         XCTAssertEqual(vocabulary.count, LLMService.maxTagVocabulary)
         XCTAssertFalse(vocabulary.contains(""))
@@ -171,7 +171,7 @@ final class TagHygieneTests: XCTestCase {
             record("乙", tags: [TaggedItem(name: "work", score: 1.0)])
         ])
 
-        XCTAssertEqual(Set(vm.existingTagVocabulary), ["Work", "work"])
+        XCTAssertEqual(Set(vm.existingTagVocabulary(for: "")), ["Work", "work"])
     }
 
     // MARK: - The prompt itself

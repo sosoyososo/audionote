@@ -355,7 +355,7 @@ actor LLMService {
     ) async throws -> LLMOptimizeAndProcessResult {
         try validateProfile(profile, apiKey: apiKey)
 
-        return try await retryingRequest(
+        let result = try await retryingRequest(
             profile: profile,
             apiKey: apiKey,
             buildRequest: {
@@ -377,6 +377,23 @@ actor LLMService {
                 return try Self.parseOptimizeAndProcess(content: content)
             }
         )
+        Self.logVocabularyUsage(offered: existingTags, returned: result.tags)
+        return result
+    }
+
+    /// How much of the vocabulary the model actually used.
+    ///
+    /// The number that matters: of the tags the model returned, how many were
+    /// offered to it in the first place. A low value means the vocabulary is
+    /// not reaching this note's topic, so the model invents tags the library
+    /// already has — which is how 43 notes ended up carrying 158 tags.
+    ///
+    /// Tag names and counts only. Never the transcript, never the key.
+    private static func logVocabularyUsage(offered: [String], returned: [TaggedItem]) {
+        let offeredKeys = Set(offered.map(TagIdentity.key))
+        let reused = returned.filter { offeredKeys.contains(TagIdentity.key($0.name)) }.count
+        let names = returned.map(\.name).joined(separator: ",")
+        Logger.info("tag vocabulary: offered=\(offered.count) returned=\(returned.count) reused=\(reused) tags=\(names)")
     }
 
     /// Second, independent LLM call: which of the given candidates are

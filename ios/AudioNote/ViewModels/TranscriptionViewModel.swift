@@ -571,7 +571,7 @@ final class TranscriptionViewModel: ObservableObject {
                 originalText,
                 profile: profile,
                 apiKey: apiKey,
-                existingTags: existingTagVocabulary
+                existingTags: existingTagVocabulary(for: originalText)
             )
             Logger.info("LLM processWithLLM succeeded")
 
@@ -1039,7 +1039,12 @@ final class TranscriptionViewModel: ObservableObject {
     /// worth reusing. Casing is **not** unified here — the prompt asks for one
     /// spelling, and folding case would hide from the model the very drift it
     /// is being asked to avoid.
-    var existingTagVocabulary: [String] {
+    ///
+    /// `text` is the note being tagged. Tags that occur in it are offered
+    /// first, so a tag the library happens to use once is not locked out of
+    /// the vocabulary by being rare — see `TagVocabularySelector`, which is
+    /// where the ordering lives.
+    func existingTagVocabulary(for text: String) -> [String] {
         var counts: [String: Int] = [:]
         for record in historyRecords {
             for name in record.tagNames {
@@ -1048,14 +1053,11 @@ final class TranscriptionViewModel: ObservableObject {
                 counts[spelling, default: 0] += 1
             }
         }
-        return counts
-            .sorted { lhs, rhs in
-                if lhs.value != rhs.value { return lhs.value > rhs.value }
-                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedAscending
-            }
-            .map(\.key)
-            .prefix(LLMService.maxTagVocabulary)
-            .map { $0 }
+        return TagVocabularySelector.select(
+            counts: counts,
+            text: text,
+            limit: LLMService.maxTagVocabulary
+        )
     }
 
     /// Per-tag-identity count of in-scope records that also match the current

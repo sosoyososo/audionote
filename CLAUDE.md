@@ -34,7 +34,7 @@ Decided but not done. This is an **index**, not the content — each row says wh
 
 | Open item | Where the detail is |
 |---|---|
-| Tag vocabulary: 158 tags over 43 notes. **A** — extract tags with the library's existing tags passed in, prefer reusing one, create a new tag only when none fits (the prompt hint exists, but the vocabulary is capped at the 30 *most frequent* tags, so the long tail never reaches the model). **B** — an "智能合并标签" action on the tag list page: the LLM proposes which tags are equivalent, the user gets a **suggestion list** to accept whole or prune first. No one-tap merge — the model only proposes, the user allows | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: IDEA) |
+| Tag vocabulary: 158 tags over 43 notes. **A** — extract tags with the library's existing tags passed in, prefer reusing one, create a new tag only when none fits. *Round 1 shipped 2026-10-29*: the vocabulary is now chosen relevance-first (`TagVocabularySelector`) instead of frequency-only, and a log line records how many of the model's returned tags were offered to it — **next: record one note on the device and read that number**. **B** — an "智能合并标签" action on the tag list page: the LLM proposes which tags are equivalent, the user gets a **suggestion list** to accept whole or prune first. No one-tap merge — the model only proposes, the user allows | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: DESIGNED), plan for A: `docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-a-plan.md` |
 | Record a "the audio file is gone" state | same spec, §7 (P2-2) |
 | Back up `relatedNotes.json` | same spec, §7 (P2-3) |
 
