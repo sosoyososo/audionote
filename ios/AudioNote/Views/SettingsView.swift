@@ -81,6 +81,24 @@ struct SettingsView: View {
                         Text(storage.folderName ?? "—")
                             .foregroundColor(.secondary)
                     }
+                    // The path, so a user comparing folders in the Files
+                    // app (or reporting a problem) can check where the
+                    // data actually is, not just what the folder is
+                    // called. Selectable so it can be copied from the
+                    // screen — a path is no use if it must be retyped.
+                    if let folderPath = storage.folderPath {
+                        HStack(alignment: .top) {
+                            Text("Settings.Storage.Path".localized)
+                            Spacer()
+                            Text(folderPath)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(2)
+                                .truncationMode(.middle)
+                                .multilineTextAlignment(.trailing)
+                                .textSelection(.enabled)
+                        }
+                    }
                     // The one number that is not about the list you are
                     // looking at: every record, both sides of the archive
                     // split. The library title shows the size of the side you

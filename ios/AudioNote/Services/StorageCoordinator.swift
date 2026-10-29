@@ -395,6 +395,17 @@ final class StorageCoordinator: ObservableObject {
         resolvedRoot?.lastPathComponent
     }
 
+    /// The full path of the folder the user picked, for the Settings
+    /// row that lets a user check *where* their data actually is.
+    ///
+    /// Unlike `rootURL` this does not precondition on being configured:
+    /// the Settings view reads it unconditionally, so an unconfigured
+    /// app is "no path yet" (nil), not a crash. Path display only —
+    /// `folderName` remains what the user matches in the Files app.
+    var folderPath: String? {
+        resolvedRoot?.path
+    }
+
     // MARK: - Scene phase
 
     /// Release/re-acquire security-scoped resource based on scene phase.

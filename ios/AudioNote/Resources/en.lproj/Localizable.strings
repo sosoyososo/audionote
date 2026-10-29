@@ -156,6 +156,7 @@
 /* Settings — Storage location (2026-09-24 files-app migration) */
 "Settings.Storage.Location" = "Data location";
 "Settings.Storage.Location.Hint" = "Your recordings and transcripts live in this folder in the Files app. Deleting the app does not delete them.";
+"Settings.Storage.Path" = "Path";
 "Settings.Storage.Title" = "Storage Location";
 "Settings.Storage.Change" = "Change Storage Location";
 "Settings.Storage.Footer" = "After changing, new data is written to the new location. Existing data at the old location will not be migrated.";
