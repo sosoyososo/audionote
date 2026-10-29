@@ -34,7 +34,7 @@ Decided but not done. This is an **index**, not the content — each row says wh
 
 | Open item | Where the detail is |
 |---|---|
-| Tag vocabulary: 158 tags over 40-odd notes. Direction A — reuse existing tags when extracting (the prompt hint exists but the vocabulary is capped at the 30 *most frequent* tags, so the long tail never reaches the model); direction B — LLM-based semantic merging of existing tags | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: IDEA) |
+| Tag vocabulary: 158 tags over 43 notes. **A** — extract tags with the library's existing tags passed in, prefer reusing one, create a new tag only when none fits (the prompt hint exists, but the vocabulary is capped at the 30 *most frequent* tags, so the long tail never reaches the model). **B** — an "智能合并标签" action on the tag list page: the LLM proposes which tags are equivalent, the user gets a **suggestion list** to accept whole or prune first. No one-tap merge — the model only proposes, the user allows | `docs/superpowers/specs/2026-10-26-tag-vocabulary-maintenance-design.md` (Status: IDEA) |
 | Show the current data folder path in Settings | `docs/superpowers/specs/2026-10-22-data-layer-architecture-design.md` §7 (P1-5) |
 | Record a "the audio file is gone" state | same spec, §7 (P2-2) |
 | Back up `relatedNotes.json` | same spec, §7 (P2-3) |
