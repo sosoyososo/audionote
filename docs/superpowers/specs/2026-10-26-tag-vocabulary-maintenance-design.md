@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | **DESIGNED（2026-10-29）** — 方向、交互、顺序与验收标准已定（§8 ✓）；方向 A 已实现并测量 ✓（计划：`docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-a-plan.md` ✓）；方向 B 的设计已定（§3 方向 B 的七件事 ✓），实现计划见 `docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-b-plan.md` ✓ |
+| **Status** | **IMPLEMENTED（2026-10-29）** — 方向 A 与方向 B 均已实现 ✓。方向 A 已上线并真机测量 ✓（计划：`docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-a-plan.md` ✓）；方向 B 的实现见 `docs/superpowers/plans/2026-10-29-tag-vocabulary-direction-b-plan.md` ✓ 与 **ADR-0010** ✓（模型只提建议，用户拍板 ✓）。**方向 B 尚待真机验证** ✓ |
 | **Date** | 2026-10-26 |
 | **Supersedes** | — |
 | **Author** | — |

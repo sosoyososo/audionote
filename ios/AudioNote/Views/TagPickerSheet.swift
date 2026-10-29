@@ -28,6 +28,10 @@ struct TagPickerSheet: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    @State private var isProposing = false
+    @State private var proposals: [TagMergeProposal] = []
+    @State private var showProposals = false
+    @State private var proposalMessage: String?
 
     /// The tags matching the query, alphabetically.
     private var candidates: [String] {
@@ -61,6 +65,21 @@ struct TagPickerSheet: View {
                 }
             }
             .searchable(text: $query, prompt: "Library.Tags.Search".localized)
+            .sheet(isPresented: $showProposals) {
+                TagMergeProposalSheet(viewModel: viewModel, proposals: proposals)
+            }
+            .alert(
+                "Library.Tags.Merge.Title".localized,
+                isPresented: Binding(
+                    get: { proposalMessage != nil },
+                    set: { if !$0 { proposalMessage = nil } }
+                ),
+                presenting: proposalMessage
+            ) { _ in
+                Button("Action.Cancel".localized, role: .cancel) {}
+            } message: { message in
+                Text(message)
+            }
             .navigationTitle("Library.Tags.Title".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -74,12 +93,49 @@ struct TagPickerSheet: View {
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
+                        proposeMerges()
+                    } label: {
+                        if isProposing {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Library.Tags.Merge.Smart".localized)
+                        }
+                    }
+                    .disabled(isProposing)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
                         dismiss()
                     } label: {
                         Text("Library.Tags.Done".localized)
                             .fontWeight(.semibold)
                     }
                 }
+            }
+        }
+    }
+
+    // MARK: - Smart merge
+
+    /// Ask the model which tags mean the same thing.
+    ///
+    /// The model only proposes; the proposals open in their own sheet where
+    /// the user prunes them before anything is merged (ADR-0010).
+    private func proposeMerges() {
+        isProposing = true
+        Task {
+            defer { isProposing = false }
+            do {
+                let proposals = try await viewModel.proposeTagMerges()
+                if proposals.isEmpty {
+                    proposalMessage = "Library.Tags.Merge.Empty".localized
+                    return
+                }
+                self.proposals = proposals
+                showProposals = true
+            } catch {
+                Logger.error("tag merge proposal failed: \(error)")
+                proposalMessage = "Library.Tags.Merge.Failed".localized
             }
         }
     }

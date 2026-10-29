@@ -130,6 +130,67 @@ private enum RelatedPayload {
     }
 }
 
+/// The `proposeTagMerges` response.
+///
+/// Every field is checked against the library: the target must be a tag the
+/// library has (a merge does not create vocabulary), and the sources must be
+/// tags the library has (the model does not get to invent them). Names are
+/// compared by **identity**, so a proposal that lists `Work` and `work` as
+/// two tags is one tag, not two — the same rule the chips and the filters
+/// use.
+private enum TagMergePayload {
+
+    /// Returns nil only when the envelope is unusable. A `merges` key that
+    /// is simply absent yields `[]` — a model answering `{}` means "nothing
+    /// to merge", not "malformed".
+    static func parse(_ data: Data, knownCounts: [String: Int]) -> [TagMergeProposal]? {
+        guard let envelope = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        guard let raw = envelope["merges"] else { return [] }
+        guard let elements = raw as? [Any] else { return nil }
+        return elements.compactMap { element($0, knownCounts: knownCounts) }
+    }
+
+    private static func element(_ raw: Any, knownCounts: [String: Int]) -> TagMergeProposal? {
+        guard let fields = raw as? [String: Any],
+              let rawTarget = fields["target"] as? String
+        else { return nil }
+
+        let target = TagIdentity.normalized(rawTarget)
+        guard !target.isEmpty else { return nil }
+
+        // The counts are keyed by identity: the library's spelling for a
+        // tag may differ from the one the model wrote, and the number of
+        // notes carrying it does not.
+        var countByKey: [String: Int] = [:]
+        for (name, count) in knownCounts {
+            countByKey[TagIdentity.key(name), default: 0] += count
+        }
+
+        guard countByKey[TagIdentity.key(target)] != nil else { return nil }
+
+        guard let rawSources = fields["sources"] as? [Any] else { return nil }
+
+        var seen = Set([TagIdentity.key(target)])
+        var sources: [String] = []
+        var counts: [String: Int] = [:]
+
+        for raw in rawSources {
+            guard let rawName = raw as? String else { continue }
+            let spelling = TagIdentity.normalized(rawName)
+            guard !spelling.isEmpty else { continue }
+            let key = TagIdentity.key(spelling)
+            guard let count = countByKey[key] else { continue }  // 不在库里 ✓
+            guard seen.insert(key).inserted else { continue }      // 同一个标签不重复 ✓
+            sources.append(spelling)
+            counts[spelling] = count
+        }
+
+        // One source is not a merge.
+        guard sources.count >= 1 else { return nil }
+        return TagMergeProposal(target: target, sources: sources, counts: counts)
+    }
+}
+
 /// Single LLM service. Talks to whichever `LLMProviderProfile` the caller
 /// passes in — no global state, no defaults. The caller is responsible for
 /// reading the active profile from `ProviderProfileStore` and the API key
@@ -439,6 +500,106 @@ actor LLMService {
                 return try Self.parseRelated(content: content)
             }
         )
+    }
+
+    /// Ask the model which of the library's tags mean the same thing.
+    ///
+    /// A third, separate call: `optimizeAndProcess` extracts and organizes
+    /// one note (ADR-0002 freezes its response schema), `findRelated` picks
+    /// related notes, and this one *groups* the vocabulary. Three tasks in
+    /// one prompt invite the model to answer the wrong question.
+    ///
+    /// The model proposes; the user disposes. Nothing is merged here — the
+    /// caller turns the proposals into a list the user can prune before
+    /// anything changes (ADR-0010).
+    ///
+    /// `tags` is the whole library's vocabulary with how many notes carry
+    /// each tag. The counts are context the model needs: a tag on one note
+    /// and a tag on forty are very different things to merge.
+    func proposeTagMerges(
+        tags: [(name: String, count: Int)],
+        profile: LLMProviderProfile,
+        apiKey: String?
+    ) async throws -> [TagMergeProposal] {
+        try validateProfile(profile, apiKey: apiKey)
+        guard !tags.isEmpty else { return [] }
+
+        let knownCounts = Dictionary(uniqueKeysWithValues: tags.map { ($0.name, $0.count) })
+
+        return try await retryingRequest(
+            profile: profile,
+            apiKey: apiKey,
+            buildRequest: {
+                APIRequest(
+                    model: profile.model,
+                    messages: [
+                        APIRequest.Message(
+                            role: "system",
+                            content: Self.tagMergePrompt(tags: tags)
+                        ),
+                        APIRequest.Message(role: "user", content: "请找出可以合并的标签。"),
+                    ]
+                )
+            },
+            sendAndParse: { urlRequest, profile in
+                let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
+                return try Self.parseTagMerges(content: content, knownCounts: knownCounts)
+            }
+        )
+    }
+
+    /// The prompt for `proposeTagMerges`.
+    ///
+    /// Internal rather than private so a test can pin the wording against
+    /// this exact text — ADR-0010 freezes it, the way ADR-0003 freezes the
+    /// other two.
+    static func tagMergePrompt(tags: [(name: String, count: Int)]) -> String {
+        let list = tags
+            .map { "\($0.name)（\($0.count) 条笔记）" }
+            .joined(separator: "、")
+
+        return """
+        你是一个标签整理助手。下面是这个笔记库里的全部标签，以及每个标签出现在多少条笔记里。
+
+        【标签列表】
+        \(list)
+
+        请找出**语义相同**、应该合并成一个的标签组：
+        - 只合并真正同义的标签（同一个意思的不同写法），例如「工作项」和「工作会议」；
+          **不要合并只是相关但不同的标签**，例如「会议」和「会议纪要」不是同一个意思。
+        - 每组给出合并后的名字：用这一组里最常用、最准确的那个写法。
+        - sources 里列出这一组里要合并进去的标签，不要包含 target 自己。
+        - 一次最多给出 30 组；如果没有可以合并的标签，返回空数组。
+        - 不要编造不在上面列表里的标签。
+
+        严格返回 JSON，不要任何解释或 markdown 标记：
+        {"merges": [{"target": "工作", "sources": ["工作项", "工作会议"]}]}
+        """
+    }
+
+    /// Parse the model's reply into proposals.
+    ///
+    /// Tolerant on purpose: a malformed entry is dropped and the rest
+    /// survive. The envelope itself is all-or-nothing — `nil` means "not a
+    /// reply we can read at all", which sends this on to the balanced-brace
+    /// extraction and then to `decodingError`.
+    static func parseTagMerges(
+        content: String,
+        knownCounts: [String: Int]
+    ) throws -> [TagMergeProposal] {
+        if let directData = content.data(using: .utf8),
+           let parsed = TagMergePayload.parse(directData, knownCounts: knownCounts) {
+            return parsed
+        }
+
+        if let extracted = extractFirstJSONObject(from: content),
+           let extractedData = extracted.data(using: .utf8),
+           let parsed = TagMergePayload.parse(extractedData, knownCounts: knownCounts) {
+            return parsed
+        }
+
+        Logger.error("LLM proposeTagMerges: could not parse content: \(content)")
+        throw LLMError.decodingError
     }
 
     /// Lightweight "is this profile reachable + authorized?" check. Sends a

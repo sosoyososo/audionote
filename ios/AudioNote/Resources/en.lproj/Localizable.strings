@@ -100,6 +100,17 @@
 "Library.Tags.Clear" = "Clear";
 "Library.Tags.Done" = "Done";
 "Library.Tags.NoMatch" = "No matching tags";
+"Library.Tags.Merge.Smart" = "Smart merge";
+"Library.Tags.Merge.Title" = "Merge suggestions";
+"Library.Tags.Merge.Target" = "Merge into";
+"Library.Tags.Merge.Notes" = "%d notes";
+"Library.Tags.Merge.Affects" = "This group rewrites %d notes";
+"Library.Tags.Merge.WillAffect" = "Rewrites %d notes";
+"Library.Tags.Merge.AcceptAll" = "Accept all";
+"Library.Tags.Merge.Apply" = "Merge %d groups";
+"Library.Tags.Merge.Empty" = "No tags to merge";
+"Library.Tags.Merge.Failed" = "Could not get merge suggestions. Check the network and the LLM profile.";
+"Library.Tags.Merge.Footer" = "These are the model’s suggestions. Delete the ones you disagree with, or untick them — you decide what gets merged.";
 "Library.NoTags" = "No tags yet — analyze records to enable filtering";
 "Library.ArchiveEmpty" = "No archived records";
 "Library.ClearFilters" = "Clear filters";

@@ -61,8 +61,8 @@ xcodebuild test -project AudioNote.xcodeproj -scheme AudioNote \
 
 ### Task 1: 建议的数据类型
 
-- [ ] 新建 `ios/AudioNote/Models/TagMergeProposal.swift` ✓
-- [ ] 一条建议 = **目标名** + **要并进去的标签** ✓：
+- [x] 新建 `ios/AudioNote/Models/TagMergeProposal.swift` ✓
+- [x] 一条建议 = **目标名** + **要并进去的标签** ✓：
   ```swift
   struct TagMergeProposal: Identifiable, Equatable {
       let id: UUID
@@ -71,66 +71,66 @@ xcodebuild test -project AudioNote.xcodeproj -scheme AudioNote \
       var counts: [String: Int] // 每个标签出现在多少条笔记里 ✓（给用户看代价 ✓）
   }
   ```
-- [ ] `counts` 是**显示用的上下文** ✓，不参与落地 ✓ —— 落地只需要 target + sources ✓✓
+- [x] `counts` 是**显示用的上下文** ✓，不参与落地 ✓ —— 落地只需要 target + sources ✓✓
 
 ### Task 2: 新的 LLM 调用
 
-- [ ] 在 `LLMService` 里加 `proposeTagMerges(tags: [(name: String, count: Int)]) async throws -> [TagMergeProposal]` ✓
-- [ ] **走和现有调用同一套门禁** ✓：`validateProfile` ✓、`NetworkMonitor` ✓、`retryingRequest` ✓ —— 不新造一套 ✓✓
-- [ ] 自己的 prompt ✓（`tagMergePrompt` ✓），内容 ✓：
+- [x] 在 `LLMService` 里加 `proposeTagMerges(tags: [(name: String, count: Int)]) async throws -> [TagMergeProposal]` ✓
+- [x] **走和现有调用同一套门禁** ✓：`validateProfile` ✓、`NetworkMonitor` ✓、`retryingRequest` ✓ —— 不新造一套 ✓✓
+- [x] 自己的 prompt ✓（`tagMergePrompt` ✓），内容 ✓：
   - 全库标签和次数 ✓
   - 只指出**语义相同**、可以并成一个的标签 ✓
   - **不要合并只是相关但不同的标签** ✓（这条要在 prompt 里写死 ✓ —— 模型很容易把「相关」当成「相同」✓）
   - 每条给出**合并后的名字** ✓（用最常用、最准确的那个 ✓）
   - 严格 JSON ✓，格式 `{"merges":[{"target":"...","sources":["..."]}]}` ✓
-- [ ] 响应解析 ✓：容错 ✓ —— 缺字段的条目丢掉 ✓✓，**不要整份失败** ✓
-- [ ] **过滤掉不在库里的标签名** ✓（模型编出来的 ✓），并按 identity 去重 ✓
-- [ ] 一次最多返回 N 条建议 ✓（比如 30 ✓），超出的丢掉 ✓
-- [ ] 测试 ✓：合法响应 ✓、缺字段 ✓、编造的标签名 ✓、大小写不同的同一个标签 ✓、空响应 ✓
+- [x] 响应解析 ✓：容错 ✓ —— 缺字段的条目丢掉 ✓✓，**不要整份失败** ✓
+- [x] **过滤掉不在库里的标签名** ✓（模型编出来的 ✓），并按 identity 去重 ✓
+- [x] 一次最多返回 N 条建议 ✓（比如 30 ✓），超出的丢掉 ✓
+- [x] 测试 ✓：合法响应 ✓、缺字段 ✓、编造的标签名 ✓、大小写不同的同一个标签 ✓、空响应 ✓
 
 ### Task 3: 批量落地
 
-- [ ] `TranscriptionStorage` 加批量入口 ✓：
+- [x] `TranscriptionStorage` 加批量入口 ✓：
   ```swift
   func mergeTags(_ groups: [(target: String, sources: [String])]) async throws
   ```
   **读一次 ✓ → 依次套用 `TagMerger.merge` ✓ → 写一次 ✓**✓
-- [ ] **重叠检测** ✓：维护一个「已被吃掉的标签」集合 ✓；后一组如果用到了已被吃掉的标签 → **整组跳过** ✓，并把跳过的条数报回去 ✓
-- [ ] `TranscriptionViewModel.applyTagMerges(_ proposals:)` ✓：
+- [x] **重叠检测** ✓：维护一个「已被吃掉的标签」集合 ✓；后一组如果用到了已被吃掉的标签 → **整组跳过** ✓，并把跳过的条数报回去 ✓
+- [x] `TranscriptionViewModel.applyTagMerges(_ proposals:)` ✓：
   - 过滤掉 sources 为空或 sources 只含 target 自己的 ✓
   - 调用 storage 的批量入口 ✓
   - 成功后 `selectedTags` 用 `TagMerger.remappedSelection` 重映射 ✓（和 `mergeTag` 一致 ✓）
   - `await loadHistory()` ✓
-- [ ] 测试 ✓：一次写盘（**不能**调用 N 次 ✓）、重叠跳过 ✓、空输入不写盘 ✓、落地后记录上的标签正确 ✓
+- [x] 测试 ✓：一次写盘（**不能**调用 N 次 ✓）、重叠跳过 ✓、空输入不写盘 ✓、落地后记录上的标签正确 ✓
 
 ### Task 4: 建议清单界面
 
-- [ ] 新建 `ios/AudioNote/Views/TagMergeProposalSheet.swift` ✓
-- [ ] 每条建议一行 ✓：
+- [x] 新建 `ios/AudioNote/Views/TagMergeProposalSheet.swift` ✓
+- [x] 每条建议一行 ✓：
   - 目标名 ✓（**可改** ✓ —— 模型给的名字未必是你想要的 ✓）
   - 要并进去的标签 ✓（每个带出现次数 ✓ —— 用户要能看见代价 ✓）
   - 一个勾选框 ✓（默认**勾上** ✓，用户可以取消 ✓）
   - 一个删除按钮 ✓（= 拒绝这条建议 ✓）
-- [ ] 底部两个动作 ✓：
+- [x] 底部两个动作 ✓：
   - 「全部同意」✓（把所有还在的建议都勾上 ✓）
   - 「合并 N 组」✓（**只合并勾选且没被删掉的** ✓，N 要显示 ✓）
-- [ ] **执行前**显示这次会改写多少条笔记 ✓（合并的代价 ✓）
-- [ ] `TagPickerSheet` 的工具栏加「智能合并标签」✓（在「清除」和「完成」之间 ✓）
-- [ ] 点它之后 ✓：调用 LLM ✓（要有 loading 态 ✓）→ 拿到建议 → 弹出清单 ✓；**没有建议时**给一句话就完了 ✓（不是错误 ✓）
-- [ ] **网络失败 / 没有 profile** → 一句人话 ✓，不是崩溃 ✓
-- [ ] 字符串两个语言都要有 ✓
+- [x] **执行前**显示这次会改写多少条笔记 ✓（合并的代价 ✓）
+- [x] `TagPickerSheet` 的工具栏加「智能合并标签」✓（在「清除」和「完成」之间 ✓）
+- [x] 点它之后 ✓：调用 LLM ✓（要有 loading 态 ✓）→ 拿到建议 → 弹出清单 ✓；**没有建议时**给一句话就完了 ✓（不是错误 ✓）
+- [x] **网络失败 / 没有 profile** → 一句人话 ✓，不是崩溃 ✓
+- [x] 字符串两个语言都要有 ✓
 
 ### Task 5: 测试
 
-- [ ] `TagMergeProposalTests` ✓：LLM 解析 ✓、过滤 ✓、批量落地 ✓
-- [ ] 清单的取舍逻辑要能测 ✓：把「哪些建议会被执行」抽成一个纯函数 ✓（勾选 + 删除 + 重叠之后剩什么 ✓），对它测 ✓
+- [x] `TagMergeProposalTests` ✓：LLM 解析 ✓、过滤 ✓、批量落地 ✓
+- [x] 清单的取舍逻辑要能测 ✓：把「哪些建议会被执行」抽成一个纯函数 ✓（勾选 + 删除 + 重叠之后剩什么 ✓），对它测 ✓
 
 ### Task 6: 文档
 
-- [ ] `docs/decisions/0010-tag-merge-proposal.md` ✓：新的 LLM 调用 ✓ + 它的 schema ✓ + 「模型只提建议，用户拍板」✓ + 「不存归并映射，记录就是映射」✓
-- [ ] `docs/GLOSSARY.md` ✓：`TagMergeProposal` ✓
-- [ ] spec 的 Status ✓：方向 B 实现后改成 IMPLEMENTED ✓（或标出还差什么 ✓）
-- [ ] `CLAUDE.md` 的 **Open work** ✓：标签那一行 ✓（A 和 B 都完成了才删 ✓）
+- [x] `docs/decisions/0010-tag-merge-proposal.md` ✓：新的 LLM 调用 ✓ + 它的 schema ✓ + 「模型只提建议，用户拍板」✓ + 「不存归并映射，记录就是映射」✓
+- [x] `docs/GLOSSARY.md` ✓：`TagMergeProposal` ✓
+- [x] spec 的 Status ✓：方向 B 实现后改成 IMPLEMENTED ✓（或标出还差什么 ✓）
+- [x] `CLAUDE.md` 的 **Open work** ✓：标签那一行 ✓（A 和 B 都完成了才删 ✓）
 
 ---
 

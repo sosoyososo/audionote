@@ -1198,6 +1198,89 @@ final class TranscriptionViewModel: ObservableObject {
     /// filter, since they are the same tag. The guarantee is a superset —
     /// nothing on screen disappears and the list is never empty — not an
     /// unchanged count.
+    /// Ask the model which of the library's tags mean the same thing.
+    ///
+    /// The **whole** library's vocabulary, not the current side's and not
+    /// narrowed by the search query: a merge rewrites every record, so the
+    /// proposal has to see every tag there is.
+    ///
+    /// The model proposes; the user disposes. Nothing is merged here
+    /// (ADR-0010).
+    func proposeTagMerges() async throws -> [TagMergeProposal] {
+        await ProviderProfileStore.shared.ensureLoaded()
+        guard let profile = ProviderProfileStore.shared.active else {
+            Logger.warning("LLM proposeTagMerges skipped: no active profile")
+            throw LLMError.profileIncomplete
+        }
+        let apiKey = ProviderProfileStore.shared.apiKey(for: profile.id)
+
+        let tags = libraryTagCounts()
+        Logger.info("proposeTagMerges: scanning \(tags.count) tags")
+
+        let proposals = try await llmService.proposeTagMerges(
+            tags: tags,
+            profile: profile,
+            apiKey: apiKey
+        )
+        Logger.info("proposeTagMerges: model proposed \(proposals.count) groups")
+        return proposals
+    }
+
+    /// The whole library's tags, with how many notes carry each one.
+    ///
+    /// Keyed by identity, so `Work` and `work` are one tag with one count —
+    /// the same rule the chips and the filters use. The displayed spelling
+    /// is the most-used one for that identity, which is the spelling a
+    /// merge would keep.
+    func libraryTagCounts() -> [(name: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        var spellings: [String: [String: Int]] = [:]
+
+        for record in historyRecords {
+            for name in record.tagNames {
+                let spelling = TagIdentity.normalized(name)
+                guard !spelling.isEmpty else { continue }
+                let key = TagIdentity.key(spelling)
+                counts[key, default: 0] += 1
+                spellings[key, default: [:]][spelling, default: 0] += 1
+            }
+        }
+
+        return counts.compactMap { key, count in
+            guard let best = spellings[key]?.max(by: { lhs, rhs in
+                if lhs.value != rhs.value { return lhs.value < rhs.value }
+                return lhs.key.localizedCaseInsensitiveCompare(rhs.key) == .orderedDescending
+            }) else { return nil }
+            return (name: best.key, count: count)
+        }.sorted { $0.count > $1.count }
+    }
+
+    /// Carry out the proposals the user agreed to.
+    ///
+    /// One write for all of them — see `TranscriptionStorage.mergeTags`.
+    /// The current tag selection follows the merge, or the chips would
+    /// point at tags that no longer exist.
+    @discardableResult
+    func applyTagMerges(_ proposals: [TagMergeProposal]) async throws -> TagMergeOutcome {
+        let groups = proposals
+            .filter { !$0.sources.isEmpty }
+            .map { TagMergeGroup(target: $0.target, sources: $0.sources) }
+        guard !groups.isEmpty else { return .empty }
+
+        let outcome = try await storage.mergeTags(groups)
+        for group in outcome.applied {
+            selectedTags = TagMerger.remappedSelection(
+                selectedTags, into: group.target, from: group.sources
+            )
+        }
+        Logger.info(
+            "applyTagMerges: applied \(outcome.applied.count) groups, "
+                + "skipped \(outcome.skipped), touched \(outcome.affectedNotes) notes"
+        )
+        await loadHistory()
+        return outcome
+    }
+
     func mergeTag(_ target: String, from sources: [String]) async {
         guard !sources.isEmpty else { return }
 

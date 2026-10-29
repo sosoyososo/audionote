@@ -196,6 +196,65 @@ actor TranscriptionStorage {
         try await saveAll(TagMerger.merge(records: records, into: target, from: sources))
     }
 
+    /// Merge several groups in one write.
+    ///
+    /// One merge is a whole-library read and write, so applying thirty
+    /// proposals one at a time would rewrite the library thirty times. The
+    /// groups are applied in order to the same in-memory copy and the
+    /// result is written once.
+    ///
+    /// A group whose tags an earlier group already consumed is **skipped**,
+    /// not applied on top of it: two proposals that disagree about a tag
+    /// would otherwise produce a chain of merges the user never agreed to.
+    /// The skip is counted and reported, not hidden.
+    ///
+    /// A group that would change nothing is skipped too — rewriting the
+    /// file to produce an identical one is not worth the risk.
+    func mergeTags(_ groups: [TagMergeGroup]) async throws -> TagMergeOutcome {
+        guard !groups.isEmpty else { return .empty }
+
+        var records = try await loadAll()
+        var consumed = Set<String>()
+        var applied: [TagMergeGroup] = []
+        var skipped = 0
+        var affected = Set<UUID>()
+
+        for group in groups {
+            let sourceKeys = Set(group.sources.map(TagIdentity.key))
+            let targetKey = TagIdentity.key(group.target)
+            guard !sourceKeys.isEmpty, !sourceKeys.contains(targetKey) else {
+                skipped += 1
+                continue
+            }
+            // An earlier group already took these tags, or already became
+            // this tag's spelling — either way this proposal is stale.
+            guard sourceKeys.isDisjoint(with: consumed), !consumed.contains(targetKey) else {
+                skipped += 1
+                continue
+            }
+
+            let touched = records.filter { record in
+                record.tagNames.contains { sourceKeys.contains(TagIdentity.key($0)) }
+            }
+            guard !touched.isEmpty else {
+                skipped += 1
+                continue
+            }
+
+            records = TagMerger.merge(records: records, into: group.target, from: group.sources)
+            consumed.formUnion(sourceKeys)
+            consumed.insert(targetKey)
+            applied.append(group)
+            affected.formUnion(touched.map(\.id))
+        }
+
+        guard !applied.isEmpty else {
+            return TagMergeOutcome(applied: [], skipped: skipped, affectedNotes: 0)
+        }
+        try await saveAll(records)
+        return TagMergeOutcome(applied: applied, skipped: skipped, affectedNotes: affected.count)
+    }
+
     func get(id: UUID) async throws -> TranscriptionRecord? {
         guard await jsonURLOrNil() != nil else { return nil }
         let records = try await loadAll()

@@ -36,6 +36,7 @@
 		57869CE0E3EF19E77FF449B6 /* NetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20CA2E25C71ECE4C2C93EFF0 /* NetworkMonitor.swift */; };
 		5AA39EEDE33625FA2932CA20 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2F39CFC43A6C3D7C165FEF32 /* InfoPlist.strings */; };
 		648AB7A793E032461CBDC184 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 028757B1D218AC83505E84C0 /* ContentView.swift */; };
+		67FFE3DEC8E0A7A2E6BD4852 /* TagMergeProposal.swift in Sources */ = {isa = PBXBuildFile; fileRef = D08C34651C656274805CBE74 /* TagMergeProposal.swift */; };
 		6E0DA11F9D3B90DAE06432C7 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CF9484CDD6FCB4724E31513 /* SettingsView.swift */; };
 		7D8A26030ABD60CDF7EF2C25 /* LanguageSelectorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9602A75F3D78030EDBE219D0 /* LanguageSelectorView.swift */; };
 		81B4CA46B6A7F109096EEE31 /* RelatedNotesStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B75604D49E9DD9F139E8023 /* RelatedNotesStorageTests.swift */; };
@@ -54,16 +55,19 @@
 		A2D572310E03173BA1D38E90 /* FlowPackingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEEDD48C8B3B117406715DBB /* FlowPackingTests.swift */; };
 		AB990283264AE7E4CF7A8D52 /* RelatedNotesRowModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6FCE4F5826EB2C4039508A6 /* RelatedNotesRowModelTests.swift */; };
 		ADF9E2C8468BEEFB8878068B /* LaunchRecoverySweepTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67BD9D0BA79FF1B7F0BA9B38 /* LaunchRecoverySweepTests.swift */; };
+		AE485B08C2E64B5B8E798518 /* TagMergeBatchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBE5CE02DF57891F1D8EFFCF /* TagMergeBatchTests.swift */; };
 		B7CA9597751083C5AAD759A8 /* MergeTagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A357FD6836D64884A25F699 /* MergeTagsView.swift */; };
 		BED61F70E21A3664F3F2EDD0 /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B979954BF5DD75B200033DC /* KeychainStore.swift */; };
 		C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8371A54AFD59688EF313871C /* TagChipOrderTests.swift */; };
 		CA3A46E6D4A7E387090B978E /* AudioRecorderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491619CFB7D7B1339B2673A7 /* AudioRecorderService.swift */; };
 		D0A2D1AF39B076C8B284638D /* StorageFolderHintTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E2E5D8943FF5C0B17F68F8B /* StorageFolderHintTests.swift */; };
+		D110C2D9C65BCB5A552AD05C /* TagMergeProposalTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9F7EF34DB1F6BA058A0939 /* TagMergeProposalTests.swift */; };
 		D4CD0207DFF15BD3B7897B16 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 012369EA9DDAC70389CD813F /* RecordingView.swift */; };
 		D769C1CA07FDD1CA9FFB8904 /* LibraryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87E98AD129F21ED062E91BFF /* LibraryListView.swift */; };
 		D816AF42DCA382BF6CCA189E /* TagVocabularySelectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */; };
 		D8DD3B1E8205064D27444A9A /* Logger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A1BFA7A1E65311C0CD0AC36 /* Logger.swift */; };
 		DB3F7944252D76FE14B17403 /* TranscriptionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55B58DD127C66FF71BF876B7 /* TranscriptionViewModel.swift */; };
+		DDF3AC22C6432E34A20256D8 /* TagMergeProposalSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1511887E70F1C1C6CBA9B5B9 /* TagMergeProposalSheet.swift */; };
 		E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F54E2D99C3BBE456B4A7B28 /* StorageFolderHint.swift */; };
 		E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = D722B3322464C8C3AB35FC35 /* TagMerger.swift */; };
 		E86B03FAFF210D553B0F55D8 /* RelatedNotesSanitizeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49606B977B90E3AF57807808 /* RelatedNotesSanitizeTests.swift */; };
@@ -91,6 +95,7 @@
 		028757B1D218AC83505E84C0 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0E0C6553862AC35EA0BD3F9C /* LLMService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LLMService.swift; sourceTree = "<group>"; };
 		144A777BB064CB5BDBB285DE /* AudioNoteTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AudioNoteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		1511887E70F1C1C6CBA9B5B9 /* TagMergeProposalSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeProposalSheet.swift; sourceTree = "<group>"; };
 		16968499ABFBC3D1AC4B8CD1 /* AudioPlayerManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioPlayerManager.swift; sourceTree = "<group>"; };
 		1A84566E2901FF16B04B5734 /* TagVocabularySelector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagVocabularySelector.swift; sourceTree = "<group>"; };
 		1B2AFFD402968D835D4582CA /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
@@ -136,6 +141,7 @@
 		9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagVocabularySelectorTests.swift; sourceTree = "<group>"; };
 		A0EB0BC4074D2AB326644F5A /* RelatedNotesPrescreenTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesPrescreenTests.swift; sourceTree = "<group>"; };
 		AA43F6E2E71C649337E0AFD3 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		AA9F7EF34DB1F6BA058A0939 /* TagMergeProposalTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeProposalTests.swift; sourceTree = "<group>"; };
 		B4A659AA1854B4BFB211912D /* AudioNote.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = AudioNote.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BDAF3BD54005E31BC43582DF /* UpdateRecordMergeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateRecordMergeTests.swift; sourceTree = "<group>"; };
 		BF3214FE237AB13413336F8A /* LibraryArchiveModeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryArchiveModeTests.swift; sourceTree = "<group>"; };
@@ -144,9 +150,11 @@
 		CCC3B4E5C79B289B15AE8213 /* NoteRelation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteRelation.swift; sourceTree = "<group>"; };
 		CEA41FDA8C62FA426A166513 /* RelatedNotesLinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesLinkTests.swift; sourceTree = "<group>"; };
 		CF858C446B93248AD38C924E /* RecognitionLanguage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecognitionLanguage.swift; sourceTree = "<group>"; };
+		D08C34651C656274805CBE74 /* TagMergeProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeProposal.swift; sourceTree = "<group>"; };
 		D1877658282B3F1EDD4634CA /* RelatedNotesService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RelatedNotesService.swift; sourceTree = "<group>"; };
 		D722B3322464C8C3AB35FC35 /* TagMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMerger.swift; sourceTree = "<group>"; };
 		D9EEC9316C25B0B5D8233415 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		DBE5CE02DF57891F1D8EFFCF /* TagMergeBatchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagMergeBatchTests.swift; sourceTree = "<group>"; };
 		DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TranscriptionRecord.swift; sourceTree = "<group>"; };
 		DEEDD48C8B3B117406715DBB /* FlowPackingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowPackingTests.swift; sourceTree = "<group>"; };
 		DFE07A041AA20BE6BE8FC16D /* TagPickerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagPickerSheet.swift; sourceTree = "<group>"; };
@@ -206,6 +214,8 @@
 				7EBE49AC5CF2E29547354250 /* TagCaseInsensitivityTests.swift */,
 				8371A54AFD59688EF313871C /* TagChipOrderTests.swift */,
 				EF0CA39964FE5D2D76CCDE4E /* TagHygieneTests.swift */,
+				DBE5CE02DF57891F1D8EFFCF /* TagMergeBatchTests.swift */,
+				AA9F7EF34DB1F6BA058A0939 /* TagMergeProposalTests.swift */,
 				6920F5B0A73125B1371FF04D /* TagMergerTests.swift */,
 				9AE474B87F2C88C1462ED315 /* TagVocabularySelectorTests.swift */,
 				5B2638DDD77737DEF97707EF /* TranscriptionStorageTests.swift */,
@@ -250,6 +260,7 @@
 				622AE300EABFA77A61F3357F /* LLMProviderProfile.swift */,
 				CCC3B4E5C79B289B15AE8213 /* NoteRelation.swift */,
 				CF858C446B93248AD38C924E /* RecognitionLanguage.swift */,
+				D08C34651C656274805CBE74 /* TagMergeProposal.swift */,
 				DD796DB65B032AD44C97AE82 /* TranscriptionRecord.swift */,
 			);
 			path = Models;
@@ -301,6 +312,7 @@
 				012369EA9DDAC70389CD813F /* RecordingView.swift */,
 				1CF9484CDD6FCB4724E31513 /* SettingsView.swift */,
 				C27A05976893E36E23155678 /* SharedComponents.swift */,
+				1511887E70F1C1C6CBA9B5B9 /* TagMergeProposalSheet.swift */,
 				DFE07A041AA20BE6BE8FC16D /* TagPickerSheet.swift */,
 				29C7909478FB6C95105DD1E4 /* TranscriptionDetailView.swift */,
 			);
@@ -435,6 +447,8 @@
 				0E561F61B3E145ED0924E1C0 /* TagCaseInsensitivityTests.swift in Sources */,
 				C9D4BBE96A278B50999F8173 /* TagChipOrderTests.swift in Sources */,
 				08DF803CC4111B94C2214363 /* TagHygieneTests.swift in Sources */,
+				AE485B08C2E64B5B8E798518 /* TagMergeBatchTests.swift in Sources */,
+				D110C2D9C65BCB5A552AD05C /* TagMergeProposalTests.swift in Sources */,
 				F5BDD58B1D4C887BF84AE185 /* TagMergerTests.swift in Sources */,
 				D816AF42DCA382BF6CCA189E /* TagVocabularySelectorTests.swift in Sources */,
 				2D871F9F064B199861887F64 /* TranscriptionStorageTests.swift in Sources */,
@@ -479,6 +493,8 @@
 				0D9773E2D1612D267098F501 /* StorageCoordinator.swift in Sources */,
 				E11407587B85A213A2489BF3 /* StorageFolderHint.swift in Sources */,
 				2C9F4340487472FED0B95505 /* TagIdentity.swift in Sources */,
+				67FFE3DEC8E0A7A2E6BD4852 /* TagMergeProposal.swift in Sources */,
+				DDF3AC22C6432E34A20256D8 /* TagMergeProposalSheet.swift in Sources */,
 				E2C4CEAD12EE3FF442D84378 /* TagMerger.swift in Sources */,
 				F74E1193956F872E39B5C538 /* TagPickerSheet.swift in Sources */,
 				42089208891C7696081A45A5 /* TagVocabularySelector.swift in Sources */,

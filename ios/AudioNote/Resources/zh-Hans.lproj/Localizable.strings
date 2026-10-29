@@ -100,6 +100,17 @@
 "Library.Tags.Clear" = "清除";
 "Library.Tags.Done" = "完成";
 "Library.Tags.NoMatch" = "没有匹配的标签";
+"Library.Tags.Merge.Smart" = "智能合并";
+"Library.Tags.Merge.Title" = "合并建议";
+"Library.Tags.Merge.Target" = "合并成";
+"Library.Tags.Merge.Notes" = "%d 条笔记";
+"Library.Tags.Merge.Affects" = "这一组会改写 %d 条笔记";
+"Library.Tags.Merge.WillAffect" = "会改写 %d 条笔记";
+"Library.Tags.Merge.AcceptAll" = "全部同意";
+"Library.Tags.Merge.Apply" = "合并 %d 组";
+"Library.Tags.Merge.Empty" = "没有发现可以合并的标签";
+"Library.Tags.Merge.Failed" = "获取合并建议失败，请检查网络和大模型配置";
+"Library.Tags.Merge.Footer" = "这些是大模型的建议。删掉不认同的，或者取消勾选，最后由你决定是否合并。";
 "Library.NoTags" = "暂无标签 — 分析记录后可启用筛选";
 "Library.ArchiveEmpty" = "归档里还没有记录";
 "Library.ClearFilters" = "清除筛选";
