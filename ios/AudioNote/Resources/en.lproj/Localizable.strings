@@ -101,6 +101,13 @@
 "Library.Tags.Done" = "Done";
 "Library.Tags.NoMatch" = "No matching tags";
 "Library.Tags.Merge.Smart" = "Smart merge";
+"Library.Tags.Merge.Working" = "Asking the model to group the tags…";
+"Library.Tags.Merge.Hint" = "Let the model find tags that mean the same thing";
+"Library.Tags.Merge.Found" = "%d suggestions";
+"Library.Tags.Merge.Cancelled" = "Cancelled";
+"Library.Tags.Merge.Cancel" = "Cancel";
+"Library.Tags.Merge.Retry" = "Try again";
+"Library.Tags.Merge.CanClose" = "You can close this sheet — the analysis keeps going.";
 "Library.Tags.Merge.Title" = "Merge suggestions";
 "Library.Tags.Merge.Target" = "Merge into";
 "Library.Tags.Merge.Notes" = "%d notes";

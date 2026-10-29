@@ -529,6 +529,11 @@ actor LLMService {
         return try await retryingRequest(
             profile: profile,
             apiKey: apiKey,
+            // The answer is a long generation, and a timeout is not a
+            // transient failure: retrying it pays for the same slow answer
+            // twice. One attempt, and a timeout long enough for it.
+            timeout: 90,
+            maxAttempts: 2,
             buildRequest: {
                 APIRequest(
                     model: profile.model,
@@ -543,6 +548,7 @@ actor LLMService {
             },
             sendAndParse: { urlRequest, profile in
                 let content = try await self.sendAndExtractContent(urlRequest: urlRequest, profile: profile)
+                Logger.info("LLM proposeTagMerges: response \(content.count) chars")
                 return try Self.parseTagMerges(content: content, knownCounts: knownCounts)
             }
         )
@@ -568,8 +574,10 @@ actor LLMService {
         - 只合并真正同义的标签（同一个意思的不同写法），例如「工作项」和「工作会议」；
           **不要合并只是相关但不同的标签**，例如「会议」和「会议纪要」不是同一个意思。
         - 每组给出合并后的名字：用这一组里最常用、最准确的那个写法。
-        - sources 里列出这一组里要合并进去的标签，不要包含 target 自己。
-        - 一次最多给出 30 组；如果没有可以合并的标签，返回空数组。
+        - **合并后的名字必须出现在 2 条及以上笔记里** —— 没人用的词不适合当分类词。
+          （要合并进去的来源标签可以只出现一次 ✓）
+        - sources 里列出这一组里要合并进去的标签，不要包含 target 自己；一组最多列 4 个。
+        - **最多给出 10 组**，挑最值得合并的那些；如果没有可以合并的标签，返回空数组。
         - 不要编造不在上面列表里的标签。
 
         严格返回 JSON，不要任何解释或 markdown 标记：
@@ -734,15 +742,19 @@ actor LLMService {
     private func retryingRequest<T>(
         profile: LLMProviderProfile,
         apiKey: String?,
+        timeout: TimeInterval = 60,
+        maxAttempts: Int = 3,
         buildRequest: () throws -> APIRequest,
         sendAndParse: (URLRequest, LLMProviderProfile) async throws -> T
     ) async throws -> T {
         var lastError: Error?
-        for attempt in 0..<maxRetries {
+        for attempt in 0..<maxAttempts {
             let urlRequest: URLRequest
             do {
                 let body = try JSONEncoder().encode(buildRequest())
-                urlRequest = try buildURLRequest(profile: profile, apiKey: apiKey, body: body)
+                var request = try buildURLRequest(profile: profile, apiKey: apiKey, body: body)
+                request.timeoutInterval = timeout
+                urlRequest = request
             } catch {
                 throw error
             }
@@ -756,20 +768,20 @@ actor LLMService {
             } catch let error as LLMError {
                 lastError = error
                 let shouldRetry = Self.shouldRetry(error)
-                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxRetries)): \(error.errorDescription ?? "unknown")")
+                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.errorDescription ?? "unknown")")
 
                 if !shouldRetry {
                     throw error
                 }
-                if attempt < maxRetries - 1 {
+                if attempt < maxAttempts - 1 {
                     let delay = baseDelay * pow(2.0, Double(attempt))
                     Logger.info("Retrying in \(delay)s...")
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }
             } catch {
                 lastError = error
-                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxRetries)): \(error.localizedDescription)")
-                if attempt < maxRetries - 1 {
+                Logger.warning("LLM call failed (attempt \(attempt + 1)/\(maxAttempts)): \(error.localizedDescription)")
+                if attempt < maxAttempts - 1 {
                     let delay = baseDelay * pow(2.0, Double(attempt))
                     try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
                 }

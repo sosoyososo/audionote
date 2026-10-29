@@ -1198,6 +1198,74 @@ final class TranscriptionViewModel: ObservableObject {
     /// filter, since they are the same tag. The guarantee is a superset —
     /// nothing on screen disappears and the list is never empty — not an
     /// unchanged count.
+    /// The state of the merge-proposal run.
+    ///
+    /// `running` means the request is in flight **and the view model is
+    /// holding it** — dismissing the proposal sheet does not stop it, and
+    /// switching tabs does not stop it. Only the app being suspended or
+    /// killed ends it, and then the state says so rather than pretending
+    /// the run finished.
+    enum MergeProposalState: Equatable {
+        /// Nothing has been asked for.
+        case idle
+        /// A request is in flight.
+        case running
+        /// The model answered; `mergeProposals` holds what it said.
+        case done
+        /// The run was cancelled on purpose.
+        case cancelled
+        /// The run was cut short — the app was suspended, or the call failed.
+        case failed
+    }
+
+    /// The state of the merge-proposal run. See `MergeProposalState`.
+    @Published private(set) var mergeProposalState: MergeProposalState = .idle
+
+    /// What the model proposed, once it has answered.
+    @Published private(set) var mergeProposals: [TagMergeProposal] = []
+
+    /// The in-flight run. Held here rather than in a view so that closing
+    /// the sheet does not cancel the work.
+    private var mergeProposalTask: Task<Void, Never>?
+
+    /// Start the run, or do nothing if one is already going.
+    ///
+    /// The caller does not wait for this: the proposal sheet shows the
+    /// progress, and the tag list page shows a badge. Waiting is not the
+    /// user's job.
+    func startTagMergeProposal() {
+        guard mergeProposalState != .running else { return }
+        mergeProposalState = .running
+        mergeProposalTask = Task { [weak self] in
+            guard let self else { return }
+            do {
+                let proposals = try await self.proposeTagMerges()
+                guard !Task.isCancelled else {
+                    self.mergeProposalState = .cancelled
+                    return
+                }
+                self.mergeProposals = proposals
+                self.mergeProposalState = .done
+            } catch is CancellationError {
+                self.mergeProposalState = .cancelled
+            } catch let error as URLError where error.code == .cancelled {
+                // The app was suspended mid-flight. Say so; do not pretend.
+                self.mergeProposalState = .failed
+            } catch {
+                Logger.error("tag merge proposal failed: \(error)")
+                self.mergeProposalState = .failed
+            }
+            self.mergeProposalTask = nil
+        }
+    }
+
+    /// Stop the run. The request is cancelled; whatever came back is lost.
+    func cancelTagMergeProposal() {
+        mergeProposalTask?.cancel()
+        mergeProposalTask = nil
+        mergeProposalState = .cancelled
+    }
+
     /// Ask the model which of the library's tags mean the same thing.
     ///
     /// The **whole** library's vocabulary, not the current side's and not
@@ -1216,13 +1284,17 @@ final class TranscriptionViewModel: ObservableObject {
 
         let tags = libraryTagCounts()
         Logger.info("proposeTagMerges: scanning \(tags.count) tags")
+        let started = Date()
 
         let proposals = try await llmService.proposeTagMerges(
             tags: tags,
             profile: profile,
             apiKey: apiKey
         )
-        Logger.info("proposeTagMerges: model proposed \(proposals.count) groups")
+        Logger.info(
+            "proposeTagMerges: model proposed \(proposals.count) groups "
+                + "in \(Int(Date().timeIntervalSince(started)))s"
+        )
         return proposals
     }
 

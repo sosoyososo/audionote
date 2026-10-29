@@ -101,6 +101,13 @@
 "Library.Tags.Done" = "完成";
 "Library.Tags.NoMatch" = "没有匹配的标签";
 "Library.Tags.Merge.Smart" = "智能合并";
+"Library.Tags.Merge.Working" = "正在让模型给标签分组…";
+"Library.Tags.Merge.Hint" = "让大模型找出语义相同、可以合并的标签";
+"Library.Tags.Merge.Found" = "有 %d 组建议";
+"Library.Tags.Merge.Cancelled" = "已取消";
+"Library.Tags.Merge.Cancel" = "取消";
+"Library.Tags.Merge.Retry" = "重新分析";
+"Library.Tags.Merge.CanClose" = "可以关掉这个面板，分析会继续。";
 "Library.Tags.Merge.Title" = "合并建议";
 "Library.Tags.Merge.Target" = "合并成";
 "Library.Tags.Merge.Notes" = "%d 条笔记";

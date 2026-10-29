@@ -17,18 +17,21 @@ struct TagMergeProposalSheet: View {
 
     /// The proposals as they stand. Deleting removes one; excluding keeps
     /// it visible but out of the merge.
-    @State private var proposals: [TagMergeProposal]
+    @State private var proposals: [TagMergeProposal] = []
     @State private var excluded = Set<UUID>()
     @State private var isApplying = false
-
-    init(viewModel: TranscriptionViewModel, proposals: [TagMergeProposal]) {
-        self.viewModel = viewModel
-        _proposals = State(initialValue: proposals)
-    }
 
     /// The proposals that will actually be merged.
     private var accepted: [TagMergeProposal] {
         proposals.filter { !$0.sources.isEmpty && !excluded.contains($0.id) }
+    }
+
+    /// Pull the view model's answer into the local list — once, when it
+    /// arrives. The run itself belongs to the view model: closing this
+    /// sheet does not stop it.
+    private func adoptProposalsIfNeeded() {
+        guard proposals.isEmpty, !viewModel.mergeProposals.isEmpty else { return }
+        proposals = viewModel.mergeProposals
     }
 
     /// How many notes the merge would rewrite in total. A note carrying two
@@ -45,16 +48,69 @@ struct TagMergeProposalSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    ForEach($proposals) { $proposal in
-                        row(for: $proposal)
+                if viewModel.mergeProposalState == .running {
+                    Section {
+                        HStack(spacing: 10) {
+                            ProgressView().controlSize(.small)
+                            Text("Library.Tags.Merge.Working".localized)
+                                .font(.subheadline)
+                            Spacer()
+                            Button {
+                                viewModel.cancelTagMergeProposal()
+                            } label: {
+                                Text("Library.Tags.Merge.Cancel".localized)
+                                    .font(.caption)
+                            }
+                        }
+                    } footer: {
+                        Text("Library.Tags.Merge.CanClose".localized)
                     }
-                    .onDelete { offsets in
-                        proposals.remove(atOffsets: offsets)
+                } else if viewModel.mergeProposalState == .failed {
+                    Section {
+                        Text("Library.Tags.Merge.Failed".localized)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Button {
+                            viewModel.startTagMergeProposal()
+                        } label: {
+                            Text("Library.Tags.Merge.Retry".localized)
+                        }
                     }
-                } footer: {
-                    Text("Library.Tags.Merge.Footer".localized)
+                } else if viewModel.mergeProposalState == .cancelled {
+                    Section {
+                        Text("Library.Tags.Merge.Cancelled".localized)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Button {
+                            viewModel.startTagMergeProposal()
+                        } label: {
+                            Text("Library.Tags.Merge.Retry".localized)
+                        }
+                    }
                 }
+
+                if !proposals.isEmpty {
+                    Section {
+                        ForEach($proposals) { $proposal in
+                            row(for: $proposal)
+                        }
+                        .onDelete { offsets in
+                            proposals.remove(atOffsets: offsets)
+                        }
+                    } footer: {
+                        Text("Library.Tags.Merge.Footer".localized)
+                    }
+                } else if viewModel.mergeProposalState == .done {
+                    Section {
+                        Text("Library.Tags.Merge.Empty".localized)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .onAppear { adoptProposalsIfNeeded() }
+            .onChange(of: viewModel.mergeProposalState) { _ in
+                adoptProposalsIfNeeded()
             }
             .navigationTitle("Library.Tags.Merge.Title".localized)
             .navigationBarTitleDisplayMode(.inline)
@@ -134,7 +190,16 @@ struct TagMergeProposalSheet: View {
 
     // MARK: - Apply
 
+    @ViewBuilder
     private var applyBar: some View {
+        if proposals.isEmpty {
+            EmptyView()
+        } else {
+            applyButton
+        }
+    }
+
+    private var applyButton: some View {
         VStack(spacing: 6) {
             Button {
                 apply()

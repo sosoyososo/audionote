@@ -28,10 +28,7 @@ struct TagPickerSheet: View {
     @ObservedObject var viewModel: TranscriptionViewModel
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
-    @State private var isProposing = false
-    @State private var proposals: [TagMergeProposal] = []
     @State private var showProposals = false
-    @State private var proposalMessage: String?
 
     /// The tags matching the query, alphabetically.
     private var candidates: [String] {
@@ -48,6 +45,8 @@ struct TagPickerSheet: View {
     var body: some View {
         NavigationStack {
             ScrollView {
+                mergeEntry
+
                 FlowRow(spacing: 8, lineSpacing: 8) {
                     ForEach(candidates, id: \.self) { tag in
                         tile(for: tag)
@@ -66,19 +65,7 @@ struct TagPickerSheet: View {
             }
             .searchable(text: $query, prompt: "Library.Tags.Search".localized)
             .sheet(isPresented: $showProposals) {
-                TagMergeProposalSheet(viewModel: viewModel, proposals: proposals)
-            }
-            .alert(
-                "Library.Tags.Merge.Title".localized,
-                isPresented: Binding(
-                    get: { proposalMessage != nil },
-                    set: { if !$0 { proposalMessage = nil } }
-                ),
-                presenting: proposalMessage
-            ) { _ in
-                Button("Action.Cancel".localized, role: .cancel) {}
-            } message: { message in
-                Text(message)
+                TagMergeProposalSheet(viewModel: viewModel)
             }
             .navigationTitle("Library.Tags.Title".localized)
             .navigationBarTitleDisplayMode(.inline)
@@ -90,18 +77,6 @@ struct TagPickerSheet: View {
                         Text("Library.Tags.Clear".localized)
                     }
                     .disabled(selectionCount == 0)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        proposeMerges()
-                    } label: {
-                        if isProposing {
-                            ProgressView().controlSize(.small)
-                        } else {
-                            Text("Library.Tags.Merge.Smart".localized)
-                        }
-                    }
-                    .disabled(isProposing)
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
@@ -117,26 +92,66 @@ struct TagPickerSheet: View {
 
     // MARK: - Smart merge
 
-    /// Ask the model which tags mean the same thing.
+    /// The entry for the merge proposal, as a row of state rather than a
+    /// button that turns into a spinner.
     ///
-    /// The model only proposes; the proposals open in their own sheet where
-    /// the user prunes them before anything is merged (ADR-0010).
-    private func proposeMerges() {
-        isProposing = true
-        Task {
-            defer { isProposing = false }
-            do {
-                let proposals = try await viewModel.proposeTagMerges()
-                if proposals.isEmpty {
-                    proposalMessage = "Library.Tags.Merge.Empty".localized
-                    return
-                }
-                self.proposals = proposals
-                showProposals = true
-            } catch {
-                Logger.error("tag merge proposal failed: \(error)")
-                proposalMessage = "Library.Tags.Merge.Failed".localized
+    /// The work belongs to the view model, not to this sheet: closing the
+    /// sheet does not stop it, and the row says where it got to. Tapping it
+    /// starts the run *and* opens the sheet, so the user is not left
+    /// wondering whether anything happened.
+    private var mergeEntry: some View {
+        Button {
+            if viewModel.mergeProposalState != .running {
+                viewModel.startTagMergeProposal()
             }
+            showProposals = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "wand.and.stars")
+                    .foregroundColor(Color.accentColor)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Library.Tags.Merge.Smart".localized)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    Text(mergeEntryStatus)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                if viewModel.mergeProposalState == .running {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(10)
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, 12)
+    }
+
+    /// The one line that says what the run is doing.
+    private var mergeEntryStatus: String {
+        switch viewModel.mergeProposalState {
+        case .idle:
+            return "Library.Tags.Merge.Hint".localized
+        case .running:
+            return "Library.Tags.Merge.Working".localized
+        case .done:
+            return viewModel.mergeProposals.isEmpty
+                ? "Library.Tags.Merge.Empty".localized
+                : String(format: "Library.Tags.Merge.Found".localized,
+                         viewModel.mergeProposals.count)
+        case .cancelled:
+            return "Library.Tags.Merge.Cancelled".localized
+        case .failed:
+            return "Library.Tags.Merge.Failed".localized
         }
     }
 
