@@ -242,7 +242,7 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 | P1-2 | **`transcriptions.json` 写 `.bak`**：写新文件前保留上一版；加载失败回退 | 把「一次损坏 = 全部记录消失」变成「丢最后一次写入」。写入已经是 `.atomic`，所以只需要加一层备份 | **已否决（2026-10-26）** — 见 CLAUDE.md「Don't do these」 |
 | P1-3 | Keychain 哨兵值，用来识别「这是重装」 | 支撑 P0-5 的差异化文案 | **已被 ADR-0009 覆盖** — 文件夹名提示本身就存在 Keychain 里、跨重装存活，它就是那个「这是重装」的痕迹 |
 | P1-4 | API key 按**稳定 id**（如 provider 类型）存，不按随机 profile.id | 卸载重装后 key 能直接找回，不用重填 | **已完成，机制不同（ADR-0008）** — key 仍按 profile.id 存，但 profile id 现在存在数据文件夹里，不再是随机的，卸载重装后照样找得回 |
-| P1-5 | 设置里显示当前数据目录路径 | 用户可自检 | **未实现** — CLAUDE.md「Open work」 |
+| P1-5 | 设置里显示当前数据目录路径 | 用户可自检 | **已完成（2026-10-29）** — `StorageCoordinator.folderPath` + 设置里一行可复制的路径 ✓ |
 
 ### P2-1 的否决理由（2026-10-22）
 
@@ -303,4 +303,4 @@ app 没有权限扫描 Files 目录，所以**做不到自动检测**。能做�
 - **P0 已实现并真机验证**（`be62b46` + `1f05039`），见 §9。
 - 启动 sweep 的 spec（`2026-10-22-launch-recovery-sweep-design.md`）已写，其 §4.1 的四步拆分与本文件无冲突；§4.5 已补上「sweep 只在 `state == .ready` 时跑」的前置条件。
 - P1-1（profiles 搬进文件夹）已经做完，见 ADR-0008。
-- **仍然开着的**：P1-5、P2-2、P2-3，见 CLAUDE.md「Open work」。（启动 sweep 已于 2026-10-22 实现，见 `2026-10-22-launch-recovery-sweep-design.md` 与 ADR-0006。）
+- **仍然开着的**：P2-2、P2-3，见 CLAUDE.md「Open work」。（P1-5 已于 2026-10-29 实现 ✓）（启动 sweep 已于 2026-10-22 实现，见 `2026-10-22-launch-recovery-sweep-design.md` 与 ADR-0006。）
