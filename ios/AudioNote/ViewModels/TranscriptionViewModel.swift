@@ -1379,6 +1379,9 @@ final class TranscriptionViewModel: ObservableObject {
             "applyTagMerges: applied \(outcome.applied.count) groups, "
                 + "skipped \(outcome.skipped), touched \(outcome.affectedNotes) notes"
         )
+        // The proposals are about tags that may no longer exist. Keeping them
+        // would offer the user a merge that cannot happen any more.
+        mergeProposals = []
         await loadHistory()
         return outcome
     }

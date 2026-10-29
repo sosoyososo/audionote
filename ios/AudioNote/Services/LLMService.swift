@@ -529,10 +529,12 @@ actor LLMService {
         return try await retryingRequest(
             profile: profile,
             apiKey: apiKey,
-            // The answer is a long generation, and a timeout is not a
-            // transient failure: retrying it pays for the same slow answer
-            // twice. One attempt, and a timeout long enough for it.
-            timeout: 90,
+            // The answer is a long generation: measured at 89 seconds, which
+            // sat one second under the old 90-second timeout — so every run
+            // timed out, retried, and paid for the same slow answer twice.
+            // The timeout is now well clear of the generation time, and the
+            // retry stays as insurance rather than as the normal path.
+            timeout: 240,
             maxAttempts: 2,
             buildRequest: {
                 APIRequest(
