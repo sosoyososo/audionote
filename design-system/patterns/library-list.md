@@ -9,6 +9,7 @@ NavigationView
 └── VStack(spacing: 0)
     ├── searchBar                       ← HStack with magnifyingglass + TextField + clear
     ├── tagChipsRow                     ← horizontal chip row OR "no tags" caption
+    ├── filterStatusBar                 ← the filters in effect: removable chips + "5 of 8" + 清除
     └── content                         ← empty | noResults | recordsListView
     .navigationTitle(navigationTitle)    // "文库" or "归档 · N" — the archive-mode indicator
     .toolbar { ToolbarItem(.topBarTrailing) { archiveToggle } }
@@ -18,6 +19,11 @@ NavigationView
     .task { await viewModel.loadHistory() }
     .refreshable { await viewModel.loadHistory() }
 ```
+
+`filterStatusBar` appears **only** while something is selected — it costs no
+space the rest of the time. It sits *below* the tag row, not between the
+search field and the row: the two filter **controls** stay one unbroken
+block at the top, and the state appears directly above the list it filters.
 
 ## §1b. Archive mode
 
@@ -113,6 +119,50 @@ worse: equal columns leave a `学习` cell as wide as a `产品季度复盘纪�
 most of every row is empty. The scan is carried by the fill plus the
 fixed-height pill shape instead — tiles stay visually uniform even though
 their widths are not.
+
+## §1d. The chip strip and its pinned control
+
+The tag row is **two** things side by side, and they must not read as one:
+
+| Element | Behaviour |
+|---|---|
+| Chip strip | horizontal `ScrollView`; chips scroll under the finger |
+| Pinned control | `全部 %d` button, **outside** the scroll, always in the same place |
+
+The pinned control sits outside the scroll on purpose: a button at the end
+of the scroll is the one thing the user cannot reach. It carries the tag
+count, so the row no longer hides what is over there.
+
+Both horizontal strips on this screen — the tag row and the filter-status
+row — follow the same two rules.
+
+### §1d.1 The trailing fade
+
+A scroll view cuts its content off with a hard edge, and a chip cut in
+half right next to the pinned control reads as the control sitting *on*
+the strip. Both strips therefore fade their trailing edge
+(`fadeOutTrailingEdge()`, `LibraryListView.swift`).
+
+| Rule | Reason |
+|---|---|
+| The fade **masks to transparent**, not to a colour | The strip sits on whatever the row is on; a colour fade would have to know that colour, and would be wrong the moment the row's background changes |
+| The fade is on the **viewport**, not the content | A strip shorter than the screen has nothing to fade, so a short list is unaffected |
+| The fade is **one-sided** (trailing only) | The leading edge is the screen edge; there is nothing to fade into |
+
+### §1d.2 The hairline rule
+
+The pinned control is separated from the strip by a 1pt
+`Color(.separator)` rule (22pt tall) with 12pt gaps on either side.
+
+| Rule | Reason |
+|---|---|
+| A **rule**, not more spacing | Spacing alone leaves the two running together; the rule is what says "the left scrolls, the right does not" |
+| The rule is **22pt**, shorter than the 29pt chips | A rule as tall as the content reads as a border; shorter reads as a separator |
+| `Color(.separator)`, not a fixed grey | Adapts to dark mode without a second token |
+
+The rule appears on the **tag row only**. The filter-status row separates
+its scroll strip from its pinned controls with the "5 of 8" count, which
+already reads as a caption rather than as a rule.
 
 ## §2. Row visual conventions
 

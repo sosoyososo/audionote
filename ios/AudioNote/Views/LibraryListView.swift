@@ -138,6 +138,7 @@ struct LibraryListView: View {
                             }
                         }
                     }
+                    .fadeOutTrailingEdge()
 
                     // How many of the records the search already matched
                     // survive the tag filter — "5 of 8", Mail's way. The
@@ -219,6 +220,17 @@ struct LibraryListView: View {
                         .padding(.horizontal, 16)
                         .padding(.vertical, 8)
                     }
+                    .fadeOutTrailingEdge()
+
+                    // The rule is what separates "the chips on the left
+                    // scroll" from "the control on the right does not".
+                    // Without it the two run together into one crowded
+                    // strip, and the pinned control reads as sitting on top
+                    // of the chips rather than beside them.
+                    Rectangle()
+                        .fill(Color(.separator))
+                        .frame(width: 1, height: 22)
+                        .padding(.horizontal, 12)
 
                     // Pinned **outside** the scroll. A button at the end of
                     // the scroll would be the one thing the user cannot
@@ -632,6 +644,33 @@ struct RecordRowView: View {
 }
 
 private extension View {
+    /// Fades the trailing edge of a horizontal strip.
+    ///
+    /// A scroll view cuts its content off with a hard edge. When a chip is
+    /// cut in half right next to a pinned control, the two read as one
+    /// crowded thing — the control looks like it is sitting *on* the strip.
+    /// The fade turns that cut into a slide-out: the chip dissolves before
+    /// it reaches the control, so the strip and the control read as two
+    /// separate things.
+    ///
+    /// The fade is on the *viewport*, so it only shows when there is
+    /// something to fade — a strip shorter than the screen is unaffected.
+    /// It masks to transparent rather than to a colour, so it works on
+    /// whatever the row happens to sit on.
+    func fadeOutTrailingEdge() -> some View {
+        mask(
+            LinearGradient(
+                stops: [
+                    .init(color: .black, location: 0),
+                    .init(color: .black, location: 0.9),
+                    .init(color: .clear, location: 1)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        )
+    }
+
     /// A caption under the navigation title.
     ///
     /// iOS 26 has a slot for exactly this. Below that the same two lines are
