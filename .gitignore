@@ -8,3 +8,7 @@ xcuserdata/
 # Agent caches (codegraph / deepseek / similar tooling)
 .codegraph/
 .deepseek/
+
+# fastlane rewrites these on every run
+fastlane/README.md
+fastlane/report.xml

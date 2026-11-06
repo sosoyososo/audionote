@@ -62,6 +62,15 @@ Decided but not done. This is an **index**, not the content — each row says wh
 - **Don't keep a `.bak` copy of `transcriptions.json`.** Decided against on 2026-10-26 — the records file is the user's own file in their own folder, and a second copy inside that folder is a second thing that can go stale. A corrupted records file is already loud rather than silent: `save` refuses to write over a file it could not read (ADR-0007), so the damaged file is preserved for the user to recover by hand instead of being replaced with an empty library. Don't propose a backup copy, a restore UI, or a recovery prompt for this file.
 - **Don't add a shared Keychain access group.** Decided against on 2026-10-26 — the bundle ID `info.karsa.app.ios.audionote` and the team `25FH23Q3GA` are settled, so no key has to cross a bundle-ID boundary. An access group's id carries the signing team's prefix, so it can only bridge bundle IDs *within* one team; it buys nothing here. If the bundle ID is ever changed this becomes a real decision again, and the order matters: migrate the existing items (the LLM API keys and the folder hint) into the shared group **first**, under the current bundle ID — the group's own id changes with the bundle ID, so a group added after the change would not see the old items.
 
+## Build & release
+
+`make ipa` archives the app and exports the TestFlight IPA; `make tf BUILD=<n>` uploads it. Both live in the repo-root `Makefile`; the upload runs through `fastlane/`. Signing uses this project's own Apple Developer team (`25FH23Q3GA`, Hongtao Wang) — another team's credentials do not work for this app.
+
+Two things not to rediscover:
+
+- `ios/project.yml` pins `CODE_SIGN_IDENTITY: "Apple Development"`, so the archive is development-signed. **Do not pass `CODE_SIGN_IDENTITY` on the xcodebuild command line** — Xcode fails with "conflicting provisioning settings". `xcodebuild -exportArchive` re-signs the archive for distribution (the team's `Apple Distribution` certificate and the `iOS Team Store Provisioning Profile`, both created on demand by `-allowProvisioningUpdates`).
+- The App Store Connect API key is not in the repo. The Makefile defaults to this app's own key (`3Q68WNN5JG`, issuer `40bf00a7-a2e1-4319-aadc-bb8eaae2ab76`); the `.p8` lives at `~/.asc/Hongtao_Wang/team_key/` (also copied to `~/.private_keys/`). Override `ASC_API_KEY_ID` / `ASC_API_ISSUER` if the key is rotated. The ASC app record for `info.karsa.app.ios.audionote` is named **Thoria** (app id 6830571230), and the on-device display name matches it (`CFBundleDisplayName` = `CFBundleName` = `Thoria`, set in `ios/project.yml`). The bundle ID stays `info.karsa.app.ios.audionote` — the ASC record and its provisioning profile are bound to it. `make tf` checks the credentials before it spends minutes on an archive.
+
 ## File layout
 
 ```

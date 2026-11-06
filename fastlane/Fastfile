@@ -1,0 +1,49 @@
+default_platform :ios
+
+# Fastlane runs a lane with the working directory set to the fastlane/ folder
+# (Fastlane::Runner does `Dir.chdir(FastlaneFolder.path)`), so a relative path
+# handed in from the Makefile would resolve against fastlane/ instead of the
+# project root. Resolve relative paths against the project root explicitly.
+#
+# The cwd is the fastlane/ folder both while the Fastfile is parsed
+# (Fastlane::FastFile#parse) and while the lane body runs, so its parent is
+# the project root. FastlaneCore::FastlaneFolder.path is not usable for this:
+# it returns a relative path ("fastlane/") whose meaning depends on the cwd.
+def project_root
+  cwd = Dir.pwd
+  return File.expand_path("..", cwd) if File.basename(cwd) == "fastlane"
+  cwd
+end
+
+def resolve_from_root(path)
+  return path if path.start_with?("/")
+  File.expand_path(path, project_root)
+end
+
+platform :ios do
+  desc "Upload the archived IPA to TestFlight (App Store Connect API key auth)"
+  lane :upload do
+    key_id   = ENV["ASC_API_KEY_ID"].to_s
+    issuer   = ENV["ASC_API_ISSUER"].to_s
+    key_path = resolve_from_root(ENV["ASC_KEY_PATH"].to_s)
+    ipa      = resolve_from_root(ENV["IPA_PATH"].to_s)
+
+    UI.user_error!("ASC_API_KEY_ID is not set") if key_id.empty?
+    UI.user_error!("ASC_API_ISSUER is not set") if issuer.empty?
+    UI.user_error!("ASC key not found at #{key_path}") unless File.exist?(key_path)
+    UI.user_error!("IPA not found at #{ipa}") unless File.exist?(ipa)
+
+    app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer,
+      key_filepath: key_path,
+      duration: 1200,
+      in_house: false
+    )
+
+    upload_to_testflight(
+      ipa: ipa,
+      skip_waiting_for_build_processing: true
+    )
+  end
+end
